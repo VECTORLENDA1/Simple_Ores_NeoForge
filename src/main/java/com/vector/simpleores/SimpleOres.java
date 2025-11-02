@@ -1,6 +1,9 @@
 package com.vector.simpleores;
 
 import com.mojang.logging.LogUtils;
+import com.vector.simpleores.block.entity.ModBlockEntities;
+import com.vector.simpleores.recipe.ModRecipes;
+import com.vector.simpleores.screen.ModMenuTypes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -33,6 +36,9 @@ public class SimpleOres {
 
         ModItems.Register(modEventBus);
         ModBlocks.Register(modEventBus);
+        ModRecipes.register(modEventBus);
+        ModMenuTypes.register(modEventBus);
+        ModBlockEntities.register(modEventBus);
         ModCreativeModTabs.register(modEventBus);
 
         modEventBus.addListener(this::addCreative);

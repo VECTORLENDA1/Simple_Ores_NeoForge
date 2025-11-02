@@ -3,7 +3,7 @@
   "category": "misc" ,
   "ingredients": [
     {
-      "tag": "neoforge:ignithra_block"
+      "item": "simpleores:ignithra_block"
     }
   ],
   "result": {

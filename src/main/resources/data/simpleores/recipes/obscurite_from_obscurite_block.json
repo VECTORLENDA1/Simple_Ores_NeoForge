@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "tag": "neoforge:obscurite_block"
+      "item": "simpleores:obscurite_block"
     }
   ],
   "result": {

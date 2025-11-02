@@ -5,7 +5,7 @@
   "experience": 0.7,
   "group": "ignithra",
   "ingredient": {
-    "tag": "neoforge:raw_ignithra"
+    "item": "simpleores:raw_ignithra"
   },
   "result": {
     "id": "simpleores:ignithra"

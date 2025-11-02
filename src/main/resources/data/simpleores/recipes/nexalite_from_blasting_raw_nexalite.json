@@ -5,7 +5,7 @@
   "experience": 1,
   "group": "nexalite",
   "ingredient": {
-    "tag": "neoforge:raw_nexalite"
+    "item": "simpleores:raw_nexalite"
   },
   "result": {
     "id": "simpleores:nexalite"

@@ -15,9 +15,9 @@ public class ModCreativeModTabs {
     public static final net.neoforged.neoforge.registries.DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
             net.neoforged.neoforge.registries.DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> SIMPLE_ORES = CREATIVE_MODE_TABS.register("simple_ores",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> SIMPLE_ORES = CREATIVE_MODE_TABS.register("simpleores",
             () -> CreativeModeTab.builder()
-            .title(Component.translatable("creativetab.simple_ores"))
+            .title(Component.translatable("creativetab.simpleores"))
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ModItems.CELESTINE.get().getDefaultInstance())
             .displayItems((parameters, output) -> {

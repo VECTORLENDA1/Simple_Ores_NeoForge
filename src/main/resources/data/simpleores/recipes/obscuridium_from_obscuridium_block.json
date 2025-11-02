@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "tag": "neoforge:obscuridium_block"
+      "item": "simpleores:obscuridium_block"
     }
   ],
   "result": {

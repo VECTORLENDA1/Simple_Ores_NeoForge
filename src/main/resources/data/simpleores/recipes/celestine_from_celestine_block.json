@@ -3,7 +3,7 @@
   "category": "misc" ,
   "ingredients": [
     {
-      "tag": "neoforge:celestine_block"
+      "item": "simpleores:celestine_block"
     }
   ],
   "result": {

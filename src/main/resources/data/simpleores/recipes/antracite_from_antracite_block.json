@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
       {
-      "tag": "neoforge:antracite_block"
+      "item": "simpleores:antracite_block"
     }
   ],
   "result": {

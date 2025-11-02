@@ -3,7 +3,7 @@
   "category": "misc" ,
   "ingredients": [
     {
-      "tag": "neoforge:raw_astralite_block"
+      "item": "simpleores:raw_astralite_block"
   }
   ],
   "result": {

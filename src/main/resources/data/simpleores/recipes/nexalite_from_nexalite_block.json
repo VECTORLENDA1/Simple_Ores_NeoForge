@@ -3,7 +3,7 @@
   "category": "misc" ,
   "ingredients": [
     {
-      "tag": "neoforge:nexalite_block"
+      "item": "simpleores:nexalite_block"
     }
   ],
   "result": {

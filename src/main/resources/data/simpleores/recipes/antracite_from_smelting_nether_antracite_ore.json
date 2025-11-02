@@ -5,7 +5,7 @@
   "experience": 1.5,
   "group": "antracite",
   "ingredient": {
-    "tag": "neoforge:nether_antracite_ore"
+    "item": "simpleores:nether_antracite_ore"
   },
   "result": {
     "id": "simpleores:antracite"

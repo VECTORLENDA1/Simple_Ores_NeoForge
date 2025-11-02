@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 900,
+  "experience": 9,
+  "group": "astralite",
+  "ingredient": {
+    "tag": "neoforge:raw_astralite_block"
+  },
+  "result": {
+    "id": "simpleores:astralite_block"
+  }
+}

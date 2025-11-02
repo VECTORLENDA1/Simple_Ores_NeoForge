@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc" ,
+  "ingredients": [
+    {
+      "tag": "neoforge:raw_nexalite_block"
+  }
+  ],
+  "result": {
+    "count": 9,
+    "id": "simpleores:raw_nexalite"
+  }
+}

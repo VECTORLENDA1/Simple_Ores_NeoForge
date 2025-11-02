@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc" ,
+  "key": {
+    "#": {
+      "tag": "neoforge:obscurite"
+    }
+  },
+  "pattern": [
+    "###",
+    "###",
+    "###"
+    ],
+      "result": {
+        "count": 1,
+        "id": "simpleores:obscurite_block"
+      }
+}

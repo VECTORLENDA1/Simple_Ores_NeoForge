@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 450,
+  "experience": 6.3,
+  "group": "ignithra",
+  "ingredient": {
+    "tag": "neoforge:raw_ignithra_block"
+  },
+  "result": {
+    "id": "simpleores:ignithra_block"
+  }
+}

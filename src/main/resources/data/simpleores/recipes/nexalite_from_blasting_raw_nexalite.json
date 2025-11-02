@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 1,
+  "group": "nexalite",
+  "ingredient": {
+    "tag": "neoforge:raw_nexalite"
+  },
+  "result": {
+    "id": "simpleores:nexalite"
+  }
+}

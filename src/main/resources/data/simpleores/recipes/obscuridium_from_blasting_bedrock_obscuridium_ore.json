@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 3,
+  "group": "obscuridium",
+  "ingredient": {
+    "tag": "neoforge:raw_obscuridium"
+  },
+  "result": {
+    "id": "simpleores:obscuridium"
+  }
+}

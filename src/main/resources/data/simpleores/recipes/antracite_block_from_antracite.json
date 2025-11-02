@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc" ,
+  "key": {
+    "#": {
+      "tag": "neoforge:antracite"
+    }
+  },
+  "pattern": [
+    "###",
+    "###",
+    "###"
+    ],
+      "result": {
+        "count": 1,
+        "id": "simpleores:antracite_block"
+      }
+}

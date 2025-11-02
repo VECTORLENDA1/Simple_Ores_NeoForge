@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 0.7,
+  "group": "ignithra",
+  "ingredient": {
+    "tag": "neoforge:deepslate_ignithra_ore"
+  },
+  "result": {
+    "id": "simpleores:ignithra"
+  }
+}

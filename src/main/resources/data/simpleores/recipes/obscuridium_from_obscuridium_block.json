@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "neoforge:obscuridium_block"
+    }
+  ],
+  "result": {
+    "count": 9,
+    "id": "simpleores:obscuridium"
+  }
+}

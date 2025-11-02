@@ -1,0 +1,49 @@
+{
+
+
+  "1":             "||ITEMS||",
+  "item.simple_ores.celestine": "Celestine Gem",
+  "item.simple_ores.zenithra": "Zenithra Gem",
+  "item.simple_ores.astralite": "Astralite",
+  "item.simple_ores.raw_astralite": "Raw Astralite",
+  "item.simple_ores.raw_nexalite": "Raw Nexalite",
+  "item.simple_ores.nexalite": "Nexalite",
+  "item.simple_ores.ignithra": "Ignithra",
+  "item.simple_ores.raw_ignithra": "Raw Ignithra",
+  "item.simple_ores.antracite": "Antracite",
+  "item.simple_ores.obscuridium": "Obscuridium",
+  "item.simple_ores.obscurite": "Obscurite",
+  "item.simple_ores.raw_obscuridium": "Raw Obscuridium",
+
+
+
+
+  "2":             "||BLOCKS||",
+  "block.simple_ores.end_stone_celestine_ore": "End Stone Celestine Ore",
+  "block.simple_ores.nexalite_block": "Block of Nexalite",
+  "block.simple_ores.ignithra_block": "Block of Ignithra",
+  "block.simple_ores.deepslate_ignithra_ore": "Deepslate Ignithra Ore",
+  "block.simple_ores.ignithra_ore": "Ignithra Ore",
+  "block.simple_ores.raw_ignithra_block": "Block of Raw Ignithra",
+  "block.simple_ores.astralite_block": "Block of Astralite",
+  "block.simple_ores.zenithra_block": "Block of Zenithra",
+  "block.simple_ores.deepslate_astralite_ore": "Deepslate Astralite Ore",
+  "block.simple_ores.deepslate_nexalite_ore": "Deepslate Nexalite Ore",
+  "block.simple_ores.end_stone_zenithra_ore": "End Stone Zenithra Ore",
+  "block.simple_ores.raw_astralite_block": "Block of Raw Astralite",
+  "block.simple_ores.raw_nexalite_block": "Block of Raw Nexalite",
+  "block.simple_ores.celestine_block": "Block of Celestine",
+  "block.simple_ores.antracite_block": "Block of Antracite",
+  "block.simple_ores.nether_antracite_ore": "Nether Antracite Ore",
+  "block.simple_ores.bedrock_obscuridium_ore": "Bedrock Obscuridium Ore",
+  "block.simple_ores.obscuridium_block": "Block of Obscuridium",
+  "block.simple_ores.obscurite_block": "Block of Obscurite",
+  "block.simple_ores.raw_obscuridium_block": "Block of Raw Obscuridium",
+  "block.simple_ores.simple_crafting_table": "Simple Crafting Table",
+
+
+
+  "creativetab.simple_ores": "Simple Ores"
+}
+
+

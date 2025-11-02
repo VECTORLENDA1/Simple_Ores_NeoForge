@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "simpleores:block/astralite_block"
+    }
+  }
+}

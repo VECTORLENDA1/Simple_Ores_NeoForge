@@ -1,0 +1,21 @@
+{
+  "values": [
+    "simpleores:celestine_block",
+    "simpleores:astralite_block",
+    "simpleores:deepslate_astralite_ore",
+    "simpleores:deepslate_nexalite_ore",
+    "simpleores:deepslate_ignithra_ore",
+    "simpleores:end_stone_celestine_ore",
+    "simpleores:end_stone_zenithra_ore",
+    "simpleores:ignithra_block",
+    "simpleores:ignithra_ore",
+    "simpleores:nexalite_block",
+    "simpleores:zenithra_block",
+    "simpleores:raw_astralite_block",
+    "simpleores:raw_nexalite_block",
+    "simpleores:raw_ignithra_block",
+    "simpleores:nether_antracite_ore",
+    "simpleores:antracite_block",
+    "simpleores:simple_crafting_table"
+  ]
+}

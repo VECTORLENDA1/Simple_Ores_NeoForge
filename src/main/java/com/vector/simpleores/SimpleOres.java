@@ -39,6 +39,8 @@ public class SimpleOres {
         ModRecipes.register(modEventBus);
         ModMenuTypes.register(modEventBus);
         ModBlockEntities.register(modEventBus);
+
+
         ModCreativeModTabs.register(modEventBus);
 
         modEventBus.addListener(this::addCreative);

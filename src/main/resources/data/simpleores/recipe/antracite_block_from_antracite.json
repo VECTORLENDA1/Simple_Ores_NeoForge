@@ -3,7 +3,7 @@
   "category": "misc" ,
   "key": {
     "#": {
-      "item": "simple_ores:antracite"
+      "item": "simpleores:antracite"
     }
   },
   "pattern": [
@@ -13,6 +13,6 @@
     ],
       "result": {
         "count": 1,
-        "id": "simple_ores:antracite_block"
+        "id": "simpleores:antracite_block"
       }
 }

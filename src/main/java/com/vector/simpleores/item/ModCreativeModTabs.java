@@ -58,6 +58,11 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.OBSCURIDIUM_BLOCK.get());
                     output.accept(ModBlocks.RAW_OBSCURIDIUM_BLOCK.get());
                     output.accept(ModBlocks.OBSCURITE_BLOCK.get());
+
+                    //ENTITY BLOCK//
+                    output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
+
+
             })
                 .build());
 

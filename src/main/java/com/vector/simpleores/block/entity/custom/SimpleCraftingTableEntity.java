@@ -203,7 +203,7 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.weaponseffect.simple_crafting_table");
+        return Component.translatable("block.simpleores.simple_crafting_table");
     }
 
 

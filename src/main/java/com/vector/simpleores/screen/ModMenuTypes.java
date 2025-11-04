@@ -14,7 +14,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(Registries.MENU, "weaponseffect");
+            DeferredRegister.create(Registries.MENU, "simpleores");
 
     public static final DeferredHolder<MenuType<?>, MenuType<SimpleCraftingTableMenu>> SIMPLE_CRAFTING_TABLE_MENU =
             registerMenuType("simple_crafting_table_menu", SimpleCraftingTableMenu::new);

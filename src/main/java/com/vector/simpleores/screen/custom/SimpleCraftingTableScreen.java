@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Inventory;
 
 public class SimpleCraftingTableScreen extends AbstractContainerScreen<SimpleCraftingTableMenu> {
     public static final ResourceLocation GUI_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("weaponseffect","textures/gui/simple_crafting_table/simple_crafting_table_gui.png");
+            ResourceLocation.fromNamespaceAndPath("simpleores","textures/gui/simple_crafting_table/simple_crafting_table_gui.png");
 
     public SimpleCraftingTableScreen(SimpleCraftingTableMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);

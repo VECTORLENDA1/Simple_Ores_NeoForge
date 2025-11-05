@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
+import com.vector.simpleores.screen.custom.SimpleCraftingTableScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -74,6 +75,7 @@ public class SimpleOres {
 
         @SubscribeEvent
         public static void registerScreens(RegisterMenuScreensEvent event) {
+            event.register(ModMenuTypes.SIMPLE_CRAFTING_TABLE_MENU.get(), SimpleCraftingTableScreen::new);
         }
 
     }

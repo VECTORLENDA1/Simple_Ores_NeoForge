@@ -21,7 +21,7 @@ import java.util.List;
 
 
 @JeiPlugin
-public class JEIWeaponsEffectPlugin implements IModPlugin {
+public class JEISimpleOresPlugin implements IModPlugin {
     @Override
     public ResourceLocation getPluginUid() {
         return ResourceLocation.fromNamespaceAndPath("simpleores", "jei_plugin");

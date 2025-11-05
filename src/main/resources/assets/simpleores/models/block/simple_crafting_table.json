@@ -1,25 +1,12 @@
 {
-	"credit": "Made with Blockbench",
-	"textures": {
-		"0": "simple_crafting_table_front",
-		"1": "simple_crafting_table_side",
-		"2": "simple_crafting_table_top",
-		"3": "simple_crafting_table_bottom",
-		"particle": "simple_crafting_table_front"
-	},
-	"elements": [
-		{
-			"from": [0, 0, 0],
-			"to": [16, 16, 16],
-			"rotation": {"angle": 0, "axis": "y", "origin": [8, 8, 8]},
-			"faces": {
-				"north": {"uv": [0, 0, 16, 16], "texture": "#0"},
-				"east": {"uv": [0, 0, 16, 16], "texture": "#1"},
-				"south": {"uv": [0, 0, 16, 16], "texture": "#0"},
-				"west": {"uv": [0, 0, 16, 16], "texture": "#1"},
-				"up": {"uv": [0, 0, 16, 16], "texture": "#2"},
-				"down": {"uv": [0, 0, 16, 16], "texture": "#3"}
-			}
-		}
-	]
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "down": "simpleores:block/simple_crafting_table_bottom",
+    "east": "simpleores:block/simple_crafting_table_side",
+    "north": "simpleores:block/simple_crafting_table_front",
+    "south": "simpleores:block/simple_crafting_table_front",
+    "particle": "simpleores:block/simple_crafting_table_front",
+    "up": "simpleores:block/simple_crafting_table_top",
+    "west": "simpleores:block/simple_crafting_table_side"
+  }
 }

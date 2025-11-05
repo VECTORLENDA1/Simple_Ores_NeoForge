@@ -67,7 +67,7 @@ public class SimpleCraftingTable extends BaseEntityBlock {
     }
 
 
-    //This will open the Menu of the block (Simple Crafting Table)
+    //This will open the Menu of the block (Simple Crafting Table)\\
     @Override
     protected ItemInteractionResult useItemOn(ItemStack Stack, BlockState State, Level pLevel, BlockPos pos,
                                               Player Player, InteractionHand Hand, BlockHitResult HitResult) {

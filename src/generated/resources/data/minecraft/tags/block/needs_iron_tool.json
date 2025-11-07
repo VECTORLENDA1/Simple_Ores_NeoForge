@@ -1,0 +1,13 @@
+{
+  "values": [
+    "simpleores:deepslate_astralite_ore",
+    "simpleores:deepslate_nexalite_ore",
+    "simpleores:astralite_block",
+    "simpleores:nexalite_block",
+    "simpleores:raw_astralite_block",
+    "simpleores:raw_nexalite_block",
+    "simpleores:nether_antracite_ore",
+    "simpleores:antracite_block",
+    "simpleores:simple_crafting_table"
+  ]
+}

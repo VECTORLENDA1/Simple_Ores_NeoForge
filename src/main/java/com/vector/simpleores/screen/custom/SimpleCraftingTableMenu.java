@@ -19,6 +19,7 @@ import java.util.Optional;
 public class SimpleCraftingTableMenu extends AbstractContainerMenu {
     public final SimpleCraftingTableEntity blockEntity;
     public final Level level;
+    private boolean suppressOutputOnTakeOnce = false;
 
     public SimpleCraftingTableMenu(int pContainerId, Inventory inv, FriendlyByteBuf extraData) {
         this(pContainerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(26));
@@ -62,9 +63,40 @@ public class SimpleCraftingTableMenu extends AbstractContainerMenu {
 
         // OUTPUT_SLOTS //
         this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 25, 145, 55) {
+
+
+
+
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
+            }
+
+            @Override
+            public void onTake(Player player, ItemStack stack) {
+                super.onTake(player, stack);
+                if (level.isClientSide()) return;
+
+                if (suppressOutputOnTakeOnce) {
+                    suppressOutputOnTakeOnce = false;
+                    return;
+                }
+
+                // Perform consumption when player manually takes from output slot
+                Optional<RecipeHolder<SimpleCraftingTableRecipe>> recipeOptional = blockEntity.getCurrentRecipe();
+                if (recipeOptional.isPresent()) {
+                    SimpleCraftingTableRecipe recipe = recipeOptional.get().value();
+                    int perCraft = Math.max(1, recipe.getResultItem(level.registryAccess()).getCount());
+                    int taken = Math.max(1, stack.getCount());
+                    int crafts = Math.max(1, taken / perCraft);
+                    blockEntity.consumeIngredients(crafts);
+                    blockEntity.updateResult(0);
+                    SimpleCraftingTableMenu.this.broadcastChanges();
+                } else if (blockEntity.hasVanillaMatch()) {
+                    blockEntity.consumeVanillaOnce();
+                    blockEntity.updateResult(0);
+                    SimpleCraftingTableMenu.this.broadcastChanges();
+                }
             }
         });
     }
@@ -147,9 +179,51 @@ public class SimpleCraftingTableMenu extends AbstractContainerMenu {
                             if (this.moveItemStackTo(craftedItem, VANILLA_FIRST_SLOT_INDEX, VANILLA_FIRST_SLOT_INDEX + VANILLA_SLOT_COUNT, false)) {
                                 int movedCount = originalCount - craftedItem.getCount();
                                 int actualMovedCrafts = movedCount / resultCountPerCraft;
-                                blockEntity.consumeIngredients(actualMovedCrafts);
-                                blockEntity.updateResult(0);
+                                if (actualMovedCrafts > 0) {
+                                    suppressOutputOnTakeOnce = true;
+                                    blockEntity.consumeIngredients(actualMovedCrafts);
+                                    blockEntity.updateResult(0);
+                                    this.broadcastChanges();
+                                }
                             }
+                        }
+                    }
+                } else if (blockEntity.hasVanillaMatch()) {
+                    // Auto-craft vanilla repeatedly on Shift+Click to fill up to a full stack or until inputs/space run out
+                    int totalMoved = 0;
+                    int safety = 256; // guard to prevent infinite loops
+                    while (safety-- > 0 && blockEntity.hasVanillaMatch()) {
+                        ItemStack preview = blockEntity.getVanillaResultPreview();
+                        if (preview.isEmpty()) break;
+                        int maxStack = preview.getMaxStackSize();
+                        int remainingToFill = Math.max(0, maxStack - totalMoved);
+                        if (remainingToFill <= 0) break;
+
+                        // Try to move one craft worth at a time (preview count may be >1)
+                        ItemStack toMove = preview.copy();
+                        // Cap toMove by remainingToFill to avoid overfilling the current stack limit
+                        if (toMove.getCount() > remainingToFill) {
+                            toMove.setCount(remainingToFill);
+                        }
+                        int original = toMove.getCount();
+                        if (!this.moveItemStackTo(toMove, VANILLA_FIRST_SLOT_INDEX, VANILLA_FIRST_SLOT_INDEX + VANILLA_SLOT_COUNT, false)) {
+                            break; // no space
+                        }
+                        int moved = original - toMove.getCount();
+                        if (moved <= 0) {
+                            break; // couldn't move any more to inventory
+                        }
+                        totalMoved += moved;
+
+                        // Consume one craft and refresh
+                        suppressOutputOnTakeOnce = true;
+                        blockEntity.consumeVanillaOnce();
+                        blockEntity.updateResult(0);
+                        this.broadcastChanges();
+
+                        // If we already filled a full stack, stop
+                        if (totalMoved >= maxStack) {
+                            break;
                         }
                     }
                 }

@@ -36,6 +36,16 @@ public class ModRecipes {
                 }
             });
 
+    public static final Supplier<RecipeSerializer<AtomicCraftingTableRecipe>> ATOMIC_CRAFTING_TABLE_SERIALIZER =
+            SERIALIZERS.register("atomic_crafting_table", AtomicCraftingTableRecipe.Serializer::new);
+    public static final Supplier<RecipeType<AtomicCraftingTableRecipe>> ATOMIC_CRAFTING_TABLE_TYPE =
+            TYPES.register("atomic_crafting_table", () -> new RecipeType<>() {
+                @Override
+                public String toString() {
+                    return "atomic_crafting_table";
+                }
+            });
+
 
 
 

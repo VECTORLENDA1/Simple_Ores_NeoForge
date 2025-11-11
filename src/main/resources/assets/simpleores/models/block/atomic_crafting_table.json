@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "down": "simpleores:block/atomic_crafting_table_bottom",
+    "east": "simpleores:block/atomic_crafting_table_side",
+    "north": "simpleores:block/atomic_crafting_table_front",
+    "south": "simpleores:block/atomic_crafting_table_front",
+    "particle": "simpleores:block/atomic_crafting_table_front",
+    "up": "simpleores:block/atomic_crafting_table_top",
+    "west": "simpleores:block/atomic_crafting_table_side"
+  }
+}

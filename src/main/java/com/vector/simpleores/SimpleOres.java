@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
+import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;
 import com.vector.simpleores.screen.custom.SimpleCraftingTableScreen;
 import com.vector.simpleores.screen.custom.UltraCraftingTableScreen;
 import net.neoforged.api.distmarker.Dist;
@@ -78,6 +79,7 @@ public class SimpleOres {
         public static void registerScreens(RegisterMenuScreensEvent event) {
             event.register(ModMenuTypes.SIMPLE_CRAFTING_TABLE_MENU.get(), SimpleCraftingTableScreen::new);
             event.register(ModMenuTypes.ULTRA_CRAFTING_TABLE_MENU.get(), UltraCraftingTableScreen::new);
+            event.register(ModMenuTypes.ATOMIC_CRAFTING_TABLE_MENU.get(), AtomicCraftingTableScreen::new);
         }
 
     }

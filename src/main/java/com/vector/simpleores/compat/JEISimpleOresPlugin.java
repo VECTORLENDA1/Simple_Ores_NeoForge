@@ -2,11 +2,13 @@ package com.vector.simpleores.compat;
 
 
 import com.vector.simpleores.block.ModBlocks;
+import com.vector.simpleores.recipe.AtomicCraftingTableRecipe;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.recipe.SimpleCraftingTableRecipe;
 import com.vector.simpleores.recipe.UltraCraftingTableRecipe;
 import com.vector.simpleores.screen.custom.SimpleCraftingTableScreen;
 import com.vector.simpleores.screen.custom.UltraCraftingTableScreen;
+import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
@@ -35,6 +37,8 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 registration.getJeiHelpers().getGuiHelper()));
         registration.addRecipeCategories(new UltraCraftingTableRecipeCategory(
                 registration.getJeiHelpers().getGuiHelper()));
+        registration.addRecipeCategories(new AtomicCraftingTableRecipeCategory(
+                registration.getJeiHelpers().getGuiHelper()));
     }
 
     @Override
@@ -54,9 +58,16 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 .map(RecipeHolder::value)
                 .toList();
         registration.addRecipes(UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE, ultraCraftingTableRecipes);
+
+        List<AtomicCraftingTableRecipe> atomicCraftingTableRecipes = recipeManager
+                .getAllRecipesFor(ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get())
+                .stream()
+                .map(RecipeHolder::value)
+                .toList();
+        registration.addRecipes(AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE, atomicCraftingTableRecipes);
     }
 
-    // A clickable area for the Simple Crafting Table arrow
+    // A clickable area for the Crafting Table arrow
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addRecipeClickArea(SimpleCraftingTableScreen.class,112,54,22,16,
@@ -64,9 +75,12 @@ public class JEISimpleOresPlugin implements IModPlugin {
 
         registration.addRecipeClickArea(UltraCraftingTableScreen.class,148,73,22,16,
                 UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
+
+        registration.addRecipeClickArea(AtomicCraftingTableScreen.class,185,91,22,16,
+                AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
     }
 
-    // You can houver the Ultra Crafting Table in JEI to see the recipes
+    // You can houver the Crafting Table in JEI to see the recipes
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.SIMPLE_CRAFTING_TABLE.get().asItem()),
@@ -74,5 +88,8 @@ public class JEISimpleOresPlugin implements IModPlugin {
 
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.ULTRA_CRAFTING_TABLE.get().asItem()),
                 UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
+
+        registration.addRecipeCatalyst(new ItemStack(ModBlocks.ATOMIC_CRAFTING_TABLE.get().asItem()),
+                AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
     }
 }

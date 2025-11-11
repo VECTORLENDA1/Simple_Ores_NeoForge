@@ -2,8 +2,7 @@ package com.vector.simpleores.block.entity.custom;
 
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.recipe.*;
-import com.vector.simpleores.screen.custom.SimpleCraftingTableMenu;
-import com.vector.simpleores.screen.custom.UltraCraftingTableMenu;
+import com.vector.simpleores.screen.custom.AtomicCraftingTableMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -33,8 +32,8 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 import javax.annotation.Nullable;
 import java.util.Optional;
 
-public class UltraCraftingTableEntity extends BlockEntity implements MenuProvider {
-    // Cache for last matched vanilla crafting bounding box in 7x7 and recipe
+public class AtomicCraftingTableEntity extends BlockEntity implements MenuProvider {
+    // Cache for last matched vanilla crafting bounding box in 9x9 and recipe
     private int lastVanillaMinX = -1;
     private int lastVanillaMinY = -1;
     private int lastVanillaWidth = 0;
@@ -42,7 +41,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
     @Nullable
     private RecipeHolder<CraftingRecipe> lastVanillaRecipe = null;
     public boolean isUpdating = false;
-    public final ItemStackHandler itemHandler = new ItemStackHandler(50) {
+    public final ItemStackHandler itemHandler = new ItemStackHandler(82) {
         @Override
         protected void onContentsChanged(int slot) {
             if (slot == OUTPUT_SLOT || isUpdating) return;
@@ -60,21 +59,21 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         }
     };
 
-    public static final int[] INPUT_SLOT = new int[49];
-    public static final int OUTPUT_SLOT = 49;
+    public static final int[] INPUT_SLOT = new int[81];
+    public static final int OUTPUT_SLOT = 81;
 
     public Lazy<IItemHandler> lazyItemHandler = Lazy.of(() -> itemHandler);
 
-    public UltraCraftingTableEntity(BlockPos pPos, BlockState pBlockState) {
-        super(ModBlockEntities.ULTRA_CRAFTING_TABLE_BE.get(), pPos, pBlockState);
-        for (int i = 0; i < 49; i++) {
+    public AtomicCraftingTableEntity(BlockPos pPos, BlockState pBlockState) {
+        super(ModBlockEntities.ATOMIC_CRAFTING_TABLE_BE.get(), pPos, pBlockState);
+        for (int i = 0; i < 81; i++) {
             INPUT_SLOT[i] = i;
         }
     }
 
     public void updateResult(int p) {
-        // First try custom 7x7 recipe
-        Optional<RecipeHolder<UltraCraftingTableRecipe>> opt = getCurrentRecipe();
+        // First try custom 9x9 recipe
+        Optional<RecipeHolder<AtomicCraftingTableRecipe>> opt = getCurrentRecipe();
         if (opt.isPresent()) {
             lastVanillaRecipe = null;
             lastVanillaMinX = -1;
@@ -82,7 +81,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
             lastVanillaWidth = 0;
             lastVanillaHeight = 0;
 
-            UltraCraftingTableRecipe recipe = opt.get().value();
+            AtomicCraftingTableRecipe recipe = opt.get().value();
             int maxCrafts = Integer.MAX_VALUE;
             for (int i = 0; i < INPUT_SLOT.length; i++) {
                 int req = recipe.getRequiredCountForSlot(i);
@@ -105,7 +104,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
             return;
         }
 
-        // Then try vanilla 3x3 recipes anywhere in the 7x7 grid
+        // Then try vanilla 3x3 recipes anywhere in the 9x9 grid
         Optional<RecipeHolder<CraftingRecipe>> vanillaOpt = findVanillaRecipe();
         if (vanillaOpt.isPresent()) {
             RecipeHolder<CraftingRecipe> rh = vanillaOpt.get();
@@ -119,9 +118,9 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
     }
 
     public void consumeIngredients(int times) {
-        Optional<RecipeHolder<UltraCraftingTableRecipe>> opt = getCurrentRecipe();
+        Optional<RecipeHolder<AtomicCraftingTableRecipe>> opt = getCurrentRecipe();
         if (opt.isEmpty()) return;
-        UltraCraftingTableRecipe recipe = opt.get().value();
+        AtomicCraftingTableRecipe recipe = opt.get().value();
 
         isUpdating = true;
         try {
@@ -150,11 +149,11 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         lastVanillaHeight = 0;
         if (level == null) return Optional.empty();
 
-        // Compute tight bounding box of non-empty inputs in the 7x7 grid
-        int minX = 7, minY = 7, maxX = -1, maxY = -1;
-        for (int y = 0; y < 7; y++) {
-            for (int x = 0; x < 7; x++) {
-                ItemStack st = itemHandler.getStackInSlot(y * 7 + x);
+        // Compute tight bounding box of non-empty inputs in the 9x9 grid
+        int minX = 9, minY = 9, maxX = -1, maxY = -1;
+        for (int y = 0; y < 9; y++) {
+            for (int x = 0; x < 9; x++) {
+                ItemStack st = itemHandler.getStackInSlot(y * 9 + x);
                 if (!st.isEmpty()) {
                     if (x < minX) minX = x;
                     if (y < minY) minY = y;
@@ -191,7 +190,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         int idx = 0;
         for (int r = 0; r < height; r++) {
             for (int c = 0; c < width; c++) {
-                int slot = (minY + r) * 7 + (minX + c);
+                int slot = (minY + r) * 9 + (minX + c);
                 ItemStack in = itemHandler.getStackInSlot(slot);
                 if (!in.isEmpty()) {
                     ItemStack one = in.copy();
@@ -232,7 +231,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
             int idx = 0;
             for (int r = 0; r < height; r++) {
                 for (int c = 0; c < width; c++) {
-                    int slot = (minY + r) * 7 + (minX + c);
+                    int slot = (minY + r) * 9 + (minX + c);
                     ItemStack inSlot = itemHandler.getStackInSlot(slot);
 
                     // Consume one from this position if there was an item
@@ -320,10 +319,10 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         }
     }
 
-    public Optional<RecipeHolder<UltraCraftingTableRecipe>> getCurrentRecipe() {
+    public Optional<RecipeHolder<AtomicCraftingTableRecipe>> getCurrentRecipe() {
         return this.level.getRecipeManager()
-                .getRecipeFor(ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get(),
-                        new UltraCraftingTableRecipeInput(itemHandler), level);
+                .getRecipeFor(ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get(),
+                        new AtomicCraftingTableRecipeInput(itemHandler), level);
     }
 
     public void drops() {
@@ -338,13 +337,13 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.simpleores.ultra_crafting_table");
+        return Component.translatable("block.simpleores.atomic_crafting_table");
     }
 
 
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory playerInv, Player player) {
-        return new UltraCraftingTableMenu(id, playerInv, this, null);
+        return new AtomicCraftingTableMenu(id, playerInv, this, null);
     }
 
     @Nullable

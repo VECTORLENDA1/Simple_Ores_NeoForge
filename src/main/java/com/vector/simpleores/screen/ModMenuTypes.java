@@ -1,5 +1,6 @@
 package com.vector.simpleores.screen;
 
+import com.vector.simpleores.screen.custom.AtomicCraftingTableMenu;
 import com.vector.simpleores.screen.custom.SimpleCraftingTableMenu;
 import com.vector.simpleores.screen.custom.UltraCraftingTableMenu;
 import net.minecraft.core.registries.Registries;
@@ -22,6 +23,9 @@ public class ModMenuTypes {
 
     public static final DeferredHolder<MenuType<?>, MenuType<UltraCraftingTableMenu>> ULTRA_CRAFTING_TABLE_MENU =
             registerMenuType("ultra_crafting_table_menu", UltraCraftingTableMenu::new);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<AtomicCraftingTableMenu>> ATOMIC_CRAFTING_TABLE_MENU =
+            registerMenuType("atomic_crafting_table_menu", AtomicCraftingTableMenu::new);
 
 
     private static <T extends AbstractContainerMenu>DeferredHolder<MenuType<?>, MenuType<T>> registerMenuType(String name,

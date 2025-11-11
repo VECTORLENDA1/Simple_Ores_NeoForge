@@ -20,6 +20,7 @@
     "simpleores:obscurite_block",
     "simpleores:raw_obscuridium_block",
     "simpleores:simple_crafting_table",
-    "simpleores:ultra_crafting_table"
+    "simpleores:ultra_crafting_table",
+    "simpleores:atomic_crafting_table"
   ]
 }

@@ -61,6 +61,7 @@ public class ModCreativeModTabs {
 
                     //ENTITY BLOCK//
                     output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
+                    output.accept(ModBlocks.ULTRA_CRAFTING_TABLE.get());
 
 
             })

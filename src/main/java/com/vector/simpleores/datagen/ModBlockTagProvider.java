@@ -38,7 +38,8 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.get())
                 .add(ModBlocks.OBSCURITE_BLOCK.get())
                 .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.get())
-                .add(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
+                .add(ModBlocks.SIMPLE_CRAFTING_TABLE.get())
+                .add(ModBlocks.ULTRA_CRAFTING_TABLE.get());
 
 
         tag(BlockTags.NEEDS_STONE_TOOL)

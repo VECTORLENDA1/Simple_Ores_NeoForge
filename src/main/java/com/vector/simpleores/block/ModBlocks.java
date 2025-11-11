@@ -2,6 +2,7 @@ package com.vector.simpleores.block;
 
 
 import com.vector.simpleores.block.custom.SimpleCraftingTable;
+import com.vector.simpleores.block.custom.UltraCraftingTable;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -88,6 +89,10 @@ public class ModBlocks {
     //Entity Blocks
     public static final DeferredBlock<Block> SIMPLE_CRAFTING_TABLE = registerBlockItem("simple_crafting_table",
             () -> new SimpleCraftingTable(BlockBehaviour.Properties.of().strength(2.5f,10)
+                    .requiresCorrectToolForDrops().sound(SoundType.METAL)));
+
+    public static final DeferredBlock<Block> ULTRA_CRAFTING_TABLE = registerBlockItem("ultra_crafting_table",
+            () -> new UltraCraftingTable(BlockBehaviour.Properties.of().strength(2.5f,10)
                     .requiresCorrectToolForDrops().sound(SoundType.METAL)));
 
 

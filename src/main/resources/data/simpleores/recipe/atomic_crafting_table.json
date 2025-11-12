@@ -1,5 +1,5 @@
 {
-  "type": "simpleores:simple_crafting_table",
+  "type": "simpleores:ultra_crafting_table",
   "category": "misc" ,
   "ingredient": {
     "N": {
@@ -8,8 +8,8 @@
     "A": {
       "item": "simpleores:astralite"
     },
-    "S": {
-      "item": "simpleores:simple_crafting_table"
+    "U": {
+      "item": "simpleores:ultra_crafting_table"
     },
     "C": {
       "item": "simpleores:celestine"
@@ -19,17 +19,22 @@
     },
     "O": {
       "item": "simpleores:obscurite"
+    },
+    "I": {
+      "item": "simpleores:ignithra"
     }
   },
   "pattern": [
-    "AZNZA",
-    "CSCSC",
-    "NZOZN",
-    "CSCSC",
-    "AZNZA"
+    "AAAAAAN",
+    "AUZZZUN",
+    "AZZOICN",
+    "AZOOOCN",
+    "AZIOCCN",
+    "AUCCCUN",
+    "ANNNNNN"
     ],
       "result": {
         "count": 1,
-        "id": "simpleores:ultra_crafting_table"
+        "id": "simpleores:atomic_crafting_table"
       }
 }

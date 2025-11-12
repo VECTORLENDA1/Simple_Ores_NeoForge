@@ -27,7 +27,7 @@ public class AtomicCraftingTableRecipeCategory implements IRecipeCategory<Atomic
     private final IDrawable icon;
 
     public AtomicCraftingTableRecipeCategory(IGuiHelper helper) {
-        this.background = helper.createDrawable(TEXTURE, 0, 0, 212,162 );
+        this.background = helper.createDrawable(TEXTURE, 0, 0, 230,190);
         this.icon = helper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack(ModBlocks.ATOMIC_CRAFTING_TABLE.get()));
     }
 

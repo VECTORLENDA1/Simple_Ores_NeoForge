@@ -1,0 +1,35 @@
+{
+  "type": "simpleores:simple_crafting_table",
+  "category": "misc" ,
+  "key": {
+    "N": {
+      "item": "simpleores:nexalite"
+    },
+    "A": {
+      "item": "simpleores:astralite"
+    },
+    "S": {
+      "item": "simpleores:simple_crafting_table"
+    },
+    "C": {
+      "item": "simpleores:celestine"
+    },
+    "Z": {
+      "item": "simpleores:zenithra"
+    },
+    "O": {
+      "item": "simpleores:obscurite"
+    }
+  },
+  "pattern": [
+    "AZNZA",
+    "CSCSC",
+    "NZOZN",
+    "CSCSC",
+    "AZNZA"
+    ],
+      "result": {
+        "count": 1,
+        "id": "simpleores:ultra_crafting_table"
+      }
+}

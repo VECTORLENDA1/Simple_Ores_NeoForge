@@ -115,7 +115,7 @@ public class AtomicCraftingTableRecipeCategory implements IRecipeCategory<Atomic
         builder.addSlot(RecipeIngredientRole.INPUT, 108, 126).addIngredients(recipe.getIngredients().get(59));
         builder.addSlot(RecipeIngredientRole.INPUT, 126, 126).addIngredients(recipe.getIngredients().get(60));
         builder.addSlot(RecipeIngredientRole.INPUT, 144, 126).addIngredients(recipe.getIngredients().get(61));
-        builder.addSlot(RecipeIngredientRole.INPUT, 162, 144).addIngredients(recipe.getIngredients().get(62));
+        builder.addSlot(RecipeIngredientRole.INPUT, 162, 126).addIngredients(recipe.getIngredients().get(62));
         builder.addSlot(RecipeIngredientRole.INPUT, 18, 144).addIngredients(recipe.getIngredients().get(63));
         builder.addSlot(RecipeIngredientRole.INPUT, 36, 144).addIngredients(recipe.getIngredients().get(64));
         builder.addSlot(RecipeIngredientRole.INPUT, 54, 144).addIngredients(recipe.getIngredients().get(65));

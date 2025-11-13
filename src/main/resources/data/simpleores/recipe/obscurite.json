@@ -1,0 +1,38 @@
+{
+  "type": "simpleores:simple_crafting_table",
+  "category": "misc" ,
+  "ingredient": {
+    "n": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "O": {
+      "item": "simpleores:obscuridium"
+    },
+    "C": {
+      "item": "simpleores:celestine"
+    },
+    "Z": {
+      "item": "simpleores:zenithra"
+    },
+    "A": {
+      "item": "simpleores:astralite"
+    },
+    "N": {
+      "item": "simpleores:nexalite"
+    },
+    "I": {
+      "item": "simpleores:ignithra"
+    }
+  },
+  "pattern": [
+    "IIIII",
+    "NZZZA",
+    "NOnOA",
+    "NCCCA",
+    "IIIII"
+    ],
+      "result": {
+        "count": 1,
+        "id": "simpleores:obscurite"
+      }
+}

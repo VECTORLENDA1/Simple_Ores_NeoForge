@@ -44,7 +44,7 @@ public class SimpleCraftingTable extends BaseEntityBlock {
         return CODEC;
     }
 
-    //important if you don't have this the block will be invisible//
+    /// important if you don't have this the block will be invisible//
     @Override
     protected RenderShape getRenderShape(BlockState pState) {
         return RenderShape.MODEL;
@@ -67,7 +67,7 @@ public class SimpleCraftingTable extends BaseEntityBlock {
     }
 
 
-    //This will open the Menu of the block (Simple Crafting Table)\\
+    /// This will open the Menu of the block (Simple Crafting Table)\\
     @Override
     protected ItemInteractionResult useItemOn(ItemStack Stack, BlockState State, Level pLevel, BlockPos pos,
                                               Player Player, InteractionHand Hand, BlockHitResult HitResult) {

@@ -40,11 +40,13 @@
   "block.simpleores.obscurite_block": "Block of Obscurite",
   "block.simpleores.raw_obscuridium_block": "Block of Raw Obscuridium",
 
-
+  "3":             "||CRAFTING TABLES||",
   "block.simpleores.simple_crafting_table": "Simple Crafting Table",
   "block.simpleores.ultra_crafting_table": "Ultra Crafting Table",
   "block.simpleores.atomic_crafting_table": "Atomic Crafting Table",
 
+  "4":             "||TOOLTIPS||",
+  "bedrockobscuridiumoreblock": "Maybe some T.N.T can help (layer -60) :)",
 
 
   "creativetab.simpleores": "Simple Ores"

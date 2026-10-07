@@ -33,14 +33,14 @@ public class GravityCoreItemRenderer implements NoDataSpecialModelRenderer {
 
     @Override
     public void submit(PoseStack pose, SubmitNodeCollector collector, int light, int overlay, boolean hasFoil, int outlineColor) {
-        // Items have no world time, so the animation uses the real clock (in ticks: 1 tick = 50 ms)
+        /// Items have no world time, so the animation uses the real clock (in ticks: 1 tick = 50 ms)
         float time = (Util.getMillis() % 1_000_000L) / 50f;
         float radius = ARGB.alpha(tier.diskColor) > 0 ? ITEM_RADIUS_WITH_DISK : ITEM_RADIUS;
 
-        // Brighter where the sphere faces the screen, darker at the edges, so it looks round
+        /// Brighter where the sphere faces the screen, darker at the edges, so it looks round
         CoreDrawing.Shading shading = (p, x, y, z) -> p.normal().transform(new Vector3f(x, y, z)).z();
 
-        // No light beams on the item (they would be much bigger than the slot)
+        /// No light beams on the item (they would be much bigger than the slot)
         CoreDrawing.drawStar(pose, collector, radius, time, tier.coreColor, tier.spotColor, tier.glowColor,
                 tier.diskColor, tier.beamColor, 0, shading);
     }

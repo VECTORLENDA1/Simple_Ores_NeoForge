@@ -11,13 +11,13 @@ import net.minecraft.util.StringRepresentable;
 ///   Use 0x00000000 to turn a feature off (e.g. a tier without an accretion disk).
 public enum CoreTier implements StringRepresentable {
     //          id                level       core color           spot color           glow color            disk color           beam color           size           orbit radius    orbit speed    max items   light
-    SUN(        "sun",        1,     0xFFFFE27A, 0xFFFF8C1A, 0xFFFFA238, 0x00000000, 0x00000000, 1.5f, 1.2f, 1.0f, 8, 15),
+    SUN(        "sun",        1,     0xFFFFE27A, 0xFFFF8C1A, 0xFFFFA238, 0x00000000, 0x00000000, 1.5f, 1.4f, 1.0f, 8, 15),
 
-    RED_GIANT(  "red_giant",  2,     0xFFE8501E, 0xFF8E1606, 0xFFFF5A1F, 0x00000000, 0x00000000, 1.8f, 1.4f, 0.8f, 12, 12),
+    RED_GIANT(  "red_giant",  2,     0xFFE8501E, 0xFF8E1606, 0xFFFF5A1F, 0x00000000, 0x00000000, 1.8f, 1.6f, 0.8f, 12, 12),
 
-    PULSAR(     "pulsar",     3,     0xFFF5FBFF, 0xFF8FCBFF, 0xFF3D8BFF, 0x00000000, 0xFFCDEBFF, 2.1f, 1.6f, 2.5f, 16, 15),
+    PULSAR(     "pulsar",     3,     0xFFF5FBFF, 0xFF8FCBFF, 0xFF3D8BFF, 0x00000000, 0xFFCDEBFF, 2.1f, 1.8f, 2.5f, 16, 15),
 
-    BLACK_HOLE( "black_hole", 4,     0xFF000000, 0xFF050208, 0xFF1B0B2E, 0xFFFFB04A, 0x00000000, 2.5f, 1.8f, 1.5f, 20, 4);
+    BLACK_HOLE( "black_hole", 4,     0xFF000000, 0xFF050208, 0xFF1B0B2E, 0xFFFFB04A, 0x00000000, 2.5f, 2.0f, 1.5f, 20, 4);
 
     /// Reads/writes a tier by its id (used to save it and to send it to the client).
     public static final Codec<CoreTier> CODEC = StringRepresentable.fromEnum(CoreTier::values);

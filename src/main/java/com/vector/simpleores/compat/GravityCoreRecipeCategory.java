@@ -20,8 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /// Shows the Gravity Core recipes in JEI:
@@ -94,15 +93,41 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
     @Override
     public void draw(RecipeHolder<GravityCoreRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         GravityCoreRecipe recipe = holder.value();
-        // "Tier 2 - 10s" at the bottom
-        Component text = Component.translatable("jei.simpleores.gravity_craft.info", recipe.getTier(), recipe.getTime() / 20f);
-        guiGraphics.text(Minecraft.getInstance().font, text, 1, HEIGHT - 9, 0xFF404040, false);
+        var font = Minecraft.getInstance().font;
 
-        // "Per tier: 2 / 4 / 8 / 16" above it, only for recipes with "count_per_tier"
-        if (!recipe.getCountPerTier().isEmpty()) {
-            String counts = recipe.getCountPerTier().stream().map(String::valueOf).collect(Collectors.joining(" / "));
-            Component perTier = Component.translatable("jei.simpleores.gravity_craft.per_tier", counts);
-            guiGraphics.text(Minecraft.getInstance().font, perTier, 1, HEIGHT - 19, 0xFF404040, false);
+        /// Bottom line: "Tier 2 - 4.0s". It cycles through the tiers (like the result slot does)
+        int shownTier = shownTier(recipe, recipeSlotsView);
+        Component text = Component.translatable("jei.simpleores.gravity_craft.info",
+                shownTier, recipe.timeFor(shownTier) / 20f);
+        guiGraphics.text(font, text, 1, HEIGHT - 9, 0xFF404040, false);
+    }
+
+    /// Which tier the bottom line should show right now.
+    /// If the recipe has "count_per_tier", it follows the amount JEI is showing in the result slot,
+    /// so the text and the slot always match. If several tiers give the same amount (or there is no
+    /// "count_per_tier"), it cycles between the possible tiers once per second, like JEI does.
+    private static int shownTier(GravityCoreRecipe recipe, IRecipeSlotsView slots) {
+        List<Integer> tiers = new ArrayList<>();
+        for (CoreTier tier : CoreTier.values()) {
+            if (recipe.worksInTier(tier.level)) tiers.add(tier.level);
         }
+        if (tiers.isEmpty()) return recipe.getTier();
+        if (tiers.size() == 1) return tiers.get(0);
+
+        List<Integer> candidates = tiers;
+        if (!recipe.getCountPerTier().isEmpty()) {
+            Optional<ItemStack> shown = slots.getSlotViews(RecipeIngredientRole.OUTPUT).stream()
+                    .findFirst()
+                    .flatMap(slot -> slot.getDisplayedIngredient(VanillaTypes.ITEM_STACK));
+            if (shown.isPresent()) {
+                int count = shown.get().getCount();
+                List<Integer> matching = tiers.stream()
+                        .filter(tier -> recipe.createResult(tier).getCount() == count)
+                        .toList();
+                if (!matching.isEmpty()) candidates = matching;
+            }
+        }
+        int index = (int) ((System.currentTimeMillis() / 1000) % candidates.size());
+        return candidates.get(index);
     }
 }

@@ -47,6 +47,14 @@ import java.util.List;
 /// the recipe is an upgrade. It only works in a core of exactly that "tier", and instead of
 /// giving an item, the core swallows the ingredients, slowly turns into the new tier and
 /// drops itself on the ground, already upgraded.
+///
+/// DIFFERENT TIME IN HIGHER TIERS (optional): add "time_per_tier" to choose how long the collapse
+/// takes (in ticks) depending on the tier of the core doing the craft. Works like "count_per_tier":
+/// the first number is for tier 1 (Sun), and the last number is used for higher tiers if the list
+/// is shorter. Without it, "time" is used for every tier. A value of 0 makes the craft instant.
+///
+///   "time_per_tier": [100, 80, 40, 0]                  <- Sun = 5s, Red Giant = 4s, Pulsar = 2s, Black Hole = instant
+///
 public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
     /// One ingredient with an amount (e.g. 4x raw_ignithra).
@@ -156,7 +164,7 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         return true;
     }
 
-    /// Collapse duration (in ticks) for a core of the given tier.
+    /// Craft duration (in ticks) for a core of the given tier.
     /// Uses "time_per_tier" if present (same rules as "count_per_tier"), otherwise "time".
     public int timeFor(int coreTier) {
         if (timePerTier.isEmpty()) return time;
@@ -164,12 +172,18 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         return timePerTier.get(Math.max(0, index));
     }
 
+    /// Turns ticks into text: 100 -> "5.0s", 0 or 1 -> "0s" (the craft is instant).
+    public String timeText(int coreTier) {
+        int ticks = timeFor(coreTier);
+        return ticks <= 1 ? "instant" : String.format(java.util.Locale.ROOT, "%.1fs", ticks / 20f);
+    }
+
     @Override
     public ItemStack assemble(Input input) {
         return createResult(input.tier());
     }
 
-    // Gravity Core recipes don't show up in the vanilla recipe book
+    /// Gravity Core recipes don't show up in the vanilla recipe book
     @Override
     public boolean isSpecial() {
         return true;
@@ -205,7 +219,7 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         return ModRecipes.GRAVITY_CRAFT_TYPE.get();
     }
 
-    // How the recipe is read from JSON (CODEC) and sent over the network (STREAM_CODEC)
+    /// How the recipe is read from JSON (CODEC) and sent over the network (STREAM_CODEC)
     public static final MapCodec<GravityCoreRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
             Codec.INT.optionalFieldOf("tier", 1).forGetter(GravityCoreRecipe::getTier),
             Codec.INT.optionalFieldOf("time", 100).forGetter(GravityCoreRecipe::getTime),

@@ -3,8 +3,8 @@
   "block.simpleores.gravity_core_red_giant": "Núcleo Gravitacional: Gigante Vermelha",
   "block.simpleores.gravity_core_pulsar": "Núcleo Gravitacional: Pulsar",
   "block.simpleores.gravity_core_black_hole": "Núcleo Gravitacional: Buraco Negro",
-  "jei.simpleores.gravity_collapse": "Colapso Gravitacional",
-  "jei.simpleores.gravity_collapse.info": "Tier %s  -  %ss",
+  "jei.simpleores.gravity_craft": "Colapso Gravitacional",
+  "jei.simpleores.gravity_craft.info": "Tier %s  -  %ss",
   "jei.simpleores.missing_items": "Faltam itens",
   "jei.simpleores.no_core_nearby": "Nenhum Núcleo Gravitacional do tier certo a menos de %s blocos (ou está ocupado)"
 }

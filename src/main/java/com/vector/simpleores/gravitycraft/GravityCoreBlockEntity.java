@@ -215,7 +215,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void tryStartCraft() {
         findRecipe().ifPresent(recipe -> {
             craftTime = 0;
-            craftTotal = Math.max(1, recipe.value().getTime());
+            craftTotal = Math.max(1, recipe.value().timeFor(getTier().level));
             upgradeTarget = recipe.value().getUpgradeTier();
             if (upgradeTarget != null) {
                 level.playSound(null, worldPosition, SoundEvents.BEACON_POWER_SELECT, SoundSource.BLOCKS, 1.5f, 0.5f);

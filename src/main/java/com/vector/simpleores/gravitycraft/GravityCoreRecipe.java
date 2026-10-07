@@ -83,13 +83,15 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
     private final List<Part> ingredients;
     private final ItemStackTemplate result;
     private final List<Integer> countPerTier;
+    private final List<Integer> timePerTier;
 
-    public GravityCoreRecipe(int tier, int time, List<Part> ingredients, ItemStackTemplate result, List<Integer> countPerTier) {
+    public GravityCoreRecipe(int tier, int time, List<Part> ingredients, ItemStackTemplate result, List<Integer> countPerTier, List<Integer> timePerTier) {
         this.tier = tier;
         this.time = time;
         this.ingredients = ingredients;
         this.result = result;
         this.countPerTier = countPerTier;
+        this.timePerTier = timePerTier;
     }
 
     public int getTier() {
@@ -110,6 +112,9 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
     public List<Integer> getCountPerTier() {
         return countPerTier;
+    }
+    public List<Integer> getTimePerTier() {
+        return timePerTier;
     }
 
     /// The result for a core of the given tier (uses "count_per_tier" if the recipe has it).
@@ -149,6 +154,14 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
             if (found < part.countFor(input.tier)) return false;
         }
         return true;
+    }
+
+    /// Collapse duration (in ticks) for a core of the given tier.
+    /// Uses "time_per_tier" if present (same rules as "count_per_tier"), otherwise "time".
+    public int timeFor(int coreTier) {
+        if (timePerTier.isEmpty()) return time;
+        int index = Math.min(coreTier, timePerTier.size()) - 1; // tier 1 = first number
+        return timePerTier.get(Math.max(0, index));
     }
 
     @Override
@@ -198,7 +211,8 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
             Codec.INT.optionalFieldOf("time", 100).forGetter(GravityCoreRecipe::getTime),
             Part.CODEC.listOf().fieldOf("ingredients").forGetter(GravityCoreRecipe::getParts),
             ItemStackTemplate.CODEC.fieldOf("result").forGetter(GravityCoreRecipe::getResult),
-            Codec.INT.listOf().optionalFieldOf("count_per_tier", List.of()).forGetter(GravityCoreRecipe::getCountPerTier)
+            Codec.INT.listOf().optionalFieldOf("count_per_tier", List.of()).forGetter(GravityCoreRecipe::getCountPerTier),
+            Codec.INT.listOf().optionalFieldOf("time_per_tier", List.of()).forGetter(GravityCoreRecipe::getTimePerTier)
     ).apply(inst, GravityCoreRecipe::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GravityCoreRecipe> STREAM_CODEC =

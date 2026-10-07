@@ -4,9 +4,7 @@
   "cookingtime": 200,
   "experience": 3,
   "group": "obscuridium",
-  "ingredient": {
-    "item": "simpleores:raw_obscuridium"
-  },
+  "ingredient": "simpleores:raw_obscuridium",
   "result": {
     "id": "simpleores:obscuridium"
   }

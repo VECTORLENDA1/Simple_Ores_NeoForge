@@ -2,9 +2,7 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc" ,
   "ingredients": [
-    {
-      "item": "simpleores:nexalite_block"
-    }
+    "simpleores:nexalite_block"
   ],
   "result": {
     "count": 9,

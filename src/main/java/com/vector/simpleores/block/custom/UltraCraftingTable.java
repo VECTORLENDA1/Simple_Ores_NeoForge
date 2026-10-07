@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -56,31 +56,21 @@ public class UltraCraftingTable extends BaseEntityBlock {
         return new UltraCraftingTableEntity(pPos, pState);
     }
 
-    protected void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
-        if (pState.getBlock() != pNewState.getBlock()) {
-            BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
-            if (pLevel.getBlockEntity(pPos) instanceof UltraCraftingTableEntity ultraCraftingTableEntity) {
-                ultraCraftingTableEntity.drops();
-            }
-        }
-        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
-    }
-
 
     /// This will open the Menu of the block (Ultra Crafting Table)\\
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack Stack, BlockState State, Level pLevel, BlockPos pos,
-                                              Player Player, InteractionHand Hand, BlockHitResult HitResult) {
-        if (!pLevel.isClientSide()) {
-            BlockEntity entity = pLevel.getBlockEntity(pos);
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                          Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!level.isClientSide()) {
+            BlockEntity entity = level.getBlockEntity(pos);
             if (entity instanceof UltraCraftingTableEntity ultraCraftingTableEntity) {
-                ((ServerPlayer) Player).openMenu(new SimpleMenuProvider(ultraCraftingTableEntity, Component.literal("Ultra Crafting Table")), pos);
+                ((ServerPlayer) player).openMenu(new SimpleMenuProvider(ultraCraftingTableEntity, Component.literal("Ultra Crafting Table")), pos);
             } else {
                 throw new IllegalStateException("Our container provider is missing!");
             }
         }
 
-        return ItemInteractionResult.sidedSuccess(pLevel.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable

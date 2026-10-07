@@ -1,0 +1,15 @@
+{
+  "type": "simpleores:gravity_collapse",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    { "item": "simpleores:ignithra", "count": 10 },
+    { "item": "simpleores:nexalite", "count": 3 },
+    { "item": "simpleores:zenithra", "count": 3 },
+    { "item": "simpleores:astralite", "count": 3 },
+    { "item": "simpleores:celestine", "count": 3 },
+    { "item": "simpleores:obscuridium", "count": 2 },
+    { "item": "minecraft:netherite_ingot" }
+  ],
+  "result": { "id": "simpleores:obscurite" }
+}

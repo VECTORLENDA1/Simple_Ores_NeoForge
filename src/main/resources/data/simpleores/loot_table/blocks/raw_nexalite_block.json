@@ -11,7 +11,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "weaponseffect:raw_nexalite_block"
+          "name": "simpleores:raw_nexalite_block"
         }
       ],
       "rolls": 1.0

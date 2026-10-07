@@ -1,5 +1,6 @@
 package com.vector.simpleores.block.entity.custom;
 
+import com.vector.simpleores.block.entity.CraftingTableItemHandler;
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.recipe.SimpleCraftingTableRecipe;
@@ -13,6 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -27,44 +29,36 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.common.util.Lazy;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvider {
-    /// Cache for last matched vanilla crafting bounding box in 5x5 and recipe
+    // Cache for last matched vanilla crafting bounding box in 5x5 and recipe
     private int lastVanillaMinX = -1;
     private int lastVanillaMinY = -1;
     private int lastVanillaWidth = 0;
     private int lastVanillaHeight = 0;
     @Nullable
     private RecipeHolder<CraftingRecipe> lastVanillaRecipe = null;
+    private ItemStack lastVanillaResult = ItemStack.EMPTY;
     public boolean isUpdating = false;
-    public final ItemStackHandler itemHandler = new ItemStackHandler(26) {
+    public final CraftingTableItemHandler itemHandler = new CraftingTableItemHandler(26) {
         @Override
-        protected void onContentsChanged(int slot) {
+        protected void onContentsChanged(int slot, ItemStack previousContents) {
             if (slot == OUTPUT_SLOT || isUpdating) return;
             setChanged();
-            if (!level.isClientSide) {
+            if (level != null && !level.isClientSide()) {
                 level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
                 updateResult(0);
             }
-        }
-
-        @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            /// Do NOT perform crafting consumption logic here; it's handled by the output Slot's onTake/quickMoveStack
-            return super.extractItem(slot, amount, simulate);
         }
     };
 
     public static final int[] INPUT_SLOT = new int[25];
     public static final int OUTPUT_SLOT = 25;
-
-    public Lazy<IItemHandler> lazyItemHandler = Lazy.of(() -> itemHandler);
 
     public SimpleCraftingTableEntity(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.SIMPLE_CRAFTING_TABLE_BE.get(), pPos, pBlockState);
@@ -73,15 +67,20 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
         }
     }
 
+    private void clearVanillaCache() {
+        lastVanillaRecipe = null;
+        lastVanillaResult = ItemStack.EMPTY;
+        lastVanillaMinX = -1;
+        lastVanillaMinY = -1;
+        lastVanillaWidth = 0;
+        lastVanillaHeight = 0;
+    }
+
     public void updateResult(int p) {
-        /// First try custom 5x5 recipe
+        // First try custom 5x5 recipe
         Optional<RecipeHolder<SimpleCraftingTableRecipe>> opt = getCurrentRecipe();
         if (opt.isPresent()) {
-            lastVanillaRecipe = null;
-            lastVanillaMinX = -1;
-            lastVanillaMinY = -1;
-            lastVanillaWidth = 0;
-            lastVanillaHeight = 0;
+            clearVanillaCache();
 
             SimpleCraftingTableRecipe recipe = opt.get().value();
             int maxCrafts = Integer.MAX_VALUE;
@@ -95,7 +94,7 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
             if (maxCrafts <= 0) {
                 itemHandler.setStackInSlot(OUTPUT_SLOT, ItemStack.EMPTY);
             } else {
-                ItemStack result = recipe.getResultItem(level.registryAccess()).copy();
+                ItemStack result = recipe.getResultItem();
                 if (result.getMaxStackSize() == 1) {
                     result.setCount(1);
                 } else {
@@ -106,14 +105,11 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
             return;
         }
 
-        /// Then try vanilla 3x3 recipes anywhere in the 5x5 grid
+        // Then try vanilla 3x3 recipes anywhere in the 5x5 grid
         Optional<RecipeHolder<CraftingRecipe>> vanillaOpt = findVanillaRecipe();
         if (vanillaOpt.isPresent()) {
-            RecipeHolder<CraftingRecipe> rh = vanillaOpt.get();
-            ItemStack result = rh.value().getResultItem(level.registryAccess()).copy();
-            /// For vanilla we output a single craft result at a time (safer for container items)
-            result.setCount(result.getCount());
-            itemHandler.setStackInSlot(OUTPUT_SLOT, result);
+            // For vanilla we output a single craft result at a time (safer for container items)
+            itemHandler.setStackInSlot(OUTPUT_SLOT, lastVanillaResult.copy());
         } else {
             itemHandler.setStackInSlot(OUTPUT_SLOT, ItemStack.EMPTY);
         }
@@ -129,7 +125,7 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
             for (int i = 0; i < INPUT_SLOT.length; i++) {
                 int req = recipe.getRequiredCountForSlot(i);
                 if (req > 0) {
-                    itemHandler.extractItem(i, req * times, false);
+                    itemHandler.extractItem(i, req * times);
                 }
             }
         } finally {
@@ -137,21 +133,18 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
         }
 
         setChanged();
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
         updateResult(0);
     }
 
     private Optional<RecipeHolder<CraftingRecipe>> findVanillaRecipe() {
-        lastVanillaRecipe = null;
-        lastVanillaMinX = -1;
-        lastVanillaMinY = -1;
-        lastVanillaWidth = 0;
-        lastVanillaHeight = 0;
-        if (level == null) return Optional.empty();
+        clearVanillaCache();
+        // O RecipeManager so existe no servidor (desde a 1.21.2 o cliente nao o tem).
+        if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
 
-        /// Compute tight bounding box of non-empty inputs in the 5x5 grid
+        // Compute tight bounding box of non-empty inputs in the 5x5 grid
         int minX = 5, minY = 5, maxX = -1, maxY = -1;
         for (int y = 0; y < 5; y++) {
             for (int x = 0; x < 5; x++) {
@@ -169,16 +162,18 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
         }
         int width = (maxX - minX + 1);
         int height = (maxY - minY + 1);
-        /// Vanilla crafting grid is max 3x3; if the used area exceeds this, no vanilla recipe
+        // Vanilla crafting grid is max 3x3; if the used area exceeds this, no vanilla recipe
         if (width > 3 || height > 3) {
             return Optional.empty();
         }
 
         CraftingInput input = buildInputForBox(minX, minY, width, height);
-        Optional<RecipeHolder<CraftingRecipe>> opt = level.getRecipeManager()
-                .getRecipeFor(RecipeType.CRAFTING, input, level);
+        Optional<RecipeHolder<CraftingRecipe>> opt = serverLevel.recipeAccess()
+                .getRecipeFor(RecipeType.CRAFTING, input, serverLevel);
         if (opt.isPresent()) {
             lastVanillaRecipe = opt.get();
+            // getResultItem(RegistryAccess) foi removido; o resultado obtem-se com assemble(input)
+            lastVanillaResult = opt.get().value().assemble(input);
             lastVanillaMinX = minX;
             lastVanillaMinY = minY;
             lastVanillaWidth = width;
@@ -213,13 +208,13 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
 
     public ItemStack getVanillaResultPreview() {
         if (lastVanillaRecipe == null) return ItemStack.EMPTY;
-        return lastVanillaRecipe.value().getResultItem(level.registryAccess()).copy();
+        return lastVanillaResult.copy();
     }
 
     public void consumeVanillaOnce() {
         if (lastVanillaRecipe == null || level == null) return;
         CraftingRecipe recipe = lastVanillaRecipe.value();
-        /// Build input for the cached bounding box
+        // Build input for the cached bounding box
         int minX = lastVanillaMinX;
         int minY = lastVanillaMinY;
         int width = lastVanillaWidth;
@@ -236,7 +231,7 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
                     int slot = (minY + r) * 5 + (minX + c);
                     ItemStack inSlot = itemHandler.getStackInSlot(slot);
 
-                    /// Consume one from this position if there was an item
+                    // Consume one from this position if there was an item
                     if (!inSlot.isEmpty()) {
                         inSlot.shrink(1);
                         if (inSlot.getCount() <= 0) {
@@ -244,7 +239,7 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
                         }
                     }
 
-                    /// Apply remainder for this position (aligned index)
+                    // Apply remainder for this position (aligned index)
                     ItemStack rem = idx < remaining.size() ? remaining.get(idx) : ItemStack.EMPTY;
                     if (!rem.isEmpty()) {
                         if (inSlot.isEmpty()) {
@@ -274,39 +269,36 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
         }
 
         setChanged();
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
         }
-        /// Recompute match after consumption
+        // Recompute match after consumption
         updateResult(0);
     }
 
+    // saveAdditional/loadAdditional usam agora ValueOutput/ValueInput (em vez de CompoundTag + Provider)
+    // e o inventario serializa-se com serialize()/deserialize().
     @Override
-    public void onLoad() {
-        super.onLoad();
-        lazyItemHandler = Lazy.of(() -> itemHandler);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        itemHandler.serialize(output.child("inventory"));
     }
 
     @Override
-    public void setRemoved() {
-        super.setRemoved();
-        lazyItemHandler.invalidate();
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        input.child("inventory").ifPresent(itemHandler::deserialize);
     }
 
+    // Substitui o antigo onRemove() do bloco: larga o conteudo quando o bloco e removido.
     @Override
-    protected void saveAdditional(CompoundTag pTag, HolderLookup.Provider pRegistries) {
-        super.saveAdditional(pTag, pRegistries);
-        pTag.put("inventory", itemHandler.serializeNBT(pRegistries));
-    }
-
-    @Override
-    protected void loadAdditional(CompoundTag pTag, HolderLookup.Provider pRegistries) {
-        super.loadAdditional(pTag, pRegistries);
-        itemHandler.deserializeNBT(pRegistries, pTag.getCompound("inventory"));
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        drops();
     }
 
     public void tick(Level level, BlockPos blockPos, BlockState blockState) {
-        if (level.isClientSide) return;
+        if (level.isClientSide()) return;
 
         boolean isEmpty = true;
         for (int i = 0; i < INPUT_SLOT.length; i++) {
@@ -322,15 +314,18 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
     }
 
     public Optional<RecipeHolder<SimpleCraftingTableRecipe>> getCurrentRecipe() {
-        return this.level.getRecipeManager()
+        // Receitas so existem no servidor (ServerLevel#recipeAccess)
+        if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
+        return serverLevel.recipeAccess()
                 .getRecipeFor(ModRecipes.SIMPLE_CRAFTING_TABLE_TYPE.get(),
-                        new SimpleCraftingTableRecipeInput(itemHandler), level);
+                        new SimpleCraftingTableRecipeInput(itemHandler), serverLevel);
     }
 
     public void drops() {
+        if (!(level instanceof ServerLevel)) return;
         SimpleContainer inventory = new SimpleContainer(itemHandler.getSlots());
         for (int i = 0; i < itemHandler.getSlots(); i++) {
-            if (i!= OUTPUT_SLOT) {
+            if (i != OUTPUT_SLOT) {
                 inventory.setItem(i, itemHandler.getStackInSlot(i));
             }
         }
@@ -341,7 +336,6 @@ public class SimpleCraftingTableEntity extends BlockEntity implements MenuProvid
     public Component getDisplayName() {
         return Component.translatable("block.simpleores.simple_crafting_table");
     }
-
 
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory playerInv, Player player) {

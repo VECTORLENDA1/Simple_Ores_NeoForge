@@ -4,9 +4,7 @@
   "cookingtime": 450,
   "experience": 6.3,
   "group": "ignithra",
-  "ingredient": {
-    "item": "simpleores:raw_ignithra_block"
-  },
+  "ingredient": "simpleores:raw_ignithra_block",
   "result": {
     "id": "simpleores:ignithra_block"
   }

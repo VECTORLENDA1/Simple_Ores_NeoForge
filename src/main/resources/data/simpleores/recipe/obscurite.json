@@ -1,28 +1,15 @@
 {
+  "neoforge:conditions": [ { "type": "neoforge:never" } ],
   "type": "simpleores:simple_crafting_table",
   "category": "misc" ,
   "ingredient": {
-    "n": {
-      "item": "minecraft:netherite_ingot"
-    },
-    "O": {
-      "item": "simpleores:obscuridium"
-    },
-    "C": {
-      "item": "simpleores:celestine"
-    },
-    "Z": {
-      "item": "simpleores:zenithra"
-    },
-    "A": {
-      "item": "simpleores:astralite"
-    },
-    "N": {
-      "item": "simpleores:nexalite"
-    },
-    "I": {
-      "item": "simpleores:ignithra"
-    }
+    "n": "minecraft:netherite_ingot",
+    "O": "simpleores:obscuridium",
+    "C": "simpleores:celestine",
+    "Z": "simpleores:zenithra",
+    "A": "simpleores:astralite",
+    "N": "simpleores:nexalite",
+    "I": "simpleores:ignithra"
   },
   "pattern": [
     "IIIII",

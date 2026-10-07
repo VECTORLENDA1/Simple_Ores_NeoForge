@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "simpleores:ignithra",
+    "G": "minecraft:glowstone",
+    "B": "minecraft:blaze_rod"
+  },
+  "pattern": [
+    "IGI",
+    "GBG",
+    "IGI"
+  ],
+  "result": {
+    "id": "simpleores:gravity_core_sun"
+  }
+}

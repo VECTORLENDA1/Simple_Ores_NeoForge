@@ -1,5 +1,6 @@
 package com.vector.simpleores.recipe;
 
+import com.vector.simpleores.gravity.GravityCoreRecipe;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -17,7 +18,7 @@ public class ModRecipes {
 
 
     public static final Supplier<RecipeSerializer<SimpleCraftingTableRecipe>> SIMPLE_CRAFTING_TABLE_SERIALIZER =
-            SERIALIZERS.register("simple_crafting_table", SimpleCraftingTableRecipe.Serializer::new);
+            SERIALIZERS.register("simple_crafting_table", () -> new RecipeSerializer<>(SimpleCraftingTableRecipe.CODEC, SimpleCraftingTableRecipe.STREAM_CODEC));
     public static final Supplier<RecipeType<SimpleCraftingTableRecipe>> SIMPLE_CRAFTING_TABLE_TYPE =
             TYPES.register("simple_crafting_table", () -> new RecipeType<>() {
                 @Override
@@ -27,7 +28,7 @@ public class ModRecipes {
             });
 
     public static final Supplier<RecipeSerializer<UltraCraftingTableRecipe>> ULTRA_CRAFTING_TABLE_SERIALIZER =
-            SERIALIZERS.register("ultra_crafting_table", UltraCraftingTableRecipe.Serializer::new);
+            SERIALIZERS.register("ultra_crafting_table", () -> new RecipeSerializer<>(UltraCraftingTableRecipe.CODEC, UltraCraftingTableRecipe.STREAM_CODEC));
     public static final Supplier<RecipeType<UltraCraftingTableRecipe>> ULTRA_CRAFTING_TABLE_TYPE =
             TYPES.register("ultra_crafting_table", () -> new RecipeType<>() {
                 @Override
@@ -37,7 +38,7 @@ public class ModRecipes {
             });
 
     public static final Supplier<RecipeSerializer<AtomicCraftingTableRecipe>> ATOMIC_CRAFTING_TABLE_SERIALIZER =
-            SERIALIZERS.register("atomic_crafting_table", AtomicCraftingTableRecipe.Serializer::new);
+            SERIALIZERS.register("atomic_crafting_table", () -> new RecipeSerializer<>(AtomicCraftingTableRecipe.CODEC, AtomicCraftingTableRecipe.STREAM_CODEC));
     public static final Supplier<RecipeType<AtomicCraftingTableRecipe>> ATOMIC_CRAFTING_TABLE_TYPE =
             TYPES.register("atomic_crafting_table", () -> new RecipeType<>() {
                 @Override
@@ -45,9 +46,16 @@ public class ModRecipes {
                     return "atomic_crafting_table";
                 }
             });
-
-
-
+    // Receitas do Nucleo Gravitacional ("type": "simpleores:gravity_collapse")
+    public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_COLLAPSE_SERIALIZER =
+            SERIALIZERS.register("gravity_collapse", () -> new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
+    public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_COLLAPSE_TYPE =
+            TYPES.register("gravity_collapse", () -> new RecipeType<>() {
+                @Override
+                public String toString() {
+                    return "gravity_collapse";
+                }
+            });
 
     public static void register(IEventBus eventBus) {
         SERIALIZERS.register(eventBus);

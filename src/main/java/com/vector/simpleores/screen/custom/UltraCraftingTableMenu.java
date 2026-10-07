@@ -14,7 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.items.SlotItemHandler;
+import net.neoforged.neoforge.transfer.item.ResourceHandlerSlot;
 
 import java.util.Optional;
 
@@ -37,58 +37,58 @@ public class UltraCraftingTableMenu extends AbstractContainerMenu {
 
 
         /// INPUT_SLOTS ///
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 0, 18, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 1, 36, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 2, 54, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 3, 72, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 4, 90, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 5, 108, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 6, 126, 18));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 7, 18, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 8, 36, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 9, 54, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 10, 72, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 11, 90, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 12, 108, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 13, 126, 36));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 14, 18, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 15, 36, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 16, 54, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 17, 72, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 18, 90, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 19, 108, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 20, 126, 54));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 21, 18, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 22, 36, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 23, 54, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 24, 72, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 25, 90, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 26, 108, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 27, 126, 72));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 28, 18, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 29, 36, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 30, 54, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 31, 72, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 32, 90, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 33, 108, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 34, 126, 90));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 35, 18, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 36, 36, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 37, 54, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 38, 72, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 39, 90, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 40, 108, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 41, 126, 108));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 42, 18, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 43, 36, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 44, 54, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 45, 72, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 46, 90, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 47, 108, 126));
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 48, 126, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 0, 18, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 1, 36, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 2, 54, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 3, 72, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 4, 90, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 5, 108, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 6, 126, 18));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 7, 18, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 8, 36, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 9, 54, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 10, 72, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 11, 90, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 12, 108, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 13, 126, 36));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 14, 18, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 15, 36, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 16, 54, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 17, 72, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 18, 90, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 19, 108, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 20, 126, 54));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 21, 18, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 22, 36, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 23, 54, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 24, 72, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 25, 90, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 26, 108, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 27, 126, 72));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 28, 18, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 29, 36, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 30, 54, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 31, 72, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 32, 90, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 33, 108, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 34, 126, 90));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 35, 18, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 36, 36, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 37, 54, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 38, 72, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 39, 90, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 40, 108, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 41, 126, 108));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 42, 18, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 43, 36, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 44, 54, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 45, 72, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 46, 90, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 47, 108, 126));
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 48, 126, 126));
 
         /// OUTPUT_SLOTS ///
-        this.addSlot(new SlotItemHandler(this.blockEntity.itemHandler, 49, 181, 72) {
+        this.addSlot(new ResourceHandlerSlot(this.blockEntity.itemHandler, this.blockEntity.itemHandler::set, 49, 181, 72) {
 
 
 
@@ -112,7 +112,7 @@ public class UltraCraftingTableMenu extends AbstractContainerMenu {
                 Optional<RecipeHolder<UltraCraftingTableRecipe>> recipeOptional = blockEntity.getCurrentRecipe();
                 if (recipeOptional.isPresent()) {
                     UltraCraftingTableRecipe recipe = recipeOptional.get().value();
-                    int perCraft = Math.max(1, recipe.getResultItem(level.registryAccess()).getCount());
+                    int perCraft = Math.max(1, recipe.getResultItem().getCount());
                     int taken = Math.max(1, stack.getCount());
                     int crafts = Math.max(1, taken / perCraft);
                     blockEntity.consumeIngredients(crafts);
@@ -165,7 +165,7 @@ public class UltraCraftingTableMenu extends AbstractContainerMenu {
             if (recipeOptional.isPresent()) {
                 /// Handle custom 7x7 recipes
                 UltraCraftingTableRecipe recipe = recipeOptional.get().value();
-                ItemStack resultItem = recipe.getResultItem(level.registryAccess());
+                ItemStack resultItem = recipe.getResultItem();
                 int resultCountPerCraft = resultItem.getCount();
 
                 /// Calculate max possible crafts

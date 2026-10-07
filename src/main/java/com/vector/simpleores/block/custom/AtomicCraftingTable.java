@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -29,7 +29,6 @@ public class AtomicCraftingTable extends BaseEntityBlock {
     public static final VoxelShape SHAPE = Block.box(0.0f, 0.0f, 0.0f, 16.0f, 16.0f, 16.0f);
     public static final MapCodec<AtomicCraftingTable> CODEC = simpleCodec(AtomicCraftingTable::new);
 
-
     public AtomicCraftingTable(Properties pProperties) {
         super(pProperties);
     }
@@ -50,37 +49,25 @@ public class AtomicCraftingTable extends BaseEntityBlock {
         return RenderShape.MODEL;
     }
 
-
     @Override
     public @Nullable BlockEntity newBlockEntity(BlockPos pPos, BlockState pState) {
         return new AtomicCraftingTableEntity(pPos, pState);
     }
 
-    protected void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
-        if (pState.getBlock() != pNewState.getBlock()) {
-            BlockEntity blockEntity = pLevel.getBlockEntity(pPos);
-            if (pLevel.getBlockEntity(pPos) instanceof AtomicCraftingTableEntity atomicCraftingTableEntity) {
-                atomicCraftingTableEntity.drops();
-            }
-        }
-        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
-    }
-
-
     /// This will open the Menu of the block (Atomic Crafting Table)\\
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack Stack, BlockState State, Level pLevel, BlockPos pos,
-                                              Player Player, InteractionHand Hand, BlockHitResult HitResult) {
-        if (!pLevel.isClientSide()) {
-            BlockEntity entity = pLevel.getBlockEntity(pos);
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                          Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!level.isClientSide()) {
+            BlockEntity entity = level.getBlockEntity(pos);
             if (entity instanceof AtomicCraftingTableEntity atomicCraftingTableEntity) {
-                ((ServerPlayer) Player).openMenu(new SimpleMenuProvider(atomicCraftingTableEntity, Component.literal("Atomic Crafting Table")), pos);
+                ((ServerPlayer) player).openMenu(new SimpleMenuProvider(atomicCraftingTableEntity, Component.literal("Atomic Crafting Table")), pos);
             } else {
                 throw new IllegalStateException("Our container provider is missing!");
             }
         }
 
-        return ItemInteractionResult.sidedSuccess(pLevel.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable
@@ -95,4 +82,3 @@ public class AtomicCraftingTable extends BaseEntityBlock {
                         -> atomicCraftingTableEntity.tick(level, blockPos, blockState));
     }
 }
-

@@ -1,0 +1,8 @@
+{
+  "block.simpleores.gravity_core_sun": "Núcleo Gravitacional: Sol",
+  "block.simpleores.gravity_core_red_giant": "Núcleo Gravitacional: Gigante Vermelha",
+  "block.simpleores.gravity_core_pulsar": "Núcleo Gravitacional: Pulsar",
+  "block.simpleores.gravity_core_black_hole": "Núcleo Gravitacional: Buraco Negro",
+  "jei.simpleores.gravity_collapse": "Colapso Gravitacional",
+  "jei.simpleores.gravity_collapse.info": "Tier %s  -  %ss"
+}

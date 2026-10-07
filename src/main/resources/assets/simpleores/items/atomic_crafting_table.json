@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "simpleores:item/atomic_crafting_table"
+  }
+}

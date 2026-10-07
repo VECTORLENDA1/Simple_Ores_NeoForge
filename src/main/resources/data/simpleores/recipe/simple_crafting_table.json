@@ -1,16 +1,11 @@
 {
+  "neoforge:conditions": [ { "type": "neoforge:never" } ],
   "type": "minecraft:crafting_shaped",
   "category": "misc" ,
   "key": {
-    "C": {
-      "item": "minecraft:crafting_table"
-    },
-    "N": {
-      "item": "simpleores:nexalite"
-    },
-    "A": {
-      "item": "simpleores:astralite"
-    }
+    "C": "minecraft:crafting_table",
+    "N": "simpleores:nexalite",
+    "A": "simpleores:astralite"
   },
   "pattern": [
     "ANA",

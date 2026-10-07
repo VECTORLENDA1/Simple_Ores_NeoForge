@@ -21,6 +21,10 @@
     "simpleores:raw_obscuridium_block",
     "simpleores:simple_crafting_table",
     "simpleores:ultra_crafting_table",
-    "simpleores:atomic_crafting_table"
+    "simpleores:atomic_crafting_table",
+    "simpleores:gravity_core_sun",
+    "simpleores:gravity_core_red_giant",
+    "simpleores:gravity_core_pulsar",
+    "simpleores:gravity_core_black_hole"
   ]
 }

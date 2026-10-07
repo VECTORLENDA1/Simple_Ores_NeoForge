@@ -2,9 +2,7 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc" ,
   "ingredients": [
-    {
-      "item": "simpleores:ignithra_block"
-    }
+    "simpleores:ignithra_block"
   ],
   "result": {
     "count": 9,

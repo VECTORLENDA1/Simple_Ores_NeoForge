@@ -4,9 +4,7 @@
   "cookingtime": 450,
   "experience": 1.5,
   "group": "antracite",
-  "ingredient": {
-    "item": "simpleores:nether_antracite_ore"
-  },
+  "ingredient": "simpleores:nether_antracite_ore",
   "result": {
     "id": "simpleores:antracite"
   }

@@ -2,6 +2,7 @@ package com.vector.simpleores;
 
 import com.mojang.logging.LogUtils;
 import com.vector.simpleores.block.entity.ModBlockEntities;
+import com.vector.simpleores.gravity.GravityCoreRenderer;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
 import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;
@@ -60,7 +61,7 @@ public class SimpleOres {
     public void onServerStarting(ServerStartingEvent event) {
     }
 
-    @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MODID, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
@@ -73,6 +74,7 @@ public class SimpleOres {
 
         @SubscribeEvent
         public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
+            event.registerBlockEntityRenderer(ModBlockEntities.GRAVITY_CORE_BE.get(), GravityCoreRenderer::new);
         }
 
         @SubscribeEvent

@@ -60,9 +60,16 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.OBSCURITE_BLOCK.get());
 
                     //ENTITY BLOCK//
-                    output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
-                    output.accept(ModBlocks.ULTRA_CRAFTING_TABLE.get());
-                    output.accept(ModBlocks.ATOMIC_CRAFTING_TABLE.get());
+                    // Crafting tables DESATIVADAS (tira o "//" para voltarem a aparecer)
+                    //output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
+                    //output.accept(ModBlocks.ULTRA_CRAFTING_TABLE.get());
+                    //output.accept(ModBlocks.ATOMIC_CRAFTING_TABLE.get());
+
+                    //NUCLEOS GRAVITACIONAIS//
+                    output.accept(ModBlocks.GRAVITY_CORE_SUN.get());
+                    output.accept(ModBlocks.GRAVITY_CORE_RED_GIANT.get());
+                    output.accept(ModBlocks.GRAVITY_CORE_PULSAR.get());
+                    output.accept(ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
 
             })

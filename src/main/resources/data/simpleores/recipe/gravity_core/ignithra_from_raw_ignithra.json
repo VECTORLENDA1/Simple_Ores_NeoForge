@@ -1,0 +1,10 @@
+{
+  "type": "simpleores:gravity_collapse",
+  "tier": 1,
+  "time": 100,
+  "ingredients": [
+    { "item": "simpleores:raw_ignithra", "count": 4 },
+    { "item": "simpleores:antracite" }
+  ],
+  "result": { "id": "simpleores:ignithra", "count": 6 }
+}

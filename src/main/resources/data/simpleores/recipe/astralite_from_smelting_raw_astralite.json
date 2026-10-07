@@ -4,9 +4,7 @@
   "cookingtime": 200,
   "experience": 1,
   "group": "astralite",
-  "ingredient": {
-    "item": "simpleores:raw_astralite"
-  },
+  "ingredient": "simpleores:raw_astralite",
   "result": {
     "id": "simpleores:astralite"
   }

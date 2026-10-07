@@ -4,9 +4,7 @@
   "cookingtime": 100,
   "experience": 1,
   "group": "nexalite",
-  "ingredient": {
-    "item": "simpleores:raw_nexalite"
-  },
+  "ingredient": "simpleores:raw_nexalite",
   "result": {
     "id": "simpleores:nexalite"
   }

@@ -4,7 +4,7 @@ import com.vector.simpleores.block.ModBlocks;
 import com.vector.simpleores.block.entity.custom.AtomicCraftingTableEntity;
 import com.vector.simpleores.block.entity.custom.SimpleCraftingTableEntity;
 import com.vector.simpleores.block.entity.custom.UltraCraftingTableEntity;
-import com.vector.simpleores.gravity.GravityCoreBlockEntity;
+import com.vector.simpleores.gravitycraft.GravityCoreBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;

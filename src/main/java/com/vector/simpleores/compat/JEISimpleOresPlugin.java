@@ -2,7 +2,7 @@ package com.vector.simpleores.compat;
 
 import com.vector.simpleores.SimpleOres;
 import com.vector.simpleores.block.ModBlocks;
-import com.vector.simpleores.gravity.GravityCoreRecipe;
+import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
 import com.vector.simpleores.recipe.ModRecipes;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -54,7 +54,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
     public void registerRecipes(IRecipeRegistration registration) {
         // Given as RecipeHolder (recipe + ID) so JEI can bookmark them
         List<RecipeHolder<GravityCoreRecipe>> gravityRecipes =
-                new ArrayList<>(syncedRecipes.byType(ModRecipes.GRAVITY_COLLAPSE_TYPE.get()));
+                new ArrayList<>(syncedRecipes.byType(ModRecipes.GRAVITY_CRAFT_TYPE.get()));
         registration.addRecipes(GravityCoreRecipeCategory.RECIPE_TYPE, gravityRecipes);
 
         // CRAFTING TABLES (disabled)
@@ -109,7 +109,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
         @SubscribeEvent
         public static void onDatapackSync(OnDatapackSyncEvent event) {
             event.sendRecipes(
-                    ModRecipes.GRAVITY_COLLAPSE_TYPE.get(),
+                    ModRecipes.GRAVITY_CRAFT_TYPE.get(),
                     ModRecipes.SIMPLE_CRAFTING_TABLE_TYPE.get(),
                     ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get(),
                     ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get());

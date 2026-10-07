@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.vector.simpleores.SimpleOres;
 import net.minecraft.core.BlockPos;
@@ -32,7 +32,7 @@ import java.util.Optional;
 /// Shift + click moves as many sets of ingredients as the player has (up to MAX_SETS).
 public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) implements CustomPacketPayload {
     /// How far (in blocks) the player can be from the core.
-    public static final int RANGE = 8;
+    public static final int RANGE = 4;
     /// Maximum number of ingredient sets moved with shift + click.
     public static final int MAX_SETS = 64;
 

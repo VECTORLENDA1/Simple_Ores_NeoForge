@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.recipe.ModRecipes;
@@ -45,7 +45,7 @@ import java.util.UUID;
 /// The orbit itself is drawn by GravityCoreRenderer.
 public class GravityCoreBlockEntity extends BlockEntity {
     /// Distance (in blocks) at which the core captures items.
-    public static final double CAPTURE_RADIUS = 3.0;
+    public static final double CAPTURE_RADIUS = 2.0;
     /// Tag added to items created by a core, so that cores don't capture them again.
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
 
@@ -209,7 +209,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private Optional<RecipeHolder<GravityCoreRecipe>> findRecipe() {
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
         GravityCoreRecipe.Input input = new GravityCoreRecipe.Input(items, getTier().level);
-        return serverLevel.recipeAccess().getRecipeFor(ModRecipes.GRAVITY_COLLAPSE_TYPE.get(), input, serverLevel);
+        return serverLevel.recipeAccess().getRecipeFor(ModRecipes.GRAVITY_CRAFT_TYPE.get(), input, serverLevel);
     }
 
     private void tryStartCraft() {

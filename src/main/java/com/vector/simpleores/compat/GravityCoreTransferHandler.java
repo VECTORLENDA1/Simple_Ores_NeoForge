@@ -1,7 +1,7 @@
 package com.vector.simpleores.compat;
 
-import com.vector.simpleores.gravity.GravityCoreRecipe;
-import com.vector.simpleores.gravity.MoveItemsToCore;
+import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
+import com.vector.simpleores.gravitycraft.MoveItemsToCore;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.RecipeIngredientRole;

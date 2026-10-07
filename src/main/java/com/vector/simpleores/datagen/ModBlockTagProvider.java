@@ -68,7 +68,8 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.CELESTINE_BLOCK.getKey())
                 .add(ModBlocks.END_STONE_CELESTINE_ORE.getKey())
                 .add(ModBlocks.END_STONE_ZENITHRA_ORE.getKey())
-                .add(ModBlocks.ZENITHRA_BLOCK.getKey());
+                .add(ModBlocks.ZENITHRA_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_SUN.getKey());
 
 
 
@@ -77,27 +78,42 @@ public class ModBlockTagProvider extends BlockTagsProvider {
         tag(BlockTags.INCORRECT_FOR_WOODEN_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey());
+                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
+                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
         tag(BlockTags.INCORRECT_FOR_STONE_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey());
+                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
+                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
         tag(BlockTags.INCORRECT_FOR_GOLD_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey());
+                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
+                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
         tag(BlockTags.INCORRECT_FOR_IRON_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey());
+                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
+                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
         tag(BlockTags.INCORRECT_FOR_DIAMOND_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey());
+                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
+                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
     }
 }

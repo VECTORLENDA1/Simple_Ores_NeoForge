@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -152,12 +152,12 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
     @Override
     public RecipeSerializer<GravityCoreRecipe> getSerializer() {
-        return ModRecipes.GRAVITY_COLLAPSE_SERIALIZER.get();
+        return ModRecipes.GRAVITY_CRAFT_SERIALIZER.get();
     }
 
     @Override
     public RecipeType<GravityCoreRecipe> getType() {
-        return ModRecipes.GRAVITY_COLLAPSE_TYPE.get();
+        return ModRecipes.GRAVITY_CRAFT_TYPE.get();
     }
 
     // How the recipe is read from JSON (CODEC) and sent over the network (STREAM_CODEC)

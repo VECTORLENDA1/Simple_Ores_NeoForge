@@ -2,9 +2,9 @@ package com.vector.simpleores;
 
 import com.mojang.logging.LogUtils;
 import com.vector.simpleores.block.entity.ModBlockEntities;
-import com.vector.simpleores.gravity.GravityCoreRenderer;
-import com.vector.simpleores.gravity.GravityCoreItemRenderer;
-import com.vector.simpleores.gravity.MoveItemsToCore;
+import com.vector.simpleores.gravitycraft.GravityCoreRenderer;
+import com.vector.simpleores.gravitycraft.GravityCoreItemRenderer;
+import com.vector.simpleores.gravitycraft.MoveItemsToCore;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
 import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;

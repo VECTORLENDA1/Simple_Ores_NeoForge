@@ -1,6 +1,6 @@
 package com.vector.simpleores.recipe;
 
-import com.vector.simpleores.gravity.GravityCoreRecipe;
+import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -46,14 +46,14 @@ public class ModRecipes {
                     return "atomic_crafting_table";
                 }
             });
-    // Gravity Core recipes ("type": "simpleores:gravity_collapse")
-    public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_COLLAPSE_SERIALIZER =
-            SERIALIZERS.register("gravity_collapse", () -> new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
-    public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_COLLAPSE_TYPE =
-            TYPES.register("gravity_collapse", () -> new RecipeType<>() {
+    // Gravity Core recipes ("type": "simpleores:gravity_craft")
+    public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_CRAFT_SERIALIZER =
+            SERIALIZERS.register("gravity_craft", () -> new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
+    public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_CRAFT_TYPE =
+            TYPES.register("gravity_craft", () -> new RecipeType<>() {
                 @Override
                 public String toString() {
-                    return "gravity_collapse";
+                    return "gravity_craft";
                 }
             });
 

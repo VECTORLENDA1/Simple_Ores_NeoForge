@@ -1,6 +1,6 @@
 {
-  "type": "simpleores:gravity_collapse",
-  "tier": 2,
+  "type": "simpleores:gravity_craft",
+  "tier": 4,
   "time": 200,
   "ingredients": [
     { "item": "simpleores:ignithra", "count": 10 },
@@ -11,5 +11,7 @@
     { "item": "simpleores:obscuridium", "count": 2 },
     { "item": "minecraft:netherite_ingot" }
   ],
-  "result": { "id": "simpleores:obscurite" }
+  "result": {
+    "id": "simpleores:obscurite"
+  }
 }

@@ -1,10 +1,10 @@
-// 26.2	2026-10-07T01:08:15.6309053	Tags for minecraft:block mod id simpleores
-fdac6f258abb1d5b17f552ec6fb5be03d545a06b data/minecraft/tags/block/incorrect_for_diamond_tool.json
-fdac6f258abb1d5b17f552ec6fb5be03d545a06b data/minecraft/tags/block/incorrect_for_gold_tool.json
-fdac6f258abb1d5b17f552ec6fb5be03d545a06b data/minecraft/tags/block/incorrect_for_iron_tool.json
-fdac6f258abb1d5b17f552ec6fb5be03d545a06b data/minecraft/tags/block/incorrect_for_stone_tool.json
-fdac6f258abb1d5b17f552ec6fb5be03d545a06b data/minecraft/tags/block/incorrect_for_wooden_tool.json
+// 26.2	2026-10-07T17:56:24.0540336	Tags for minecraft:block mod id simpleores
+0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_diamond_tool.json
+0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_gold_tool.json
+0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_iron_tool.json
+0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_stone_tool.json
+0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_wooden_tool.json
 e7e2ffd91cf0c62419a1d0ba9d4d9b52088732e7 data/minecraft/tags/block/mineable/pickaxe.json
-05998d0cb9c3b4419a633cd6062c98cfe047a7ff data/minecraft/tags/block/needs_diamond_tool.json
+2c0f1b5f156444c365f47e872ba7db21df83e757 data/minecraft/tags/block/needs_diamond_tool.json
 a948bf544a5ebd1b402103c62cadba4bcb250a20 data/minecraft/tags/block/needs_iron_tool.json
 eaabdd543398dce63ced7b63a7d9c3daaee2822c data/minecraft/tags/block/needs_stone_tool.json

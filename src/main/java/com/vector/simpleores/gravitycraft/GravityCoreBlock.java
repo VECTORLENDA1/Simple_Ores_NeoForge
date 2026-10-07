@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

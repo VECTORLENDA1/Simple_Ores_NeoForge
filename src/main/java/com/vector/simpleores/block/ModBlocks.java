@@ -4,11 +4,9 @@ package com.vector.simpleores.block;
 import com.vector.simpleores.block.custom.AtomicCraftingTable;
 import com.vector.simpleores.block.custom.SimpleCraftingTable;
 import com.vector.simpleores.block.custom.UltraCraftingTable;
-import com.vector.simpleores.gravity.CoreTier;
-import com.vector.simpleores.gravity.GravityCoreBlock;
+import com.vector.simpleores.gravitycraft.CoreTier;
+import com.vector.simpleores.gravitycraft.GravityCoreBlock;
 import net.minecraft.util.valueproviders.UniformInt;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DropExperienceBlock;
@@ -113,7 +111,7 @@ public class ModBlocks {
     // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun)
     private static DeferredBlock<Block> registerGravityCore(CoreTier tier) {
         return registerBlockItem("gravity_core_" + tier.id, properties -> new GravityCoreBlock(tier, properties),
-                () -> BlockBehaviour.Properties.of().strength(3f, 6).requiresCorrectToolForDrops()
+                () -> BlockBehaviour.Properties.of().strength(4f, 20).requiresCorrectToolForDrops()
                         .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> tier.light));
     }
 

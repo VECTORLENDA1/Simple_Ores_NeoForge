@@ -2,6 +2,9 @@
   "values": [
     "simpleores:obscuridium_block",
     "simpleores:obscurite_block",
-    "simpleores:raw_obscuridium_block"
+    "simpleores:raw_obscuridium_block",
+    "simpleores:gravity_core_red_giant",
+    "simpleores:gravity_core_pulsar",
+    "simpleores:gravity_core_black_hole"
   ]
 }

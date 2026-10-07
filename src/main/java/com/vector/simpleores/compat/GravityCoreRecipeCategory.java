@@ -1,7 +1,7 @@
 package com.vector.simpleores.compat;
 
 import com.vector.simpleores.block.ModBlocks;
-import com.vector.simpleores.gravity.GravityCoreRecipe;
+import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;

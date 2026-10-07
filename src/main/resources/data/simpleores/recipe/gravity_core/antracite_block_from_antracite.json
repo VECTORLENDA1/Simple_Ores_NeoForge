@@ -1,0 +1,11 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 1,
+  "time": 100,
+  "ingredients": [
+    {"item": "simpleores_antracite", "count": 9}
+  ],
+      "result": {
+        "id": "simpleores:antracite_block", "count": 1
+      }
+}

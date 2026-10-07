@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.util.StringRepresentable;

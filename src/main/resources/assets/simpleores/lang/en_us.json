@@ -1,8 +1,5 @@
 {
   "1": "||ITEMS||",
-  "2": "||BLOCKS||",
-  "3": "||CRAFTING TABLES||",
-  "4": "||TOOLTIPS||",
   "item.simpleores.celestine": "Celestine Gem",
   "item.simpleores.zenithra": "Zenithra Gem",
   "item.simpleores.astralite": "Astralite",
@@ -15,6 +12,8 @@
   "item.simpleores.obscuridium": "Obscuridium",
   "item.simpleores.obscurite": "Obscurite",
   "item.simpleores.raw_obscuridium": "Raw Obscuridium",
+
+  "2": "||BLOCKS||",
   "block.simpleores.end_stone_celestine_ore": "End Stone Celestine Ore",
   "block.simpleores.nexalite_block": "Block of Nexalite",
   "block.simpleores.ignithra_block": "Block of Ignithra",
@@ -35,9 +34,13 @@
   "block.simpleores.obscuridium_block": "Block of Obscuridium",
   "block.simpleores.obscurite_block": "Block of Obscurite",
   "block.simpleores.raw_obscuridium_block": "Block of Raw Obscuridium",
+
+  "3": "||CRAFTING TABLES||",
   "block.simpleores.simple_crafting_table": "Simple Crafting Table",
   "block.simpleores.ultra_crafting_table": "Ultra Crafting Table",
   "block.simpleores.atomic_crafting_table": "Atomic Crafting Table",
+
+  "4": "||TOOLTIPS||",
   "bedrockobscuridiumoreblock": "Maybe some T.N.T can help (layer -60) :)",
   "creativetab.simpleores": "Simple Ores",
   "block.simpleores.gravity_core_sun": "Gravity Core: Sun",

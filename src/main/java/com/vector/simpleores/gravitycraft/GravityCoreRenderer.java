@@ -1,4 +1,4 @@
-package com.vector.simpleores.gravity;
+package com.vector.simpleores.gravitycraft;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;

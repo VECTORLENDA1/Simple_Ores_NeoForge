@@ -2,9 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "I": "simpleores:ignithra",
-    "G": "minecraft:glowstone",
-    "B": "minecraft:blaze_rod"
+    "I": "minecraft:netherite",
+    "G": "simpleores:ignithra_block",
+    "B": "minecraft:nether_star"
   },
   "pattern": [
     "IGI",

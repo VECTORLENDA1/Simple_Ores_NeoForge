@@ -20,7 +20,7 @@ public class BedrockObscuridiumOreBlock extends Block {
     @Override
     public void onBlockExploded(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion) {
         double chance = Math.random();
-        if (chance <= 0.30) {
+        if (chance <= 0.33) {
             popResource(level, pos, new ItemStack(ModItems.RAW_OBSCURIDIUM.get()));
         }
         level.removeBlock(pos, false);

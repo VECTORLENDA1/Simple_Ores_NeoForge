@@ -45,6 +45,7 @@ public class SimpleOres {
         ModBlockEntities.register(modEventBus);
 
 
+
         ModCreativeModTabs.register(modEventBus);
 
         modEventBus.addListener(this::addCreative);

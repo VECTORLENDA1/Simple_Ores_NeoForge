@@ -1,6 +1,7 @@
 package com.vector.simpleores.compat;
 
 import com.vector.simpleores.block.ModBlocks;
+import com.vector.simpleores.gravitycraft.CoreTier;
 import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -19,7 +20,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /// Shows the Gravity Core recipes in JEI:
 /// ingredients on the left, result on the right, and the tier and time at the bottom.
@@ -28,7 +31,7 @@ import java.util.List;
 /// JEI can show the "Bookmark" button and the "Move Items" button knows which recipe to send.
 public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<GravityCoreRecipe>> {
     public static final IRecipeHolderType<GravityCoreRecipe> RECIPE_TYPE =
-            IRecipeHolderType.create(Identifier.fromNamespaceAndPath("simpleores", "gravity_collapse"));
+            IRecipeHolderType.create(Identifier.fromNamespaceAndPath("simpleores", "gravity_craft"));
 
     private static final int WIDTH = 160;
     private static final int HEIGHT = 66;
@@ -47,7 +50,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
 
     @Override
     public Component getTitle() {
-        return Component.translatable("jei.simpleores.gravity_collapse");
+        return Component.translatable("jei.simpleores.gravity_craft");
     }
 
     @Override
@@ -78,16 +81,28 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
                     .addItemStacks(stacks);
         }
 
+        // The result. With "count_per_tier" the slot cycles through the amount of every tier.
+        List<ItemStack> results = new ArrayList<>();
+        for (CoreTier tier : CoreTier.values()) {
+            if (recipe.worksInTier(tier.level)) results.add(recipe.createResult(tier.level));
+        }
         builder.addSlot(RecipeIngredientRole.OUTPUT, 138, 19)
                 .setOutputSlotBackground()
-                .add(recipe.getResult());
+                .addItemStacks(recipe.getCountPerTier().isEmpty() ? List.of(recipe.createResult(recipe.getTier())) : results);
     }
 
     @Override
     public void draw(RecipeHolder<GravityCoreRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         GravityCoreRecipe recipe = holder.value();
         // "Tier 2 - 10s" at the bottom
-        Component text = Component.translatable("jei.simpleores.gravity_collapse.info", recipe.getTier(), recipe.getTime() / 20f);
+        Component text = Component.translatable("jei.simpleores.gravity_craft.info", recipe.getTier(), recipe.getTime() / 20f);
         guiGraphics.text(Minecraft.getInstance().font, text, 1, HEIGHT - 9, 0xFF404040, false);
+
+        // "Per tier: 2 / 4 / 8 / 16" above it, only for recipes with "count_per_tier"
+        if (!recipe.getCountPerTier().isEmpty()) {
+            String counts = recipe.getCountPerTier().stream().map(String::valueOf).collect(Collectors.joining(" / "));
+            Component perTier = Component.translatable("jei.simpleores.gravity_craft.per_tier", counts);
+            guiGraphics.text(Minecraft.getInstance().font, perTier, 1, HEIGHT - 19, 0xFF404040, false);
+        }
     }
 }

@@ -36,6 +36,13 @@ import java.util.List;
 ///   "result": { "id": "simpleores:ignithra", "count": 6 }
 /// }
 ///
+/// MORE OUTPUT IN HIGHER TIERS (optional): add "count_per_tier" to choose how many items the
+/// result gives depending on the tier of the core doing the craft. The first number is for tier 1
+/// (Sun), the second for tier 2 (Red Giant), and so on. If the list is shorter than the tiers,
+/// the last number is used for the higher tiers. Without it, the "count" of "result" is used.
+///
+///   "count_per_tier": [2, 4, 8, 16]                    <- Sun = 2, Red Giant = 4, Pulsar = 8, Black Hole = 16
+///
 /// UPGRADE RECIPES: if the result is a Gravity Core (e.g. "simpleores:gravity_core_red_giant"),
 /// the recipe is an upgrade. It only works in a core of exactly that "tier", and instead of
 /// giving an item, the core swallows the ingredients, slowly turns into the new tier and
@@ -43,11 +50,19 @@ import java.util.List;
 public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
     /// One ingredient with an amount (e.g. 4x raw_ignithra).
-    public record Part(Ingredient item, int count) {
+    public record Part(Ingredient item, int count, List<Integer> countPerTier) {
         public static final Codec<Part> CODEC = RecordCodecBuilder.create(inst -> inst.group(
                 Ingredient.CODEC.fieldOf("item").forGetter(Part::item),
-                Codec.INT.optionalFieldOf("count", 1).forGetter(Part::count)
+                Codec.INT.optionalFieldOf("count", 1).forGetter(Part::count),
+                Codec.INT.listOf().optionalFieldOf("count_per_tier", List.of()).forGetter(Part::countPerTier)
         ).apply(inst, Part::new));
+
+        /// How many of this ingredient are needed for a core of the given tier.
+        public int countFor(int coreTier) {
+            if (countPerTier.isEmpty()) return count;
+            int index = Math.min(coreTier, countPerTier.size()) - 1; // tier 1 = first number
+            return countPerTier.get(Math.max(0, index));
+        }
     }
 
     /// What is inside a core: the orbiting items and the core's tier level.
@@ -67,12 +82,14 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
     private final int time;
     private final List<Part> ingredients;
     private final ItemStackTemplate result;
+    private final List<Integer> countPerTier;
 
-    public GravityCoreRecipe(int tier, int time, List<Part> ingredients, ItemStackTemplate result) {
+    public GravityCoreRecipe(int tier, int time, List<Part> ingredients, ItemStackTemplate result, List<Integer> countPerTier) {
         this.tier = tier;
         this.time = time;
         this.ingredients = ingredients;
         this.result = result;
+        this.countPerTier = countPerTier;
     }
 
     public int getTier() {
@@ -89,6 +106,21 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
     public ItemStackTemplate getResult() {
         return result;
+    }
+
+    public List<Integer> getCountPerTier() {
+        return countPerTier;
+    }
+
+    /// The result for a core of the given tier (uses "count_per_tier" if the recipe has it).
+    /// The amount can be bigger than a full stack (e.g. 128): it is split when it's delivered.
+    public ItemStack createResult(int coreTier) {
+        ItemStack stack = result.create();
+        if (countPerTier.isEmpty()) return stack;
+
+        int index = Math.min(coreTier, countPerTier.size()) - 1; // tier 1 = first number
+        stack.setCount(countPerTier.get(Math.max(0, index)));
+        return stack;
     }
 
     /// If the result is a Gravity Core, returns its tier (this recipe is an upgrade). Otherwise returns null.
@@ -114,14 +146,14 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
             for (ItemStack stack : input.items()) {
                 if (part.item().test(stack)) found += stack.getCount();
             }
-            if (found < part.count()) return false;
+            if (found < part.countFor(input.tier)) return false;
         }
         return true;
     }
 
     @Override
     public ItemStack assemble(Input input) {
-        return result.create();
+        return createResult(input.tier());
     }
 
     // Gravity Core recipes don't show up in the vanilla recipe book
@@ -165,7 +197,8 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
             Codec.INT.optionalFieldOf("tier", 1).forGetter(GravityCoreRecipe::getTier),
             Codec.INT.optionalFieldOf("time", 100).forGetter(GravityCoreRecipe::getTime),
             Part.CODEC.listOf().fieldOf("ingredients").forGetter(GravityCoreRecipe::getParts),
-            ItemStackTemplate.CODEC.fieldOf("result").forGetter(GravityCoreRecipe::getResult)
+            ItemStackTemplate.CODEC.fieldOf("result").forGetter(GravityCoreRecipe::getResult),
+            Codec.INT.listOf().optionalFieldOf("count_per_tier", List.of()).forGetter(GravityCoreRecipe::getCountPerTier)
     ).apply(inst, GravityCoreRecipe::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GravityCoreRecipe> STREAM_CODEC =

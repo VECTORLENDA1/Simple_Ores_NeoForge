@@ -3,10 +3,11 @@
   "tier": 1,
   "time": 100,
   "ingredients": [
-    { "item": "simpleores:raw_ignithra", "count": 1 },
+    { "item": "simpleores:raw_ignithra", "count_per_tier": [1, 2, 4, 8] },
     { "item": "simpleores:antracite" }
   ],
   "result": {
     "id": "simpleores:ignithra", "count": 2
-  }
+  },
+  "count_per_tier": [3, 6, 12, 24]
 }

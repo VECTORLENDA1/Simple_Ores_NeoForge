@@ -43,12 +43,13 @@
   "4": "||TOOLTIPS||",
   "bedrockobscuridiumoreblock": "Maybe some T.N.T can help (layer -60) :)",
   "creativetab.simpleores": "Simple Ores",
-  "block.simpleores.gravity_core_sun": "Gravity Core: Sun",
-  "block.simpleores.gravity_core_red_giant": "Gravity Core: Red Giant",
-  "block.simpleores.gravity_core_pulsar": "Gravity Core: Pulsar",
-  "block.simpleores.gravity_core_black_hole": "Gravity Core: Black Hole",
-  "jei.simpleores.gravity_collapse": "Gravitational Collapse",
-  "jei.simpleores.gravity_collapse.info": "Tier %s  -  %ss",
+  "block.simpleores.gravity_core_sun": "Sun",
+  "block.simpleores.gravity_core_red_giant": "Red Giant",
+  "block.simpleores.gravity_core_pulsar": "Pulsar",
+  "block.simpleores.gravity_core_black_hole": "Black Hole",
+  "jei.simpleores.gravity_craft": "Gravitational Craft",
+  "jei.simpleores.gravity_craft.info": "Tier %s  -  %ss",
   "jei.simpleores.missing_items": "Missing items",
-  "jei.simpleores.no_core_nearby": "No Gravity Core of the right tier within %s blocks (or it is busy)"
+  "jei.simpleores.no_core_nearby": "No Gravity Core of the right tier within %s blocks (or it is busy)",
+  "jei.simpleores.gravity_craft.per_tier" : ""
 }

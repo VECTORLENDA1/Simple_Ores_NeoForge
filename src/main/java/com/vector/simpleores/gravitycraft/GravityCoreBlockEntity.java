@@ -233,13 +233,17 @@ public class GravityCoreBlockEntity extends BlockEntity {
         Optional<RecipeHolder<GravityCoreRecipe>> recipe = findRecipe();
         if (recipe.isPresent()) {
             consume(recipe.get().value());
-            ItemStack result = recipe.get().value().getResult().create();
+            // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
+            ItemStack result = recipe.get().value().createResult(getTier().level);
 
             if (recipe.get().value().getUpgradeTier() != null) {
                 finishUpgrade(result);
                 return; // the block no longer exists
             }
-            deliver(result);
+            // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
+            while (!result.isEmpty()) {
+                deliver(result.split(result.getMaxStackSize()));
+            }
             flash();
         }
 
@@ -249,8 +253,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     /// Uses up the ingredients of the recipe.
     private void consume(GravityCoreRecipe recipe) {
+        int coreTier = getTier().level;
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            int missing = part.count();
+            int missing = part.countFor(coreTier);
             for (ItemStack stack : items) {
                 if (missing <= 0) break;
                 if (part.item().test(stack)) {

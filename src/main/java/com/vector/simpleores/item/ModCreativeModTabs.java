@@ -10,7 +10,7 @@ import com.vector.simpleores.block.ModBlocks;
 import static com.vector.simpleores.SimpleOres.MODID;
 
 
-//Isto serve para cria um guia no modo creativo dop jogo, para os teus items
+//Creates the mod's tab in the creative inventory, with all its items
 public class ModCreativeModTabs {
     public static final net.neoforged.neoforge.registries.DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
             net.neoforged.neoforge.registries.DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
@@ -60,12 +60,12 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.OBSCURITE_BLOCK.get());
 
                     //ENTITY BLOCK//
-                    // Crafting tables DESATIVADAS (tira o "//" para voltarem a aparecer)
+                    // Crafting tables DISABLED (remove the "//" to show them again)
                     //output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
                     //output.accept(ModBlocks.ULTRA_CRAFTING_TABLE.get());
                     //output.accept(ModBlocks.ATOMIC_CRAFTING_TABLE.get());
 
-                    //NUCLEOS GRAVITACIONAIS//
+                    //GRAVITY CORES//
                     output.accept(ModBlocks.GRAVITY_CORE_SUN.get());
                     output.accept(ModBlocks.GRAVITY_CORE_RED_GIANT.get());
                     output.accept(ModBlocks.GRAVITY_CORE_PULSAR.get());

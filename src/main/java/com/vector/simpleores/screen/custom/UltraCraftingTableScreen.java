@@ -12,7 +12,7 @@ public class UltraCraftingTableScreen extends AbstractContainerScreen<UltraCraft
             Identifier.fromNamespaceAndPath("simpleores","textures/gui/ultra_crafting_table/ultra_crafting_table_gui.png");
 
     public UltraCraftingTableScreen(UltraCraftingTableMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
-        // imageWidth/imageHeight agora sao final e passam-se no construtor
+        // imageWidth/imageHeight are now final and are passed in the constructor
         super(pMenu, pPlayerInventory, pTitle, 212, 242);
     }
 
@@ -31,7 +31,7 @@ public class UltraCraftingTableScreen extends AbstractContainerScreen<UltraCraft
         // Player inventory label (bottom left)
         int invX = 27;
         int invY = 145;
-        // As cores de texto agora sao ARGB: sem o 0xFF de alpha o texto fica invisivel
+        // Text colors are now ARGB: without the 0xFF alpha the text is invisible
         pGuiGraphics.text(font, "Inventory", invX, invY, 0xFF404040, false);
 
         // Screen title label (top left), drawn the same way as the inventory label

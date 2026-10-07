@@ -14,7 +14,7 @@ public class FuelItem extends Item {
         this.burntime = burntime;
     }
 
-    // getBurnTime agora recebe tambem os FuelValues
+    // getBurnTime now also receives the FuelValues
     @Override
     public int getBurnTime(ItemStack itemStack, @Nullable RecipeType<?> recipeType, FuelValues fuelValues) {
         return this.burntime;

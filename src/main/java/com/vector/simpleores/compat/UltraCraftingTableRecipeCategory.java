@@ -28,7 +28,7 @@ public class UltraCraftingTableRecipeCategory implements IRecipeCategory<UltraCr
     private static final int WIDTH = 212;
     private static final int HEIGHT = 162;
 
-    // Grid de entrada: 7 x 7, slots de 18px
+    // Input grid: 7 x 7, 18px slots
     private static final int COLUMNS = 7;
     private static final int ROWS = 7;
     private static final int SLOT_SIZE = 18;

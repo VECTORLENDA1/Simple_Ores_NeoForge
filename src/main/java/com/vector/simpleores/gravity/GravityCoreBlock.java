@@ -4,7 +4,6 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -17,11 +16,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
-/// O bloco do Nucleo Gravitacional. Ha um bloco por tier, todos com esta mesma classe.
-/// A esfera nao e um modelo de bloco: e desenhada pelo GravityCoreRenderer.
+/// The Gravity Core block. There is one block per tier, all using this same class.
+/// The sphere is not a block model: it is drawn by GravityCoreRenderer.
 public class GravityCoreBlock extends BaseEntityBlock {
     public static final MapCodec<GravityCoreBlock> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-            StringRepresentable.fromEnum(CoreTier::values).fieldOf("tier").forGetter(block -> block.tier),
+            CoreTier.CODEC.fieldOf("tier").forGetter(block -> block.tier),
             propertiesCodec()
     ).apply(inst, GravityCoreBlock::new));
 
@@ -37,7 +36,7 @@ public class GravityCoreBlock extends BaseEntityBlock {
         return CODEC;
     }
 
-    /// INVISIBLE: o bloco nao tem modelo, quem desenha a esfera e o renderer.
+    /// INVISIBLE: the block has no model, the renderer draws the sphere.
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.INVISIBLE;
@@ -53,7 +52,7 @@ public class GravityCoreBlock extends BaseEntityBlock {
         return createTickerHelper(type, ModBlockEntities.GRAVITY_CORE_BE.get(), (lvl, pos, st, core) -> core.tick());
     }
 
-    /// Clique com a mao vazia: devolve os itens que estao em orbita.
+    /// Right-click with an empty hand: gives back the orbiting items.
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof GravityCoreBlockEntity core) {

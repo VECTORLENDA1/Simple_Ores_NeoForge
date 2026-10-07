@@ -28,7 +28,7 @@ public class SimpleCraftingTableRecipeCategory implements IRecipeCategory<Simple
     private static final int WIDTH = 176;
     private static final int HEIGHT = 126;
 
-    // Grid de entrada: 5 x 5, slots de 18px comecando em (18, 18)
+    // Input grid: 5 x 5, 18px slots starting at (18, 18)
     private static final int COLUMNS = 5;
     private static final int ROWS = 5;
     private static final int SLOT_SIZE = 18;

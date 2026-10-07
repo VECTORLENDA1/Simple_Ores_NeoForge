@@ -9,7 +9,10 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.IRecipeTransferRegistration;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeMap;
 import net.neoforged.api.distmarker.Dist;
@@ -18,16 +21,17 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/// Integracao com o JEI.
+/// JEI integration.
 ///
-/// As 3 crafting tables estao DESATIVADAS: o codigo delas esta comentado mais abaixo.
-/// Para as voltar a ativar no JEI, descomenta as partes marcadas com "CRAFTING TABLES"
-/// (e tambem o registerGuiHandlers, que usa os ecras delas).
+/// The 3 crafting tables are DISABLED: their code is commented out below.
+/// To enable them again in JEI, uncomment the parts marked with "CRAFTING TABLES"
+/// (and also registerGuiHandlers, which uses their screens).
 @JeiPlugin
 public class JEISimpleOresPlugin implements IModPlugin {
-    // O cliente ja nao recebe as receitas automaticamente, por isso guardamos as que o servidor envia
+    // The client no longer receives recipes automatically, so we keep the ones the server sends
     private static RecipeMap syncedRecipes = RecipeMap.EMPTY;
 
     @Override
@@ -40,7 +44,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
         var guiHelper = registration.getJeiHelpers().getGuiHelper();
         registration.addRecipeCategories(new GravityCoreRecipeCategory(guiHelper));
 
-        // CRAFTING TABLES (desativadas)
+        // CRAFTING TABLES (disabled)
         //registration.addRecipeCategories(new SimpleCraftingTableRecipeCategory(guiHelper));
         //registration.addRecipeCategories(new UltraCraftingTableRecipeCategory(guiHelper));
         //registration.addRecipeCategories(new AtomicCraftingTableRecipeCategory(guiHelper));
@@ -48,12 +52,12 @@ public class JEISimpleOresPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        List<GravityCoreRecipe> gravityRecipes = syncedRecipes
-                .byType(ModRecipes.GRAVITY_COLLAPSE_TYPE.get())
-                .stream().map(RecipeHolder::value).toList();
+        // Given as RecipeHolder (recipe + ID) so JEI can bookmark them
+        List<RecipeHolder<GravityCoreRecipe>> gravityRecipes =
+                new ArrayList<>(syncedRecipes.byType(ModRecipes.GRAVITY_COLLAPSE_TYPE.get()));
         registration.addRecipes(GravityCoreRecipeCategory.RECIPE_TYPE, gravityRecipes);
 
-        // CRAFTING TABLES (desativadas)
+        // CRAFTING TABLES (disabled)
         //registration.addRecipes(SimpleCraftingTableRecipeCategory.SIMPLE_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
         //        syncedRecipes.byType(ModRecipes.SIMPLE_CRAFTING_TABLE_TYPE.get()).stream().map(RecipeHolder::value).toList());
         //registration.addRecipes(UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
@@ -62,7 +66,17 @@ public class JEISimpleOresPlugin implements IModPlugin {
         //        syncedRecipes.byType(ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get()).stream().map(RecipeHolder::value).toList());
     }
 
-    // CRAFTING TABLES (desativadas): area clicavel na seta de cada mesa
+    // "Move Items" (+) button: works with the survival inventory and the creative inventory open
+    @Override
+    public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
+        var helper = registration.getTransferHelper();
+        registration.addRecipeTransferHandler(
+                new GravityCoreTransferHandler<>(InventoryMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
+        registration.addRecipeTransferHandler(
+                new GravityCoreTransferHandler<>(CreativeModeInventoryScreen.ItemPickerMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
+    }
+
+    // CRAFTING TABLES (disabled): clickable area on the arrow of each table
     //@Override
     //public void registerGuiHandlers(IGuiHandlerRegistration registration) {
     //    registration.addRecipeClickArea(SimpleCraftingTableScreen.class, 112, 54, 22, 16,
@@ -73,14 +87,14 @@ public class JEISimpleOresPlugin implements IModPlugin {
     //            AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
     //}
 
-    // Mostra as receitas ao clicar no bloco dentro do JEI
+    // Shows the recipes when the block is clicked inside JEI
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         registration.addCraftingStation(GravityCoreRecipeCategory.RECIPE_TYPE,
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
-        // CRAFTING TABLES (desativadas)
+        // CRAFTING TABLES (disabled)
         //registration.addCraftingStation(SimpleCraftingTableRecipeCategory.SIMPLE_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
         //        ModBlocks.SIMPLE_CRAFTING_TABLE.get());
         //registration.addCraftingStation(UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
@@ -89,7 +103,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
         //        ModBlocks.ATOMIC_CRAFTING_TABLE.get());
     }
 
-    // Servidor: pede para enviar as nossas receitas aos jogadores
+    // Server: asks for our recipes to be sent to the players
     @EventBusSubscriber(modid = SimpleOres.MODID)
     public static class ServerRecipeSync {
         @SubscribeEvent
@@ -102,7 +116,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
         }
     }
 
-    // Cliente: guarda as receitas recebidas do servidor para o JEI usar
+    // Client: keeps the recipes received from the server so JEI can use them
     @EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)
     public static class ClientRecipeSync {
         @SubscribeEvent

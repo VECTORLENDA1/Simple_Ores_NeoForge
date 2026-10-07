@@ -12,7 +12,7 @@ public class SimpleCraftingTableScreen extends AbstractContainerScreen<SimpleCra
             Identifier.fromNamespaceAndPath("simpleores","textures/gui/simple_crafting_table/simple_crafting_table_gui.png");
 
     public SimpleCraftingTableScreen(SimpleCraftingTableMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
-        // imageWidth/imageHeight agora sao final e passam-se no construtor
+        // imageWidth/imageHeight are now final and are passed in the constructor
         super(pMenu, pPlayerInventory, pTitle, 176, 206);
     }
 
@@ -30,7 +30,7 @@ public class SimpleCraftingTableScreen extends AbstractContainerScreen<SimpleCra
     protected void extractLabels(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY) {
         int x = 7;
         int y = 111;
-        // As cores de texto agora sao ARGB: sem o 0xFF de alpha o texto fica invisivel
+        // Text colors are now ARGB: without the 0xFF alpha the text is invisible
         pGuiGraphics.text(font, "Inventory", x, y, 0xFF404040, false);
 
         pGuiGraphics.text(font, title, (imageWidth - font.width(title)) - 54, 6, 0xFF404040, false);

@@ -10,12 +10,12 @@ import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import java.util.concurrent.CompletableFuture;
 
 public class ModBlockTagProvider extends BlockTagsProvider {
-    // O ExistingFileHelper foi removido do NeoForge
+    // ExistingFileHelper was removed from NeoForge
     public ModBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
         super(output, lookupProvider, SimpleOres.MODID);
     }
 
-    // tag(...).add() agora recebe a ResourceKey do bloco (DeferredBlock#getKey) em vez do Block
+    // tag(...).add() now takes the block's ResourceKey (DeferredBlock#getKey) instead of the Block
     @Override
     protected void addTags(HolderLookup.Provider pProvider) {
         tag(BlockTags.MINEABLE_WITH_PICKAXE)

@@ -3,6 +3,8 @@ package com.vector.simpleores;
 import com.mojang.logging.LogUtils;
 import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.gravity.GravityCoreRenderer;
+import com.vector.simpleores.gravity.GravityCoreItemRenderer;
+import com.vector.simpleores.gravity.MoveItemsToCore;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
 import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;
@@ -19,9 +21,12 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import com.vector.simpleores.block.ModBlocks;
 import com.vector.simpleores.item.ModCreativeModTabs;
 import com.vector.simpleores.item.ModItems;
@@ -49,7 +54,14 @@ public class SimpleOres {
         ModCreativeModTabs.register(modEventBus);
 
         modEventBus.addListener(this::addCreative);
+        modEventBus.addListener(this::registerPayloads);
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+    }
+
+    // Network messages sent between client and server
+    private void registerPayloads(RegisterPayloadHandlersEvent event) {
+        // JEI "Move Items" button for Gravity Core recipes (client -> server)
+        event.registrar("1").playToServer(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC, MoveItemsToCore::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -76,6 +88,12 @@ public class SimpleOres {
         @SubscribeEvent
         public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
             event.registerBlockEntityRenderer(ModBlockEntities.GRAVITY_CORE_BE.get(), GravityCoreRenderer::new);
+        }
+
+        // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)
+        @SubscribeEvent
+        public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
+            event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
         }
 
         @SubscribeEvent

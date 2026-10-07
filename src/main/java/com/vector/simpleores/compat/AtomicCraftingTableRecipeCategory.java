@@ -28,7 +28,7 @@ public class AtomicCraftingTableRecipeCategory implements IRecipeCategory<Atomic
     private static final int WIDTH = 248;
     private static final int HEIGHT = 198;
 
-    // Grid de entrada: 9 x 9, slots de 18px comecando em (18, 18)
+    // Input grid: 9 x 9, 18px slots starting at (18, 18)
     private static final int COLUMNS = 9;
     private static final int ROWS = 9;
     private static final int SLOT_SIZE = 18;

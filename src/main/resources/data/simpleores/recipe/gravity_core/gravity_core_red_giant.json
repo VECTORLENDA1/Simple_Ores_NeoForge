@@ -3,7 +3,6 @@
   "tier": 1,
   "time": 200,
   "ingredients": [
-    { "item": "simpleores:gravity_core_sun" },
     { "item": "simpleores:nexalite", "count": 8 },
     { "item": "simpleores:astralite", "count": 8 },
     { "item": "minecraft:magma_block", "count": 4 }

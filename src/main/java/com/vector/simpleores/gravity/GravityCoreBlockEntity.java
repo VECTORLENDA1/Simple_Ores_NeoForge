@@ -14,7 +14,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Containers;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -35,27 +36,36 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/// O "cerebro" do Nucleo Gravitacional:
-///  1. apanha os itens largados perto do nucleo e poe-nos em orbita;
-///  2. quando os itens em orbita formam uma receita, comeca o colapso;
-///  3. no fim do colapso gasta os ingredientes e entrega o resultado.
+/// The "brain" of the Gravity Core:
+///  1. it captures items dropped near the core and puts them in orbit;
+///  2. when the orbiting items match a recipe, the collapse starts;
+///  3. when the collapse ends, it uses up the ingredients and delivers the result.
 ///
-/// Os itens em orbita sao guardados aqui (nao ha fisica a serio).
-/// O desenho da orbita e feito no GravityCoreRenderer.
+/// The orbiting items are only stored here (there is no real physics).
+/// The orbit itself is drawn by GravityCoreRenderer.
 public class GravityCoreBlockEntity extends BlockEntity {
-    /// Distancia (em blocos) a que o nucleo apanha itens.
+    /// Distance (in blocks) at which the core captures items.
     public static final double CAPTURE_RADIUS = 3.0;
-    /// Marca posta nos itens que o nucleo cria, para nao os voltar a apanhar.
+    /// Tag added to items created by a core, so that cores don't capture them again.
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
 
-    /// Itens em orbita.
+    /// Items in orbit.
     private final List<ItemStack> items = new ArrayList<>();
-    /// Jogador que atirou o ultimo item (recebe o resultado). null = foi uma maquina.
+    /// Player who threw the last item (receives the result). null = it was a machine.
     @Nullable
     private UUID owner = null;
-    /// Progresso do colapso: craftTotal = 0 significa que nao esta a colapsar.
+    /// Collapse progress. craftTotal = 0 means the core is not collapsing.
     private int craftTime = 0;
     private int craftTotal = 0;
+    /// Tier the core is turning into during an upgrade. null = not upgrading.
+    @Nullable
+    private CoreTier upgradeTarget = null;
+
+    /// Angle of the orbit, used only by the client for the animation.
+    /// Every tick it grows by the current speed, so when the speed changes
+    /// (e.g. during a collapse or an upgrade) the items speed up smoothly instead of jumping.
+    private float orbitAngle = 0;
+    private float prevOrbitAngle = 0;
 
     public GravityCoreBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.GRAVITY_CORE_BE.get(), pos, state);
@@ -69,34 +79,64 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return items;
     }
 
-    /// 0.0 = colapso a comecar, 1.0 = colapso terminado. 0 tambem quando nao esta a colapsar.
+    public @Nullable CoreTier getUpgradeTarget() {
+        return upgradeTarget;
+    }
+
+    /// Orbit angle for this frame (smoothed between the last two ticks).
+    public float getOrbitAngle(float partialTick) {
+        return Mth.lerp(partialTick, prevOrbitAngle, orbitAngle);
+    }
+
+    /// How fast the items orbit right now. During a collapse they go up to 5x faster,
+    /// and during an upgrade the speed also slowly changes to the speed of the new tier.
+    private float currentOrbitSpeed() {
+        float progress = getCraftProgress(0);
+        CoreTier to = upgradeTarget != null ? upgradeTarget : getTier();
+        float tierSpeed = Mth.lerp(progress, getTier().orbitSpeed, to.orbitSpeed);
+        return 0.05f * tierSpeed * (1 + 4 * progress);
+    }
+
+    /// 0.0 = collapse starting, 1.0 = collapse finished. Also 0 when the core is not collapsing.
     public float getCraftProgress(float partialTick) {
         if (craftTotal <= 0) return 0;
         return Math.min(1f, (craftTime + partialTick) / craftTotal);
     }
 
+    /// Center of the sphere in the world. The sphere sits on top of the block below it.
+    private Vec3 center() {
+        return new Vec3(worldPosition.getX() + 0.5, worldPosition.getY() + getTier().coreSize / 2, worldPosition.getZ() + 0.5);
+    }
+
     // ---------------------------------------------------------------- tick
 
-    /// Corre 20 vezes por segundo, no servidor e no cliente.
+    /// Runs 20 times per second, on the server and on the client.
     public void tick() {
         if (level == null) return;
 
+        // Client: move the orbit forward a little (animation only)
+        if (level.isClientSide()) {
+            prevOrbitAngle = orbitAngle;
+            orbitAngle += currentOrbitSpeed();
+        }
+
         if (craftTotal > 0) {
             craftTime++;
-            // O cliente so conta o tempo para a animacao; quem decide e o servidor
-            if (!level.isClientSide() && craftTime >= craftTotal) {
-                finishCraft();
+            // The client only counts the time for the animation; the server makes the decisions
+            if (!level.isClientSide()) {
+                if (upgradeTarget != null) upgradeEffects();
+                if (craftTime >= craftTotal) finishCraft();
             }
             return;
         }
 
-        // Procura itens novos 4 vezes por segundo (chega bem e poupa o servidor)
+        // Look for new items 4 times per second (good enough and cheap for the server)
         if (!level.isClientSide() && level.getGameTime() % 5 == 0) {
             captureItems();
         }
     }
 
-    // ---------------------------------------------------------------- apanhar itens
+    // ---------------------------------------------------------------- capturing items
 
     private void captureItems() {
         AABB area = new AABB(worldPosition).inflate(CAPTURE_RADIUS);
@@ -108,10 +148,10 @@ public class GravityCoreBlockEntity extends BlockEntity {
             ItemStack stack = entity.getItem().copy();
             int before = stack.getCount();
             addToOrbit(stack);
-            if (stack.getCount() == before) continue; // nao coube nada
+            if (stack.getCount() == before) continue; // nothing fit
 
             capturedSomething = true;
-            // Quem atirou o item recebe o resultado. Se nao foi um jogador (ex: dropper), fica null.
+            // Whoever threw the item receives the result. If it wasn't a player (e.g. a dropper), it stays null.
             owner = entity.getOwner() instanceof Player player ? player.getUUID() : null;
 
             if (stack.isEmpty()) entity.discard();
@@ -125,9 +165,29 @@ public class GravityCoreBlockEntity extends BlockEntity {
         }
     }
 
-    /// Junta o stack aos itens em orbita. O que nao couber fica no stack.
+    /// True while the core is collapsing (it doesn't accept new items until it finishes).
+    public boolean isBusy() {
+        return craftTotal > 0;
+    }
+
+    /// Used by JEI's "Move Items" button: puts items straight from a player into the orbit.
+    /// Returns whatever didn't fit (it goes back to the player).
+    public List<ItemStack> insertFromPlayer(Player player, List<ItemStack> stacks) {
+        List<ItemStack> leftovers = new ArrayList<>();
+        for (ItemStack stack : stacks) {
+            addToOrbit(stack);
+            if (!stack.isEmpty()) leftovers.add(stack);
+        }
+        owner = player.getUUID();
+        level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
+        changed();
+        tryStartCraft();
+        return leftovers;
+    }
+
+    /// Adds the stack to the orbiting items. Whatever doesn't fit stays in the stack.
     private void addToOrbit(ItemStack stack) {
-        // Primeiro junta a stacks iguais que ja estejam em orbita
+        // First merge with identical stacks that are already in orbit
         for (ItemStack inOrbit : items) {
             if (stack.isEmpty()) return;
             if (ItemStack.isSameItemSameComponents(inOrbit, stack)) {
@@ -137,7 +197,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
                 stack.shrink(moved);
             }
         }
-        // Depois cria uma orbita nova, se ainda houver lugar
+        // Then start a new orbit, if there is still room
         if (!stack.isEmpty() && items.size() < getTier().maxItems) {
             items.add(stack.copy());
             stack.setCount(0);
@@ -156,6 +216,10 @@ public class GravityCoreBlockEntity extends BlockEntity {
         findRecipe().ifPresent(recipe -> {
             craftTime = 0;
             craftTotal = Math.max(1, recipe.value().getTime());
+            upgradeTarget = recipe.value().getUpgradeTier();
+            if (upgradeTarget != null) {
+                level.playSound(null, worldPosition, SoundEvents.BEACON_POWER_SELECT, SoundSource.BLOCKS, 1.5f, 0.5f);
+            }
             changed();
         });
     }
@@ -163,20 +227,27 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void finishCraft() {
         craftTime = 0;
         craftTotal = 0;
+        upgradeTarget = null;
 
-        // Volta a confirmar a receita (os itens podem ter sido retirados entretanto)
+        // Check the recipe again (items may have been taken out in the meantime)
         Optional<RecipeHolder<GravityCoreRecipe>> recipe = findRecipe();
         if (recipe.isPresent()) {
             consume(recipe.get().value());
-            deliver(recipe.get().value().getResult().create());
+            ItemStack result = recipe.get().value().getResult().create();
+
+            if (recipe.get().value().getUpgradeTier() != null) {
+                finishUpgrade(result);
+                return; // the block no longer exists
+            }
+            deliver(result);
             flash();
         }
 
         changed();
-        tryStartCraft(); // se ainda sobrarem itens para outra receita, continua
+        tryStartCraft(); // if the leftover items match another recipe, keep going
     }
 
-    /// Gasta os ingredientes da receita.
+    /// Uses up the ingredients of the recipe.
     private void consume(GravityCoreRecipe recipe) {
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
             int missing = part.count();
@@ -192,10 +263,48 @@ public class GravityCoreBlockEntity extends BlockEntity {
         items.removeIf(ItemStack::isEmpty);
     }
 
-    // ---------------------------------------------------------------- entregar o resultado
+    // ---------------------------------------------------------------- upgrades
 
-    /// Jogador -> vai para o inventario (se estiver cheio, cai a frente dele).
-    /// Maquina -> vai para o inventario por baixo do nucleo (funil, bau...) ou salta para cima do nucleo.
+    /// Special effects while the core is upgrading: sparks around the sphere and a rising hum.
+    private void upgradeEffects() {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        Vec3 c = center();
+        float progress = (float) craftTime / craftTotal;
+        double r = getTier().coreSize / 2 + 0.3;
+
+        if (craftTime % 2 == 0) {
+            serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK, c.x, c.y, c.z, 4, r, r, r, 0.05);
+            serverLevel.sendParticles(ParticleTypes.REVERSE_PORTAL, c.x, c.y, c.z, 6, r, r, r, 0.02);
+        }
+        if (craftTime % 20 == 0) {
+            // The sound gets higher as the upgrade gets closer to the end
+            level.playSound(null, worldPosition, SoundEvents.BEACON_AMBIENT, SoundSource.BLOCKS, 1.5f, 0.6f + progress);
+        }
+    }
+
+    /// End of an upgrade: big flash, then the core drops itself on the ground as the new tier.
+    private void finishUpgrade(ItemStack upgradedCore) {
+        Vec3 c = center();
+        if (level instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.EXPLOSION, c.x, c.y, c.z, 3, 0.4, 0.4, 0.4, 0);
+            serverLevel.sendParticles(ParticleTypes.END_ROD, c.x, c.y, c.z, 80, 0.3, 0.3, 0.3, 0.3);
+        }
+        level.playSound(null, worldPosition, SoundEvents.END_PORTAL_SPAWN, SoundSource.BLOCKS, 0.6f, 1.5f);
+
+        // Items that were orbiting but not used drop on the ground too
+        for (ItemStack stack : items) {
+            spawnItem(stack, c);
+        }
+        items.clear();
+
+        spawnItem(upgradedCore, c);
+        level.removeBlock(worldPosition, false);
+    }
+
+    // ---------------------------------------------------------------- delivering the result
+
+    /// Player -> goes to the player's inventory (if it's full, it drops in front of the player).
+    /// Machine -> goes to the inventory under the core (hopper, chest...) or pops out on top of the core.
     private void deliver(ItemStack result) {
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
@@ -212,25 +321,28 @@ public class GravityCoreBlockEntity extends BlockEntity {
             result = ItemUtil.insertItemReturnRemaining(below, result, false, null);
         }
         if (!result.isEmpty()) {
-            ItemEntity entity = new ItemEntity(level,
-                    worldPosition.getX() + 0.5, worldPosition.getY() + 0.5 + getTier().coreSize / 2 + 0.3, worldPosition.getZ() + 0.5,
-                    result, 0, 0.3, 0);
-            entity.addTag(CRAFTED_TAG);
-            level.addFreshEntity(entity);
+            Vec3 c = center();
+            spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));
         }
     }
 
-    /// A "mini supernova" no fim do colapso.
+    /// Spawns an item that jumps up a little. It is tagged so the cores don't capture it again.
+    private void spawnItem(ItemStack stack, Vec3 pos) {
+        ItemEntity entity = new ItemEntity(level, pos.x, pos.y, pos.z, stack, 0, 0.3, 0);
+        entity.addTag(CRAFTED_TAG);
+        level.addFreshEntity(entity);
+    }
+
+    /// The "mini supernova" at the end of a normal collapse.
     private void flash() {
+        Vec3 c = center();
         if (level instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.END_ROD,
-                    worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5,
-                    40, 0.2, 0.2, 0.2, 0.25);
+            serverLevel.sendParticles(ParticleTypes.END_ROD, c.x, c.y, c.z, 40, 0.2, 0.2, 0.2, 0.25);
         }
         level.playSound(null, worldPosition, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 1f, 1.5f);
     }
 
-    /// Clique com a mao vazia: devolve ao jogador tudo o que esta em orbita e cancela o colapso.
+    /// Right-click with an empty hand: gives every orbiting item back to the player and cancels the collapse.
     public void giveItemsBack(Player player) {
         for (ItemStack stack : items) {
             player.getInventory().add(stack);
@@ -242,22 +354,23 @@ public class GravityCoreBlockEntity extends BlockEntity {
         items.clear();
         craftTime = 0;
         craftTotal = 0;
+        upgradeTarget = null;
         changed();
     }
 
-    /// Quando o bloco e partido, larga os itens que estavam em orbita.
+    /// When the block is broken, the orbiting items drop on the ground.
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
         for (ItemStack stack : items) {
-            Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack);
+            spawnItem(stack, center());
         }
         items.clear();
     }
 
-    // ---------------------------------------------------------------- guardar e sincronizar
+    // ---------------------------------------------------------------- saving and syncing
 
-    /// Guarda as alteracoes e envia-as para os clientes (para o renderer as desenhar).
+    /// Saves the changes and sends them to the clients (so the renderer can draw them).
     private void changed() {
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -270,6 +383,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         output.storeNullable("owner", UUIDUtil.CODEC, owner);
         output.putInt("craft_time", craftTime);
         output.putInt("craft_total", craftTotal);
+        output.storeNullable("upgrade_target", CoreTier.CODEC, upgradeTarget);
     }
 
     @Override
@@ -280,6 +394,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         owner = input.read("owner", UUIDUtil.CODEC).orElse(null);
         craftTime = input.getIntOr("craft_time", 0);
         craftTotal = input.getIntOr("craft_total", 0);
+        upgradeTarget = input.read("upgrade_target", CoreTier.CODEC).orElse(null);
     }
 
     @Override

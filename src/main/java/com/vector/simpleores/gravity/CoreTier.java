@@ -1,43 +1,61 @@
 package com.vector.simpleores.gravity;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.util.StringRepresentable;
 
-/// Os 4 niveis (tiers) do Nucleo Gravitacional.
-/// Para mudar o aspeto ou o comportamento de um tier, basta mudar os numeros aqui.
+/// The 4 tiers (levels) of the Gravity Core.
+/// To change how a tier looks or behaves, just change the numbers here.
 ///
-/// Cores: formato 0xAARRGGBB (AA = transparencia, FF = opaco).
+/// Colors use the format 0xAARRGGBB:
+///   AA = alpha (FF = solid, 00 = invisible), RR = red, GG = green, BB = blue.
+///   Use 0x00000000 to turn a feature off (e.g. a tier without an accretion disk).
 public enum CoreTier implements StringRepresentable {
-    //          nome          nivel  cor do nucleo  cor do brilho  tamanho  raio orbita  velocidade  max itens  luz
-    SUN(        "sun",        1,     0xFFFFD34D,    0xFFFF8A00,    1.0f,    1.2f,        1.0f,       6,         15),
-    RED_GIANT(  "red_giant",  2,     0xFFC62A12,    0xFFFF4A1C,    1.3f,    1.4f,        0.7f,       9,         12),
-    PULSAR(     "pulsar",     3,     0xFFEAF6FF,    0xFF2E9BFF,    1.6f,    1.6f,        3.0f,       12,        15),
-    BLACK_HOLE( "black_hole", 4,     0xFF000000,    0xFF8A2BE2,    2.0f,    1.9f,        2.0f,       16,        4);
+    //          id                level       core color           spot color           glow color            disk color           beam color           size           orbit radius    orbit speed    max items   light
+    SUN(        "sun",        1,     0xFFFFE27A, 0xFFFF8C1A, 0xFFFFA238, 0x00000000, 0x00000000, 1.5f, 1.7f, 0.8f, 6, 15),
 
-    /// Nome usado nos IDs (ex: "gravity_core_sun").
+    RED_GIANT(  "red_giant",  2,     0xFFE8501E, 0xFF8E1606, 0xFFFF5A1F, 0x00000000, 0x00000000, 1.8f, 1.9f, 0.5f, 9, 12),
+
+    PULSAR(     "pulsar",     3,     0xFFF5FBFF, 0xFF8FCBFF, 0xFF3D8BFF, 0x00000000, 0xFFCDEBFF, 2.1f, 2.1f, 2.0f, 12, 15),
+
+    BLACK_HOLE( "black_hole", 4,     0xFF000000, 0xFF050208, 0xFF1B0B2E, 0xFFFFB04A, 0x00000000, 2.5f, 2.4f, 1.0f, 16, 4);
+
+    /// Reads/writes a tier by its id (used to save it and to send it to the client).
+    public static final Codec<CoreTier> CODEC = StringRepresentable.fromEnum(CoreTier::values);
+
+    /// Name used in the block IDs (e.g. "gravity_core_sun").
     public final String id;
-    /// Nivel do tier. Uma receita com "tier": 2 so funciona em nucleos de nivel 2 ou superior.
+    /// Tier level. A recipe with "tier": 2 only works in cores of level 2 or higher.
     public final int level;
-    /// Cor da esfera do nucleo.
+    /// Main color of the sphere.
     public final int coreColor;
-    /// Cor da "aura" transparente a volta do nucleo.
+    /// Second color of the sphere, used for the moving "spots" on its surface.
+    public final int spotColor;
+    /// Color of the transparent glow (corona) around the sphere.
     public final int glowColor;
-    /// Diametro da esfera em blocos (1.0 = um bloco inteiro).
+    /// Color of the accretion disk (the flat glowing ring). 0x00000000 = no disk.
+    public final int diskColor;
+    /// Color of the light beams coming out of the poles. 0x00000000 = no beams.
+    public final int beamColor;
+    /// Diameter of the sphere in blocks (1.0 = one full block).
     public final float coreSize;
-    /// Distancia (em blocos) entre o centro do nucleo e os itens em orbita.
+    /// Distance (in blocks) from the center of the sphere to the orbiting items.
     public final float orbitRadius;
-    /// Velocidade da orbita (1.0 = normal, 2.0 = o dobro).
+    /// Orbit speed (1.0 = normal, 2.0 = twice as fast).
     public final float orbitSpeed;
-    /// Quantos tipos de itens diferentes podem estar em orbita ao mesmo tempo.
+    /// How many different item stacks can orbit at the same time.
     public final int maxItems;
-    /// Luz emitida pelo bloco (0 a 15).
+    /// Light emitted by the block (0 to 15).
     public final int light;
 
-    CoreTier(String id, int level, int coreColor, int glowColor, float coreSize, float orbitRadius,
-             float orbitSpeed, int maxItems, int light) {
+    CoreTier(String id, int level, int coreColor, int spotColor, int glowColor, int diskColor, int beamColor,
+             float coreSize, float orbitRadius, float orbitSpeed, int maxItems, int light) {
         this.id = id;
         this.level = level;
         this.coreColor = coreColor;
+        this.spotColor = spotColor;
         this.glowColor = glowColor;
+        this.diskColor = diskColor;
+        this.beamColor = beamColor;
         this.coreSize = coreSize;
         this.orbitRadius = orbitRadius;
         this.orbitSpeed = orbitSpeed;

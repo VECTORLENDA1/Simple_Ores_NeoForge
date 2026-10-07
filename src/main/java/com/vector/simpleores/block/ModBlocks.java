@@ -91,7 +91,7 @@ public class ModBlocks {
 
 
     //Entity Blocks
-    // (As 3 crafting tables estao DESATIVADAS: continuam registadas, mas sem receita e fora do menu criativo)
+    // (The 3 crafting tables are DISABLED: still registered, but with no recipe and hidden from the creative tab)
     public static final DeferredBlock<Block> SIMPLE_CRAFTING_TABLE = registerBlockItem("simple_crafting_table", SimpleCraftingTable::new,
             () -> BlockBehaviour.Properties.of().strength(2.5f,10)
                     .requiresCorrectToolForDrops().sound(SoundType.METAL));
@@ -104,13 +104,13 @@ public class ModBlocks {
             () -> BlockBehaviour.Properties.of().strength(2.5f,10)
                     .requiresCorrectToolForDrops().sound(SoundType.METAL));
 
-    //Nucleos Gravitacionais (um por tier)
+    //Gravity Cores (one per tier)
     public static final DeferredBlock<Block> GRAVITY_CORE_SUN = registerGravityCore(CoreTier.SUN);
     public static final DeferredBlock<Block> GRAVITY_CORE_RED_GIANT = registerGravityCore(CoreTier.RED_GIANT);
     public static final DeferredBlock<Block> GRAVITY_CORE_PULSAR = registerGravityCore(CoreTier.PULSAR);
     public static final DeferredBlock<Block> GRAVITY_CORE_BLACK_HOLE = registerGravityCore(CoreTier.BLACK_HOLE);
 
-    // Cria o bloco "gravity_core_<tier>" (ex: gravity_core_sun)
+    // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun)
     private static DeferredBlock<Block> registerGravityCore(CoreTier tier) {
         return registerBlockItem("gravity_core_" + tier.id, properties -> new GravityCoreBlock(tier, properties),
                 () -> BlockBehaviour.Properties.of().strength(3f, 6).requiresCorrectToolForDrops()
@@ -118,7 +118,7 @@ public class ModBlocks {
     }
 
 
-    // As Properties tem de ter o ID do bloco: registerBlock(...) trata disso automaticamente
+    // The Properties must contain the block ID: registerBlock(...) takes care of that automatically
     public static <T extends Block> DeferredBlock<T> registerBlockItem(String name, Function<BlockBehaviour.Properties, T> block,
                                                                        Supplier<BlockBehaviour.Properties> properties) {
         DeferredBlock<T> toReturn = BLOCKS.registerBlock(name, block, properties);

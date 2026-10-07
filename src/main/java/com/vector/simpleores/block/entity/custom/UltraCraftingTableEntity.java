@@ -141,7 +141,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
 
     private Optional<RecipeHolder<CraftingRecipe>> findVanillaRecipe() {
         clearVanillaCache();
-        // O RecipeManager so existe no servidor (desde a 1.21.2 o cliente nao o tem).
+        // The RecipeManager only exists on the server (since 1.21.2 the client doesn't have it).
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
 
         // Compute tight bounding box of non-empty inputs in the 7x7 grid
@@ -172,7 +172,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
                 .getRecipeFor(RecipeType.CRAFTING, input, serverLevel);
         if (opt.isPresent()) {
             lastVanillaRecipe = opt.get();
-            // getResultItem(RegistryAccess) foi removido; o resultado obtem-se com assemble(input)
+            // getResultItem(RegistryAccess) was removed; the result now comes from assemble(input)
             lastVanillaResult = opt.get().value().assemble(input);
             lastVanillaMinX = minX;
             lastVanillaMinY = minY;
@@ -276,8 +276,8 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         updateResult(0);
     }
 
-    // saveAdditional/loadAdditional usam agora ValueOutput/ValueInput (em vez de CompoundTag + Provider)
-    // e o inventario serializa-se com serialize()/deserialize().
+    // saveAdditional/loadAdditional now use ValueOutput/ValueInput (instead of CompoundTag + Provider)
+    // and the inventory is saved with serialize()/deserialize().
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
@@ -290,7 +290,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
         input.child("inventory").ifPresent(itemHandler::deserialize);
     }
 
-    // Substitui o antigo onRemove() do bloco: larga o conteudo quando o bloco e removido.
+    // Replaces the block's old onRemove(): drops the contents when the block is removed.
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
@@ -314,7 +314,7 @@ public class UltraCraftingTableEntity extends BlockEntity implements MenuProvide
     }
 
     public Optional<RecipeHolder<UltraCraftingTableRecipe>> getCurrentRecipe() {
-        // Receitas so existem no servidor (ServerLevel#recipeAccess)
+        // Recipes only exist on the server (ServerLevel#recipeAccess)
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
         return serverLevel.recipeAccess()
                 .getRecipeFor(ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get(),

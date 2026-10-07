@@ -12,7 +12,7 @@ public class AtomicCraftingTableScreen extends AbstractContainerScreen<AtomicCra
             Identifier.fromNamespaceAndPath("simpleores","textures/gui/atomic_crafting_table/atomic_crafting_table_gui.png");
 
     public AtomicCraftingTableScreen(AtomicCraftingTableMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
-        // imageWidth/imageHeight agora sao final e passam-se no construtor
+        // imageWidth/imageHeight are now final and are passed in the constructor
         super(pMenu, pPlayerInventory, pTitle, 249, 279);
     }
 
@@ -23,7 +23,7 @@ public class AtomicCraftingTableScreen extends AbstractContainerScreen<AtomicCra
         int x = (width - imageWidth) / 2;
         int y = (height - imageHeight) / 2;
 
-        // A textura desta GUI e 512x512, por isso indicamos o tamanho real da textura
+        // This GUI texture is 512x512, so we pass the real texture size
         pGuiGraphics.blit(RenderPipelines.GUI_TEXTURED, GUI_TEXTURE, x, y, 0, 0, imageWidth, imageHeight, 512, 512);
     }
 
@@ -32,7 +32,7 @@ public class AtomicCraftingTableScreen extends AbstractContainerScreen<AtomicCra
         // Player inventory label (bottom left)
         int invX = 44;
         int invY = 185;
-        // As cores de texto agora sao ARGB: sem o 0xFF de alpha o texto fica invisivel
+        // Text colors are now ARGB: without the 0xFF alpha the text is invisible
         pGuiGraphics.text(font, "Inventory", invX, invY, 0xFF404040, false);
 
         // Screen title label (top left), drawn the same way as the inventory label

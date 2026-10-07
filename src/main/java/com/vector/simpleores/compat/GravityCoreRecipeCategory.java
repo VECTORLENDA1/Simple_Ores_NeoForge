@@ -10,25 +10,29 @@ import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import mezz.jei.api.recipe.types.IRecipeType;
+import mezz.jei.api.recipe.types.IRecipeHolderType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-/// Mostra as receitas do Nucleo Gravitacional no JEI:
-/// ingredientes a esquerda, resultado a direita e, por baixo, o tier e o tempo.
-public class GravityCoreRecipeCategory implements IRecipeCategory<GravityCoreRecipe> {
-    public static final IRecipeType<GravityCoreRecipe> RECIPE_TYPE =
-            IRecipeType.create(Identifier.fromNamespaceAndPath("simpleores", "gravity_collapse"), GravityCoreRecipe.class);
+/// Shows the Gravity Core recipes in JEI:
+/// ingredients on the left, result on the right, and the tier and time at the bottom.
+///
+/// The recipes are given to JEI as a RecipeHolder (recipe + its ID). Thanks to the ID,
+/// JEI can show the "Bookmark" button and the "Move Items" button knows which recipe to send.
+public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<GravityCoreRecipe>> {
+    public static final IRecipeHolderType<GravityCoreRecipe> RECIPE_TYPE =
+            IRecipeHolderType.create(Identifier.fromNamespaceAndPath("simpleores", "gravity_collapse"));
 
     private static final int WIDTH = 160;
     private static final int HEIGHT = 66;
-    private static final int COLUMNS = 6; // ingredientes por linha
+    private static final int COLUMNS = 6; // ingredients per row
 
     private final IDrawable icon;
 
@@ -37,7 +41,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<GravityCoreRec
     }
 
     @Override
-    public IRecipeType<GravityCoreRecipe> getRecipeType() {
+    public IRecipeHolderType<GravityCoreRecipe> getRecipeType() {
         return RECIPE_TYPE;
     }
 
@@ -62,11 +66,12 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<GravityCoreRec
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, GravityCoreRecipe recipe, IFocusGroup focuses) {
+    public void setRecipe(IRecipeLayoutBuilder builder, RecipeHolder<GravityCoreRecipe> holder, IFocusGroup focuses) {
+        GravityCoreRecipe recipe = holder.value();
         List<GravityCoreRecipe.Part> parts = recipe.getParts();
         for (int i = 0; i < parts.size(); i++) {
             GravityCoreRecipe.Part part = parts.get(i);
-            // Cada item possivel do ingrediente, ja com a quantidade certa
+            // Every possible item of the ingredient, already with the right amount
             List<ItemStack> stacks = part.item().items().map(item -> new ItemStack(item, part.count())).toList();
             builder.addSlot(RecipeIngredientRole.INPUT, 1 + (i % COLUMNS) * 18, 1 + (i / COLUMNS) * 18)
                     .setStandardSlotBackground()
@@ -79,8 +84,9 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<GravityCoreRec
     }
 
     @Override
-    public void draw(GravityCoreRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
-        // "Tier 2 - 10s" na parte de baixo
+    public void draw(RecipeHolder<GravityCoreRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
+        GravityCoreRecipe recipe = holder.value();
+        // "Tier 2 - 10s" at the bottom
         Component text = Component.translatable("jei.simpleores.gravity_collapse.info", recipe.getTier(), recipe.getTime() / 20f);
         guiGraphics.text(Minecraft.getInstance().font, text, 1, HEIGHT - 9, 0xFF404040, false);
     }

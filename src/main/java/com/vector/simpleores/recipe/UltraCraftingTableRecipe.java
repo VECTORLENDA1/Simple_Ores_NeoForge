@@ -29,7 +29,7 @@ public class UltraCraftingTableRecipe implements Recipe<UltraCraftingTableRecipe
     public static final int WIDTH = 7;
     public static final int HEIGHT = 7;
 
-    // Ingredient.EMPTY ja nao existe: uma posicao vazia do padrao e agora um Optional vazio
+    // Ingredient.EMPTY no longer exists: an empty spot in the pattern is now an empty Optional
     private final List<Optional<Ingredient>> recipeItems;
     private final ItemStackTemplate result;
     private final String[] pattern;
@@ -63,7 +63,7 @@ public class UltraCraftingTableRecipe implements Recipe<UltraCraftingTableRecipe
             ItemStack slotStack = inv.getItem(i);
             Optional<Ingredient> ingredient = recipeItems.get(i);
 
-            // Posicao vazia no padrao exige slot vazio; caso contrario o item tem de corresponder
+            // An empty spot in the pattern needs an empty slot; otherwise the item must match
             boolean ok = ingredient.map(ing -> ing.test(slotStack)).orElse(slotStack.isEmpty());
             if (!ok) {
                 return false;
@@ -89,7 +89,7 @@ public class UltraCraftingTableRecipe implements Recipe<UltraCraftingTableRecipe
         return result.create();
     }
 
-    // Estas receitas nao aparecem no livro de receitas vanilla
+    // These recipes don't show up in the vanilla recipe book
     @Override
     public boolean isSpecial() {
         return true;
@@ -125,7 +125,7 @@ public class UltraCraftingTableRecipe implements Recipe<UltraCraftingTableRecipe
         return ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get();
     }
 
-    // RecipeSerializer passou a ser um record (codec + streamCodec), por isso basta expor os codecs
+    // RecipeSerializer is now a record (codec + streamCodec), so we only need to expose the codecs
     public static final MapCodec<UltraCraftingTableRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
             Codec.STRING.listOf().fieldOf("pattern").forGetter(recipe -> Arrays.asList(recipe.pattern)),
             Codec.unboundedMap(Codec.STRING, Ingredient.CODEC).fieldOf("ingredient")

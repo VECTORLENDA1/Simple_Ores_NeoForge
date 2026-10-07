@@ -5,9 +5,9 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.ItemStacksResourceHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 
-/// Inventario das mesas de crafting, baseado na nova API de transferencia do NeoForge
-/// (substitui o antigo ItemStackHandler, que foi marcado para remocao).
-/// Mantem os metodos que as mesas ja usavam para que a logica de crafting nao precise de mudar.
+/// Inventory of the crafting tables, based on NeoForge's new transfer API
+/// (replaces the old ItemStackHandler, which is marked for removal).
+/// Keeps the methods the tables already used, so the crafting logic doesn't need to change.
 public class CraftingTableItemHandler extends ItemStacksResourceHandler {
     public CraftingTableItemHandler(int size) {
         super(size);
@@ -17,7 +17,7 @@ public class CraftingTableItemHandler extends ItemStacksResourceHandler {
         return size();
     }
 
-    /// Devolve uma copia: para alterar o conteudo usa setStackInSlot/extractItem.
+    /// Returns a copy: to change the contents use setStackInSlot/extractItem.
     public ItemStack getStackInSlot(int slot) {
         return getResource(slot).toStack(getAmountAsInt(slot));
     }
@@ -30,7 +30,7 @@ public class CraftingTableItemHandler extends ItemStacksResourceHandler {
         ItemResource resource = getResource(slot);
         if (resource.isEmpty() || amount <= 0) return ItemStack.EMPTY;
 
-        // Todas as alteracoes na nova API passam por uma transacao, que so e aplicada no commit()
+        // Every change in the new API goes through a transaction, which is only applied on commit()
         try (Transaction tx = Transaction.openRoot()) {
             int extracted = extract(slot, resource, amount, tx);
             tx.commit();

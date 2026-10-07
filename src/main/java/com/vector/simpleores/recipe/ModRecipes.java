@@ -46,7 +46,7 @@ public class ModRecipes {
                     return "atomic_crafting_table";
                 }
             });
-    // Receitas do Nucleo Gravitacional ("type": "simpleores:gravity_collapse")
+    // Gravity Core recipes ("type": "simpleores:gravity_collapse")
     public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_COLLAPSE_SERIALIZER =
             SERIALIZERS.register("gravity_collapse", () -> new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
     public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_COLLAPSE_TYPE =

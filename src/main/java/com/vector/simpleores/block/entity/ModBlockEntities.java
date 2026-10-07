@@ -28,7 +28,7 @@ public static final Supplier<BlockEntityType<SimpleCraftingTableEntity>> SIMPLE_
             BLOCK_ENTITIES.register("atomic_crafting_table_be", () -> new BlockEntityType<>(
                     AtomicCraftingTableEntity::new, ModBlocks.ATOMIC_CRAFTING_TABLE.get()));
 
-    // Uma so block entity para os 4 nucleos
+    // A single block entity for the 4 cores
     public static final Supplier<BlockEntityType<GravityCoreBlockEntity>> GRAVITY_CORE_BE =
             BLOCK_ENTITIES.register("gravity_core_be", () -> new BlockEntityType<>(
                     GravityCoreBlockEntity::new,

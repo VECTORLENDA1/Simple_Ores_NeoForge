@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.vector.simpleores.SimpleOres;
+import com.vector.simpleores.screen.CoreSelectionBar;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -183,6 +184,9 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     /// is exactly what the player can click.
     private void drawBar(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
         Vec3 barCenter = new Vec3(state.blockPos.getX() + 0.5, state.blockPos.getY() + state.barHeight, state.blockPos.getZ() + 0.5);
+        // Fades out with the distance (see CoreSelectionBar.FADE_START / FADE_END)
+        float fade = CoreSelectionBar.visibility(camera.pos.distanceTo(barCenter));
+        if (fade <= 0) return;
         float yaw = CoreSelectionBar.yawTowards(barCenter, camera.pos);
         int count = state.barItems.size();
         float half = CoreSelectionBar.SLOT / 2;
@@ -195,37 +199,44 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
 
         collector.submitCustomGeometry(pose, BAR_TYPE, (p, v) -> {
             // Dark background behind every slot
-            quad(p, v, -width / 2 - padding, -half - padding, width / 2 + padding, half + padding, 0, BAR_BACKGROUND);
+            quad(p, v, -width / 2 - padding, -half - padding, width / 2 + padding, half + padding, 0, faded(BAR_BACKGROUND, fade));
 
             for (int i = 0; i < count; i++) {
                 float x = CoreSelectionBar.slotX(i, count);
                 if (i == state.barHovered) {
                     float border = 0.03f;
-                    quad(p, v, x - half - border, -half - border, x + half + border, half + border, 0.005f, SLOT_HOVERED);
+                    quad(p, v, x - half - border, -half - border, x + half + border, half + border, 0.005f, faded(SLOT_HOVERED, fade));
                 }
                 int color = state.barPicked ? SLOT_PICKED : state.barComplete.get(i) ? SLOT_COMPLETE : SLOT_MISSING;
-                quad(p, v, x - half, -half, x + half, half, 0.01f, color);
+                quad(p, v, x - half, -half, x + half, half, 0.01f, faded(color, fade));
             }
 
             // "..." outside the bar when there are more recipes on that side
             float dot = 0.035f;
             for (int k = 0; k < 3; k++) {
                 float offset = width / 2 + padding + 0.06f + k * 0.07f;
-                if (state.barMoreRight) quad(p, v, offset, -dot, offset + 2 * dot, dot, 0.01f, BAR_DOTS);
-                if (state.barMoreLeft) quad(p, v, -offset - 2 * dot, -dot, -offset, dot, 0.01f, BAR_DOTS);
+                if (state.barMoreRight) quad(p, v, offset, -dot, offset + 2 * dot, dot, 0.01f, faded(BAR_DOTS, fade));
+                if (state.barMoreLeft) quad(p, v, -offset - 2 * dot, -dot, -offset, dot, 0.01f, faded(BAR_DOTS, fade));
             }
         });
 
-        // The result of each recipe, in front of its slot
+        // The result of each recipe, in front of its slot.
+        // Items can't be transparent, so they shrink away instead while the bar fades.
+        float itemScale = BAR_ITEM_SCALE * fade;
         for (int i = 0; i < count; i++) {
             pose.pushPose();
             pose.translate(CoreSelectionBar.slotX(i, count), 0, 0.04);
-            pose.scale(BAR_ITEM_SCALE, BAR_ITEM_SCALE, BAR_ITEM_SCALE);
+            pose.scale(itemScale, itemScale, itemScale);
             state.barItems.get(i).submit(pose, collector, CoreDrawing.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
             pose.popPose();
         }
 
         pose.popPose();
+    }
+
+    /// The color with its transparency multiplied by "fade" (1 = unchanged, 0 = invisible).
+    private static int faded(int color, float fade) {
+        return ARGB.color(Math.round(ARGB.alpha(color) * fade), color);
     }
 
     /// A flat rectangle facing +Z (towards the viewer), from (x1, y1) to (x2, y2).

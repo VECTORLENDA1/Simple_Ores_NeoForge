@@ -1,11 +1,14 @@
-package com.vector.simpleores.gravitycraft;
+package com.vector.simpleores.screen;
 
 import com.vector.simpleores.SimpleOres;
+import com.vector.simpleores.gravitycraft.CoreCandidate;
+import com.vector.simpleores.gravitycraft.CoreTier;
+import com.vector.simpleores.gravitycraft.GravityCoreBlockEntity;
+import com.vector.simpleores.gravitycraft.SelectCoreRecipe;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -25,8 +28,8 @@ import java.util.Optional;
 /// The selection bar that floats above a Gravity Core (client side only).
 ///
 /// When the orbiting items fit more than one recipe, the bar shows the possible results
-/// (up to VISIBLE at a time) and always turns to face the player:
-///  - look at a recipe: it lights up and the action bar shows what it needs (green = done, red = missing);
+/// (up to VISIBLE at a time), always turns to face the player and fades out with the distance:
+///  - look at a recipe: it lights up and the action bar says how to pick it;
 ///  - right-click: picks that recipe (right-click it again to unpick it);
 ///  - mouse wheel: scrolls when there are more than VISIBLE recipes ("..." at the ends of the bar);
 ///  - throw more items: only the recipes that use all of them stay in the bar.
@@ -42,8 +45,10 @@ public class CoreSelectionBar {
     public static final float GAP = 0.06f;
     /// Height of the bar above the top of the sphere (in blocks).
     public static final float HEIGHT_ABOVE_CORE = 0.45f;
-    /// How far (in blocks) the player can be to use the bar.
-    public static final double REACH = 6;
+    /// The bar starts to fade out when the player is farther than FADE_START blocks
+    /// and disappears completely at FADE_END blocks (it can't be clicked when it's invisible).
+    public static final float FADE_START = 3;
+    public static final float FADE_END = 4;
     /// How far around the player the client looks for cores with a bar.
     private static final int SEARCH = 6;
 
@@ -80,6 +85,11 @@ public class CoreSelectionBar {
         return -barWidth(count) / 2 + SLOT / 2 + index * (SLOT + GAP);
     }
 
+    /// How visible the bar is for a viewer at this distance: 1 = fully visible, 0 = invisible.
+    public static float visibility(double distance) {
+        return Mth.clamp((float) ((FADE_END - distance) / (FADE_END - FADE_START)), 0, 1);
+    }
+
     /// Angle (around the vertical axis) that makes the bar face the viewer.
     public static float yawTowards(Vec3 barCenter, Vec3 viewer) {
         return (float) Mth.atan2(viewer.x - barCenter.x, viewer.z - barCenter.z);
@@ -99,6 +109,7 @@ public class CoreSelectionBar {
     /// Which slot (0 = first visible one) the line from "eye" in direction "look" hits. -1 = none.
     private static int slotHit(GravityCoreBlockEntity core, int count, Vec3 eye, Vec3 look) {
         Vec3 center = barCenter(core.getBlockPos(), core.getTier());
+        if (eye.distanceTo(center) >= FADE_END) return -1; // the bar is invisible from here
         double dx = eye.x - center.x;
         double dz = eye.z - center.z;
         double length = Math.sqrt(dx * dx + dz * dz);
@@ -111,7 +122,7 @@ public class CoreSelectionBar {
         if (facing >= -1.0E-4) return -1; // looking away from the bar
 
         double distance = ((center.x - eye.x) * sin + (center.z - eye.z) * cos) / facing;
-        if (distance < 0 || distance > REACH) return -1;
+        if (distance < 0) return -1;
 
         Vec3 hit = eye.add(look.scale(distance));
         double x = (hit.x - center.x) * cos - (hit.z - center.z) * sin; // to the right of the player = positive
@@ -157,7 +168,7 @@ public class CoreSelectionBar {
             }
         }
 
-        // Shows what the recipe needs (refreshed every half second, because items keep arriving)
+        // Shows the hint in the action bar (refreshed every half second so it stays on screen)
         boolean changed = !Objects.equals(oldCore, hoveredCore) || oldSlot != hoveredSlot;
         if (hoveredCore != null && (changed || ++textTimer >= 10)) {
             textTimer = 0;
@@ -218,10 +229,9 @@ public class CoreSelectionBar {
         return index >= 0 && index < candidates.size() ? candidates.get(index) : null;
     }
 
-    /// Text for the action bar, Right-click to pick".
+    /// Text for the action bar: "Right-click to pick this recipe" / "Right-click to unpick this recipe".
     private static Component describe(CoreCandidate candidate, boolean picked) {
-        MutableComponent text = Component.empty();
         String hint = picked ? "gui.simpleores.core_bar.unpick" : "gui.simpleores.core_bar.pick";
-        return text.append(Component.translatable(hint).withStyle(ChatFormatting.GRAY));
+        return Component.translatable(hint).withStyle(ChatFormatting.GRAY);
     }
 }

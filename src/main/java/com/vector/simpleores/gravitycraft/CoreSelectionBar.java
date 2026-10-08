@@ -1,10 +1,6 @@
-package com.vector.simpleores.screen;
+package com.vector.simpleores.gravitycraft;
 
 import com.vector.simpleores.SimpleOres;
-import com.vector.simpleores.gravitycraft.CoreCandidate;
-import com.vector.simpleores.gravitycraft.CoreTier;
-import com.vector.simpleores.gravitycraft.GravityCoreBlockEntity;
-import com.vector.simpleores.gravitycraft.SelectCoreRecipe;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -25,9 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-
-import static java.awt.Color.blue;
-import static java.awt.SystemColor.text;
 
 /// The selection bar that floats above a Gravity Core (client side only).
 ///

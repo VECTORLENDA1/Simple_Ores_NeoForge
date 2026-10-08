@@ -283,30 +283,36 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     // ---------------------------------------------------------------- crafting
 
-    /// Every Gravity Core recipe of the server.
+    /// Every recipe the core can make: the Gravity Core recipes of the server
+    /// plus the vanilla crafting recipes (see VanillaCoreRecipe).
     @SuppressWarnings("unchecked")
     private List<RecipeHolder<GravityCoreRecipe>> allRecipes() {
         if (!(level instanceof ServerLevel serverLevel)) return List.of();
-        return serverLevel.recipeAccess().getRecipes().stream()
-                .filter(holder -> holder.value() instanceof GravityCoreRecipe)
-                .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder)
-                .toList();
+        List<RecipeHolder<GravityCoreRecipe>> recipes = new ArrayList<>();
+        for (RecipeHolder<?> holder : serverLevel.recipeAccess().getRecipes()) {
+            if (holder.value() instanceof GravityCoreRecipe) recipes.add((RecipeHolder<GravityCoreRecipe>) holder);
+        }
+        recipes.addAll(VanillaCoreRecipe.all(serverLevel));
+        return recipes;
     }
 
-    /// Finds a Gravity Core recipe by its ID. Empty if it doesn't exist (anymore).
+    /// Finds a recipe the core can make by its ID (Gravity Core or vanilla). Empty if it doesn't exist (anymore).
     @SuppressWarnings("unchecked")
     private Optional<RecipeHolder<GravityCoreRecipe>> findByKey(ResourceKey<Recipe<?>> key) {
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
+        Optional<RecipeHolder<GravityCoreRecipe>> vanilla = VanillaCoreRecipe.find(serverLevel, key);
+        if (vanilla.isPresent()) return vanilla;
         return serverLevel.recipeAccess().byKey(key)
                 .filter(holder -> holder.value() instanceof GravityCoreRecipe)
                 .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder);
     }
 
-    /// Order of the recipes in the selection bar: core upgrades first, then higher tier recipes,
-    /// then recipes with more ingredients.
+    /// Order of the recipes in the selection bar: Gravity Core recipes before vanilla ones,
+    /// core upgrades first, then higher tier recipes, then recipes with more ingredients.
     private static Comparator<RecipeHolder<GravityCoreRecipe>> priority(int coreTier) {
         return Comparator
-                .comparing((RecipeHolder<GravityCoreRecipe> holder) -> holder.value().getUpgradeTier() != null)
+                .comparing((RecipeHolder<GravityCoreRecipe> holder) -> !(holder.value() instanceof VanillaCoreRecipe))
+                .thenComparing(holder -> holder.value().getUpgradeTier() != null)
                 .thenComparingInt(holder -> holder.value().getTier())
                 .thenComparingInt(holder -> totalIngredientCount(holder.value(), coreTier));
     }
@@ -393,7 +399,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Check the recipe again (items may have been taken out in the meantime)
         Optional<RecipeHolder<GravityCoreRecipe>> recipe = key == null ? Optional.empty() : findByKey(key).filter(this::canCraft);
         if (recipe.isPresent()) {
-            consume(recipe.get().value());
+            List<ItemStack> used = consume(recipe.get().value());
             // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
             ItemStack result = recipe.get().value().createResult(getTier().level);
 
@@ -405,6 +411,12 @@ public class GravityCoreBlockEntity extends BlockEntity {
             while (!result.isEmpty()) {
                 deliver(result.split(result.getMaxStackSize()));
             }
+            // Vanilla recipes give back what stays in the crafting table (e.g. empty buckets)
+            if (recipe.get().value() instanceof VanillaCoreRecipe vanilla) {
+                for (ItemStack remainder : vanilla.remainders(used)) {
+                    deliver(remainder);
+                }
+            }
             flash();
         }
 
@@ -412,8 +424,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
         onItemsChanged();
     }
 
-    /// Uses up the ingredients of the recipe.
-    private void consume(GravityCoreRecipe recipe) {
+    /// Uses up the ingredients of the recipe. Returns the items that were used.
+    private List<ItemStack> consume(GravityCoreRecipe recipe) {
+        List<ItemStack> used = new ArrayList<>();
         int coreTier = getTier().level;
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
             int missing = part.countFor(coreTier);
@@ -421,12 +434,14 @@ public class GravityCoreBlockEntity extends BlockEntity {
                 if (missing <= 0) break;
                 if (part.item().test(stack)) {
                     int taken = Math.min(missing, stack.getCount());
+                    used.add(stack.copyWithCount(taken));
                     stack.shrink(taken);
                     missing -= taken;
                 }
             }
         }
         items.removeIf(ItemStack::isEmpty);
+        return used;
     }
 
     // ---------------------------------------------------------------- upgrades

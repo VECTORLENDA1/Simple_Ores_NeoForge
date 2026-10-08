@@ -3,9 +3,10 @@
   "tier": 1,
   "time_per_tier": [100, 80, 40, 0],
   "ingredients": [
-    {"item": "simpleores:antracite", "count": 9}
+    {"item": "simpleores:antracite_block", "count": 1}
   ],
       "result": {
-        "id": "simpleores:antracite_block", "count": 1
+        "id": "simpleores:antracite", "count": 9
       }
 }
+

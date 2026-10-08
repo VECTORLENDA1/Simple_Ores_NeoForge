@@ -64,8 +64,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         state.progress = core.getCraftProgress(partialTick);
         state.orbitAngle = core.getOrbitAngle(partialTick);
 
-        // During an upgrade the core slowly turns into the next tier: "blend" goes from 0 (old) to 1 (new).
-        // When not upgrading, "from" and "to" are the same tier, so nothing changes.
+        /// During an upgrade the core slowly turns into the next tier: "blend" goes from 0 (old) to 1 (new).
+        /// When not upgrading, "from" and "to" are the same tier, so nothing changes.
         CoreTier from = core.getTier();
         CoreTier to = core.getUpgradeTarget() != null ? core.getUpgradeTarget() : from;
         float blend = state.progress;
@@ -92,7 +92,7 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         float time = state.time;
         float radius = state.radius * (1 + 0.03f * Mth.sin(time * 0.15f)); // the sphere slowly "breathes"
 
-        // Direction from the sphere to the camera: the parts of the sphere facing the camera are brighter
+        /// Direction from the sphere to the camera: the parts of the sphere facing the camera are brighter
         Vec3 center = new Vec3(state.blockPos.getX() + 0.5, state.blockPos.getY() + state.radius, state.blockPos.getZ() + 0.5);
         Vec3 toCamera = camera.pos.subtract(center).normalize();
         CoreDrawing.Shading shading = (p, x, y, z) -> (float) (x * toCamera.x + y * toCamera.y + z * toCamera.z);
@@ -100,12 +100,12 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         pose.pushPose();
         pose.translate(0.5, state.radius, 0.5); // center of the sphere: sitting on top of the block below
 
-        // ---- The star (sphere, glow, disk, beams)
+        /// ---- The star (sphere, glow, disk, beams)
         CoreDrawing.drawStar(pose, collector, radius, time, state.coreColor, state.spotColor, state.glowColor,
                 state.diskColor, state.beamColor, BEAM_LENGTH, shading);
 
-        // ---- Orbiting items, on a slightly tilted ring.
-        // During a collapse they spiral into the center (the speed is handled in GravityCoreBlockEntity).
+        /// ---- Orbiting items, on a slightly tilted ring.
+        /// During a collapse they spiral into the center (the speed is handled in GravityCoreBlockEntity).
         pose.mulPose(Axis.XP.rotationDegrees(ORBIT_TILT));
         int count = state.items.size();
         for (int i = 0; i < count; i++) {

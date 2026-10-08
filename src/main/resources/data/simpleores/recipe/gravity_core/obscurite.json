@@ -1,7 +1,7 @@
 {
   "type": "simpleores:gravity_craft",
   "tier": 4,
-  "time": 200,
+  "time": 50,
   "ingredients": [
     { "item": "simpleores:ignithra", "count": 10 },
     { "item": "simpleores:nexalite", "count": 3 },
@@ -12,6 +12,6 @@
     { "item": "minecraft:netherite_ingot" }
   ],
   "result": {
-    "id": "simpleores:obscurite"
+    "id": "simpleores:obscurite", "count": 1
   }
 }

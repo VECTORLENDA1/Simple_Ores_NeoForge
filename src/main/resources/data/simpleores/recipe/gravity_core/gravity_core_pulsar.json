@@ -1,0 +1,16 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 400,
+  "ingredients": [
+    { "item": "simpleores:antracite_block", "count": 16 },
+    { "item": "simpleores:astralite_block", "count": 4 },
+    { "item": "simpleores:ignithra_block", "count": 16 },
+    { "item": "simpleores:nexalite_block", "count": 4 },
+    { "item": "minecraft:iron_block", "count": 16 },
+    { "item": "minecraft:nether_star", "count": 4 },
+    { "item": "minecraft:diamond", "count": 8 }
+  ],
+  "result": {
+    "id": "simpleores:gravity_core_pulsar" }
+}

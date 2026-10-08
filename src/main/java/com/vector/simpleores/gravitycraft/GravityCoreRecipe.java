@@ -43,6 +43,11 @@ import java.util.List;
 ///
 ///   "count_per_tier": [2, 4, 8, 16]                    <- Sun = 2, Red Giant = 4, Pulsar = 8, Black Hole = 16
 ///
+/// ONLY THE RECIPE'S ITEMS: a recipe only starts when every item orbiting the core is one of its
+/// ingredients (extra amounts of those ingredients are fine; they stay in orbit). Any other item
+/// blocks it. So to build a recipe that shares ingredients with a smaller one, drop one of its
+/// unique items first.
+///
 /// UPGRADE RECIPES: if the result is a Gravity Core (e.g. "simpleores:gravity_core_red_giant"),
 /// the recipe is an upgrade. It only works in a core of exactly that "tier", and instead of
 /// giving an item, the core swallows the ingredients, slowly turns into the new tier and
@@ -149,10 +154,26 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         return getUpgradeTier() != null ? coreTier == tier : coreTier >= tier;
     }
 
-    /// The recipe works if the core has the right tier and there are enough items of every ingredient.
+    /// The recipe works if the core has the right tier, every orbiting item belongs to this
+    /// recipe, and there are enough items of every ingredient.
     @Override
     public boolean matches(Input input, Level level) {
         if (!worksInTier(input.tier())) return false;
+
+        // Every orbiting item must be an ingredient of this recipe. An item it doesn't use
+        // blocks it — this is how a player building a bigger recipe (e.g. an upgrade) stops a
+        // smaller one that shares ingredients from firing halfway through.
+        for (ItemStack stack : input.items()) {
+            if (stack.isEmpty()) continue;
+            boolean used = false;
+            for (Part part : ingredients) {
+                if (part.item().test(stack)) {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) return false;
+        }
 
         for (Part part : ingredients) {
             int found = 0;

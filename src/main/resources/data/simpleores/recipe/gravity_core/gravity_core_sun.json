@@ -2,7 +2,7 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "I": "minecraft:netherite_ingot",
+    "I": "minecraft:lava_bucket",
     "G": "simpleores:ignithra_block",
     "B": "minecraft:nether_star"
   },

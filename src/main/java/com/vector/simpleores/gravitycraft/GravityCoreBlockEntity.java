@@ -31,15 +31,14 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.ItemUtil;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+
+import static java.util.Comparator.comparing;
 
 /// The "brain" of the Gravity Core:
 ///  1. it captures items dropped near the core and puts them in orbit;
-///  2. when the orbiting items match a recipe, the collapse starts;
-///  3. when the collapse ends, it uses up the ingredients and delivers the result.
+///  2. when the orbiting items match a recipe, the Craft starts;
+///  3. when the Craft ends, it uses up the ingredients and delivers the result.
 ///
 /// The orbiting items are only stored here (there is no real physics).
 /// The orbit itself is drawn by GravityCoreRenderer.
@@ -54,7 +53,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Player who threw the last item (receives the result). null = it was a machine.
     @Nullable
     private UUID owner = null;
-    /// Collapse progress. craftTotal = 0 means the core is not collapsing.
+    /// Craft progress. craftTotal = 0 means the core is not crafting.
     private int craftTime = 0;
     private int craftTotal = 0;
     /// Tier the core is turning into during an upgrade. null = not upgrading.
@@ -63,7 +62,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     /// Angle of the orbit, used only by the client for the animation.
     /// Every tick it grows by the current speed, so when the speed changes
-    /// (e.g. during a collapse or an upgrade) the items speed up smoothly instead of jumping.
+    /// (e.g. during a Craft or an upgrade) the items speed up smoothly instead of jumping.
     private float orbitAngle = 0;
     private float prevOrbitAngle = 0;
 
@@ -88,7 +87,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return Mth.lerp(partialTick, prevOrbitAngle, orbitAngle);
     }
 
-    /// How fast the items orbit right now. During a collapse they go up to 5x faster,
+    /// How fast the items orbit right now. During a Craft they go up to 5x faster,
     /// and during an upgrade the speed also slowly changes to the speed of the new tier.
     private float currentOrbitSpeed() {
         float progress = getCraftProgress(0);
@@ -97,7 +96,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return 0.05f * tierSpeed * (1 + 4 * progress);
     }
 
-    /// 0.0 = collapse starting, 1.0 = collapse finished. Also 0 when the core is not collapsing.
+    /// 0.0 = Craft starting, 1.0 = Craft finished. Also 0 when the core is not crafting.
     public float getCraftProgress(float partialTick) {
         if (craftTotal <= 0) return 0;
         return Math.min(1f, (craftTime + partialTick) / craftTotal);
@@ -165,7 +164,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         }
     }
 
-    /// True while the core is collapsing (it doesn't accept new items until it finishes).
+    /// True while the core is crafting (it doesn't accept new items until it finishes).
     public boolean isBusy() {
         return craftTotal > 0;
     }
@@ -206,15 +205,39 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     // ---------------------------------------------------------------- crafting
 
+    @SuppressWarnings("unchecked")
     private Optional<RecipeHolder<GravityCoreRecipe>> findRecipe() {
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
-        GravityCoreRecipe.Input input = new GravityCoreRecipe.Input(items, getTier().level);
-        return serverLevel.recipeAccess().getRecipeFor(ModRecipes.GRAVITY_CRAFT_TYPE.get(), input, serverLevel);
+        int coreTier = getTier().level;
+        GravityCoreRecipe.Input input = new GravityCoreRecipe.Input(items, coreTier);
+
+        return serverLevel.recipeAccess().getRecipes().stream()
+                .filter(holder -> holder.value() instanceof GravityCoreRecipe)
+                .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder)
+                .filter(holder -> holder.value().matches(input, serverLevel))
+                .max(Comparator
+                        .comparing((RecipeHolder<GravityCoreRecipe> holder) -> holder.value().getUpgradeTier() != null)
+                        .thenComparingInt(holder -> holder.value().getTier())
+                        .thenComparingInt(holder -> totalIngredientCount(holder.value(), coreTier)));
     }
 
+    /// Sum of how many items every ingredient of the recipe needs, for the given core tier.
+    private static int totalIngredientCount(GravityCoreRecipe recipe, int coreTier) {
+        int total = 0;
+        for (GravityCoreRecipe.Part part : recipe.getParts()) {
+            total += part.countFor(coreTier);
+        }
+        return total;
+    }
+
+    /// Called whenever the orbiting items change. Starts the craft right away if they match a recipe.
+    /// A recipe only matches when EVERY orbiting item belongs to it (see GravityCoreRecipe.matches),
+    /// so a player building a bigger recipe can block smaller ones just by dropping one of its
+    /// unique items first — no waiting needed.
     private void tryStartCraft() {
         findRecipe().ifPresent(recipe -> {
             craftTime = 0;
+            // The duration can depend on the tier of this core ("time_per_tier" in the recipe)
             craftTotal = Math.max(1, recipe.value().timeFor(getTier().level));
             upgradeTarget = recipe.value().getUpgradeTier();
             if (upgradeTarget != null) {
@@ -338,7 +361,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         level.addFreshEntity(entity);
     }
 
-    /// The "mini supernova" at the end of a normal collapse.
+    /// The "mini supernova" at the end of a normal Craft.
     private void flash() {
         Vec3 c = center();
         if (level instanceof ServerLevel serverLevel) {
@@ -347,7 +370,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         level.playSound(null, worldPosition, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 1f, 1.5f);
     }
 
-    /// Right-click with an empty hand: gives every orbiting item back to the player and cancels the collapse.
+    /// Right-click with an empty hand: gives every orbiting item back to the player and cancels the Craft.
     public void giveItemsBack(Player player) {
         for (ItemStack stack : items) {
             player.getInventory().add(stack);

@@ -45,8 +45,8 @@ import java.util.List;
 ///
 /// ONLY THE RECIPE'S ITEMS: a recipe only starts when every item orbiting the core is one of its
 /// ingredients (extra amounts of those ingredients are fine; they stay in orbit). Any other item
-/// blocks it. So to build a recipe that shares ingredients with a smaller one, drop one of its
-/// unique items first.
+/// blocks it. When the orbiting items fit more than one recipe, the core shows a selection bar
+/// above it and the player picks the recipe with a right-click (see CoreSelectionBar).
 ///
 /// UPGRADE RECIPES: if the result is a Gravity Core (e.g. "simpleores:gravity_core_red_giant"),
 /// the recipe is an upgrade. It only works in a core of exactly that "tier", and instead of
@@ -154,6 +154,33 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         return getUpgradeTier() != null ? coreTier == tier : coreTier >= tier;
     }
 
+    /// True if every given item is an ingredient of this recipe (empty stacks are ignored).
+    /// Used to find which recipes the orbiting items can still become (the selection bar),
+    /// and to refuse items that don't belong to the recipe the player chose.
+    public boolean usesAll(List<ItemStack> items) {
+        for (ItemStack stack : items) {
+            if (!stack.isEmpty() && !uses(stack)) return false;
+        }
+        return true;
+    }
+
+    /// True if the item is one of the ingredients of this recipe.
+    public boolean uses(ItemStack stack) {
+        for (Part part : ingredients) {
+            if (part.item().test(stack)) return true;
+        }
+        return false;
+    }
+
+    /// How many of the given items match this ingredient.
+    public static int countMatching(Part part, List<ItemStack> items) {
+        int found = 0;
+        for (ItemStack stack : items) {
+            if (part.item().test(stack)) found += stack.getCount();
+        }
+        return found;
+    }
+
     /// The recipe works if the core has the right tier, every orbiting item belongs to this
     /// recipe, and there are enough items of every ingredient.
     @Override
@@ -163,24 +190,10 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
         // Every orbiting item must be an ingredient of this recipe. An item it doesn't use
         // blocks it — this is how a player building a bigger recipe (e.g. an upgrade) stops a
         // smaller one that shares ingredients from firing halfway through.
-        for (ItemStack stack : input.items()) {
-            if (stack.isEmpty()) continue;
-            boolean used = false;
-            for (Part part : ingredients) {
-                if (part.item().test(stack)) {
-                    used = true;
-                    break;
-                }
-            }
-            if (!used) return false;
-        }
+        if (!usesAll(input.items())) return false;
 
         for (Part part : ingredients) {
-            int found = 0;
-            for (ItemStack stack : input.items()) {
-                if (part.item().test(stack)) found += stack.getCount();
-            }
-            if (found < part.countFor(input.tier)) return false;
+            if (countMatching(part, input.items()) < part.countFor(input.tier)) return false;
         }
         return true;
     }

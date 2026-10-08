@@ -1,16 +1,18 @@
 package com.vector.simpleores.gravitycraft;
 
+import com.mojang.serialization.Codec;
 import com.vector.simpleores.block.entity.ModBlockEntities;
-import com.vector.simpleores.recipe.ModRecipes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -18,6 +20,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,12 +36,13 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-import static java.util.Comparator.comparing;
-
 /// The "brain" of the Gravity Core:
 ///  1. it captures items dropped near the core and puts them in orbit;
-///  2. when the orbiting items match a recipe, the Craft starts;
-///  3. when the Craft ends, it uses up the ingredients and delivers the result.
+///  2. it works out which recipes the orbiting items can still become (the "candidates"),
+///     which are shown in the selection bar above the core (see CoreSelectionBar);
+///  3. the Craft starts when the recipe the player picked (the "target") is complete,
+///     or by itself when only one recipe is possible and it is complete;
+///  4. when the Craft ends, it uses up the ingredients and delivers the result.
 ///
 /// The orbiting items are only stored here (there is no real physics).
 /// The orbit itself is drawn by GravityCoreRenderer.
@@ -47,6 +51,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
     public static final double CAPTURE_RADIUS = 2.0;
     /// Tag added to items created by a core, so that cores don't capture them again.
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
+    /// Maximum number of candidates sent to the client (the bar scrolls through them).
+    public static final int MAX_CANDIDATES = 50;
+    private static final Codec<ResourceKey<Recipe<?>>> RECIPE_KEY_CODEC = ResourceKey.codec(Registries.RECIPE);
 
     /// Items in orbit.
     private final List<ItemStack> items = new ArrayList<>();
@@ -59,6 +66,18 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Tier the core is turning into during an upgrade. null = not upgrading.
     @Nullable
     private CoreTier upgradeTarget = null;
+    /// Recipe the player picked in the selection bar (or with JEI's "Move Items").
+    /// It stays picked while there are items in orbit; when the orbit is empty it is cleared.
+    @Nullable
+    private ResourceKey<Recipe<?>> target = null;
+    /// Recipe being crafted right now. null = not crafting.
+    @Nullable
+    private ResourceKey<Recipe<?>> crafting = null;
+    /// Recipes the orbiting items can still become, best first. Shown in the selection bar.
+    /// When a target is picked, this only has the target.
+    private final List<CoreCandidate> candidates = new ArrayList<>();
+    /// Server: the candidates must be worked out again (e.g. after the world is loaded).
+    private boolean candidatesOutdated = true;
 
     /// Angle of the orbit, used only by the client for the animation.
     /// Every tick it grows by the current speed, so when the speed changes
@@ -80,6 +99,16 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     public @Nullable CoreTier getUpgradeTarget() {
         return upgradeTarget;
+    }
+
+    /// Recipes shown in the selection bar (synced from the server).
+    public List<CoreCandidate> getCandidates() {
+        return candidates;
+    }
+
+    /// Recipe picked by the player. null = none picked.
+    public @Nullable ResourceKey<Recipe<?>> getTarget() {
+        return target;
     }
 
     /// Orbit angle for this frame (smoothed between the last two ticks).
@@ -119,6 +148,10 @@ public class GravityCoreBlockEntity extends BlockEntity {
             orbitAngle += currentOrbitSpeed();
         }
 
+        if (!level.isClientSide() && candidatesOutdated) {
+            onItemsChanged();
+        }
+
         if (craftTotal > 0) {
             craftTime++;
             // The client only counts the time for the animation; the server makes the decisions
@@ -140,9 +173,23 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void captureItems() {
         AABB area = new AABB(worldPosition).inflate(CAPTURE_RADIUS);
         boolean capturedSomething = false;
+        boolean refusedSomething = false;
 
         for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area)) {
             if (entity.entityTags().contains(CRAFTED_TAG)) continue;
+            Player thrower = entity.getOwner() instanceof Player player ? player : null;
+
+            // An item that doesn't fit the picked recipe (or any recipe together with the orbiting
+            // items) is not captured: it goes back to the player who threw it.
+            // Items thrown by machines just stay on the ground.
+            if (!accepts(entity.getItem())) {
+                if (thrower != null) {
+                    giveToPlayer(thrower, entity.getItem().copy());
+                    entity.discard();
+                    refusedSomething = true;
+                }
+                continue;
+            }
 
             ItemStack stack = entity.getItem().copy();
             int before = stack.getCount();
@@ -151,17 +198,33 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
             capturedSomething = true;
             // Whoever threw the item receives the result. If it wasn't a player (e.g. a dropper), it stays null.
-            owner = entity.getOwner() instanceof Player player ? player.getUUID() : null;
+            owner = thrower != null ? thrower.getUUID() : null;
 
             if (stack.isEmpty()) entity.discard();
             else entity.setItem(stack);
         }
 
+        if (refusedSomething) {
+            level.playSound(null, worldPosition, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 0.5f);
+        }
         if (capturedSomething) {
             level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
-            changed();
-            tryStartCraft();
+            onItemsChanged();
         }
+    }
+
+    /// Can this item join the orbit?
+    ///  - with a picked recipe: only if it is one of its ingredients;
+    ///  - without one: only if at least one recipe uses it together with every orbiting item.
+    private boolean accepts(ItemStack stack) {
+        if (target != null) {
+            return findByKey(target).map(holder -> holder.value().uses(stack)).orElse(true);
+        }
+        List<ItemStack> together = new ArrayList<>(items);
+        together.add(stack);
+        int coreTier = getTier().level;
+        return allRecipes().stream()
+                .anyMatch(holder -> holder.value().worksInTier(coreTier) && holder.value().usesAll(together));
     }
 
     /// True while the core is crafting (it doesn't accept new items until it finishes).
@@ -169,19 +232,34 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return craftTotal > 0;
     }
 
-    /// Used by JEI's "Move Items" button: puts items straight from a player into the orbit.
-    /// Returns whatever didn't fit (it goes back to the player).
-    public List<ItemStack> insertFromPlayer(Player player, List<ItemStack> stacks) {
+    /// Used by JEI's "Move Items" button: puts items straight from a player into the orbit
+    /// and picks the recipe chosen in JEI. Returns whatever didn't fit (it goes back to the player).
+    public List<ItemStack> insertFromPlayer(Player player, List<ItemStack> stacks, RecipeHolder<GravityCoreRecipe> recipe) {
         List<ItemStack> leftovers = new ArrayList<>();
         for (ItemStack stack : stacks) {
             addToOrbit(stack);
             if (!stack.isEmpty()) leftovers.add(stack);
         }
         owner = player.getUUID();
+        target = recipe.id();
         level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
-        changed();
-        tryStartCraft();
+        onItemsChanged();
         return leftovers;
+    }
+
+    /// Called when a player clicks a recipe in the selection bar (see SelectCoreRecipe).
+    /// recipe = null means "unpick" (clicking the recipe that is already picked).
+    public void selectRecipe(Player player, @Nullable ResourceKey<Recipe<?>> recipe) {
+        if (recipe == null) {
+            target = null;
+        } else {
+            // Only recipes shown in the bar can be picked (never trust the client)
+            if (isBusy() || candidates.stream().noneMatch(candidate -> candidate.id().equals(recipe))) return;
+            target = recipe;
+            owner = player.getUUID();
+        }
+        level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, recipe == null ? 0.8f : 1.4f);
+        onItemsChanged();
     }
 
     /// Adds the stack to the orbiting items. Whatever doesn't fit stays in the stack.
@@ -205,20 +283,32 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     // ---------------------------------------------------------------- crafting
 
+    /// Every Gravity Core recipe of the server.
     @SuppressWarnings("unchecked")
-    private Optional<RecipeHolder<GravityCoreRecipe>> findRecipe() {
-        if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
-        int coreTier = getTier().level;
-        GravityCoreRecipe.Input input = new GravityCoreRecipe.Input(items, coreTier);
-
+    private List<RecipeHolder<GravityCoreRecipe>> allRecipes() {
+        if (!(level instanceof ServerLevel serverLevel)) return List.of();
         return serverLevel.recipeAccess().getRecipes().stream()
                 .filter(holder -> holder.value() instanceof GravityCoreRecipe)
                 .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder)
-                .filter(holder -> holder.value().matches(input, serverLevel))
-                .max(Comparator
-                        .comparing((RecipeHolder<GravityCoreRecipe> holder) -> holder.value().getUpgradeTier() != null)
-                        .thenComparingInt(holder -> holder.value().getTier())
-                        .thenComparingInt(holder -> totalIngredientCount(holder.value(), coreTier)));
+                .toList();
+    }
+
+    /// Finds a Gravity Core recipe by its ID. Empty if it doesn't exist (anymore).
+    @SuppressWarnings("unchecked")
+    private Optional<RecipeHolder<GravityCoreRecipe>> findByKey(ResourceKey<Recipe<?>> key) {
+        if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
+        return serverLevel.recipeAccess().byKey(key)
+                .filter(holder -> holder.value() instanceof GravityCoreRecipe)
+                .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder);
+    }
+
+    /// Order of the recipes in the selection bar: core upgrades first, then higher tier recipes,
+    /// then recipes with more ingredients.
+    private static Comparator<RecipeHolder<GravityCoreRecipe>> priority(int coreTier) {
+        return Comparator
+                .comparing((RecipeHolder<GravityCoreRecipe> holder) -> holder.value().getUpgradeTier() != null)
+                .thenComparingInt(holder -> holder.value().getTier())
+                .thenComparingInt(holder -> totalIngredientCount(holder.value(), coreTier));
     }
 
     /// Sum of how many items every ingredient of the recipe needs, for the given core tier.
@@ -230,12 +320,59 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return total;
     }
 
-    /// Called whenever the orbiting items change. Starts the craft right away if they match a recipe.
-    /// A recipe only matches when EVERY orbiting item belongs to it (see GravityCoreRecipe.matches),
-    /// so a player building a bigger recipe can block smaller ones just by dropping one of its
-    /// unique items first — no waiting needed.
+    /// True if the recipe can be crafted with the orbiting items right now.
+    private boolean canCraft(RecipeHolder<GravityCoreRecipe> recipe) {
+        return recipe.value().matches(new GravityCoreRecipe.Input(items, getTier().level), level);
+    }
+
+    /// Called whenever the orbiting items (or the picked recipe) change:
+    /// works out the candidates again, starts the Craft if possible and syncs everything to the clients.
+    private void onItemsChanged() {
+        candidatesOutdated = false;
+        if (items.isEmpty()) target = null; // nothing left in orbit: the picked recipe is cleared
+        updateCandidates();
+        tryStartCraft();
+        changed();
+    }
+
+    /// Works out the recipes the orbiting items can still become (see "candidates").
+    private void updateCandidates() {
+        candidates.clear();
+        if (items.isEmpty()) return;
+        int coreTier = getTier().level;
+
+        if (target != null) {
+            Optional<RecipeHolder<GravityCoreRecipe>> picked = findByKey(target);
+            if (picked.isPresent()) {
+                candidates.add(CoreCandidate.of(picked.get(), items, coreTier));
+                return;
+            }
+            target = null; // the recipe no longer exists (e.g. a datapack was removed)
+        }
+
+        allRecipes().stream()
+                .filter(holder -> holder.value().worksInTier(coreTier) && holder.value().usesAll(items))
+                .sorted(priority(coreTier).reversed())
+                .limit(MAX_CANDIDATES)
+                .forEach(holder -> candidates.add(CoreCandidate.of(holder, items, coreTier)));
+    }
+
+    /// Starts the Craft if:
+    ///  - the player picked a recipe and all its items are orbiting; or
+    ///  - nothing was picked, but only ONE recipe is possible and all its items are orbiting
+    ///    (no doubt about what the player wants, so there's no need to click).
+    /// When more than one recipe is possible, the core waits for the player to pick one.
     private void tryStartCraft() {
-        findRecipe().ifPresent(recipe -> {
+        if (isBusy() || items.isEmpty()) return;
+
+        ResourceKey<Recipe<?>> key = target;
+        if (key == null && candidates.size() == 1 && candidates.get(0).complete()) {
+            key = candidates.get(0).id();
+        }
+        if (key == null) return;
+
+        findByKey(key).filter(this::canCraft).ifPresent(recipe -> {
+            crafting = recipe.id();
             craftTime = 0;
             // The duration can depend on the tier of this core ("time_per_tier" in the recipe)
             craftTotal = Math.max(1, recipe.value().timeFor(getTier().level));
@@ -243,17 +380,18 @@ public class GravityCoreBlockEntity extends BlockEntity {
             if (upgradeTarget != null) {
                 level.playSound(null, worldPosition, SoundEvents.BEACON_POWER_SELECT, SoundSource.BLOCKS, 1.5f, 0.5f);
             }
-            changed();
         });
     }
 
     private void finishCraft() {
+        ResourceKey<Recipe<?>> key = crafting;
+        crafting = null;
         craftTime = 0;
         craftTotal = 0;
         upgradeTarget = null;
 
         // Check the recipe again (items may have been taken out in the meantime)
-        Optional<RecipeHolder<GravityCoreRecipe>> recipe = findRecipe();
+        Optional<RecipeHolder<GravityCoreRecipe>> recipe = key == null ? Optional.empty() : findByKey(key).filter(this::canCraft);
         if (recipe.isPresent()) {
             consume(recipe.get().value());
             // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
@@ -270,8 +408,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
             flash();
         }
 
-        changed();
-        tryStartCraft(); // if the leftover items match another recipe, keep going
+        // If there are still enough items for the same recipe, the next Craft starts right away
+        onItemsChanged();
     }
 
     /// Uses up the ingredients of the recipe.
@@ -336,11 +474,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void deliver(ItemStack result) {
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
-            player.getInventory().add(result);
-            if (!result.isEmpty()) {
-                ItemEntity dropped = player.drop(result, false);
-                if (dropped != null) dropped.addTag(CRAFTED_TAG);
-            }
+            giveToPlayer(player, result);
             return;
         }
 
@@ -361,6 +495,16 @@ public class GravityCoreBlockEntity extends BlockEntity {
         level.addFreshEntity(entity);
     }
 
+    /// Puts the stack in the player's inventory. If it's full, it drops in front of the player
+    /// (tagged, so the cores don't capture it again).
+    private void giveToPlayer(Player player, ItemStack stack) {
+        player.getInventory().add(stack);
+        if (!stack.isEmpty()) {
+            ItemEntity dropped = player.drop(stack, false);
+            if (dropped != null) dropped.addTag(CRAFTED_TAG);
+        }
+    }
+
     /// The "mini supernova" at the end of a normal Craft.
     private void flash() {
         Vec3 c = center();
@@ -370,20 +514,18 @@ public class GravityCoreBlockEntity extends BlockEntity {
         level.playSound(null, worldPosition, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 1f, 1.5f);
     }
 
-    /// Right-click with an empty hand: gives every orbiting item back to the player and cancels the Craft.
+    /// Right-click on the core with an empty hand: gives every orbiting item back to the player,
+    /// cancels the Craft and clears the picked recipe.
     public void giveItemsBack(Player player) {
         for (ItemStack stack : items) {
-            player.getInventory().add(stack);
-            if (!stack.isEmpty()) {
-                ItemEntity dropped = player.drop(stack, false);
-                if (dropped != null) dropped.addTag(CRAFTED_TAG);
-            }
+            giveToPlayer(player, stack);
         }
         items.clear();
+        crafting = null;
         craftTime = 0;
         craftTotal = 0;
         upgradeTarget = null;
-        changed();
+        onItemsChanged(); // also clears the picked recipe and the selection bar
     }
 
     /// When the block is broken, the orbiting items drop on the ground.
@@ -412,6 +554,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
         output.putInt("craft_time", craftTime);
         output.putInt("craft_total", craftTotal);
         output.storeNullable("upgrade_target", CoreTier.CODEC, upgradeTarget);
+        output.storeNullable("target", RECIPE_KEY_CODEC, target);
+        output.storeNullable("crafting", RECIPE_KEY_CODEC, crafting);
+        output.store("candidates", CoreCandidate.CODEC.listOf(), candidates);
     }
 
     @Override
@@ -423,6 +568,11 @@ public class GravityCoreBlockEntity extends BlockEntity {
         craftTime = input.getIntOr("craft_time", 0);
         craftTotal = input.getIntOr("craft_total", 0);
         upgradeTarget = input.read("upgrade_target", CoreTier.CODEC).orElse(null);
+        target = input.read("target", RECIPE_KEY_CODEC).orElse(null);
+        crafting = input.read("crafting", RECIPE_KEY_CODEC).orElse(null);
+        candidates.clear();
+        candidates.addAll(input.read("candidates", CoreCandidate.CODEC.listOf()).orElse(List.of()));
+        candidatesOutdated = true; // the server works them out again on the next tick (recipes may have changed)
     }
 
     @Override

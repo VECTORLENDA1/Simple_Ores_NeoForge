@@ -5,6 +5,7 @@ import com.vector.simpleores.block.entity.ModBlockEntities;
 import com.vector.simpleores.gravitycraft.GravityCoreRenderer;
 import com.vector.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.vector.simpleores.gravitycraft.MoveItemsToCore;
+import com.vector.simpleores.gravitycraft.SelectCoreRecipe;
 import com.vector.simpleores.recipe.ModRecipes;
 import com.vector.simpleores.screen.ModMenuTypes;
 import com.vector.simpleores.screen.custom.AtomicCraftingTableScreen;
@@ -61,7 +62,9 @@ public class SimpleOres {
     // Network messages sent between client and server
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         // JEI "Move Items" button for Gravity Core recipes (client -> server)
-        event.registrar("1").playToServer(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC, MoveItemsToCore::handle);
+        event.registrar("1").playToServer(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC, MoveItemsToCore::handle)
+        // Selection bar above the Gravity Core: the player picked a recipe (client -> server)
+                .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

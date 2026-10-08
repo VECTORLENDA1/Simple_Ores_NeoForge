@@ -50,5 +50,7 @@
   "jei.simpleores.gravity_craft": "Gravitational Craft",
   "jei.simpleores.gravity_craft.info": "Tier %s  -  %ss",
   "jei.simpleores.missing_items": "Missing items",
-  "jei.simpleores.no_core_nearby": "No Gravity Core of the right tier within %s blocks (or it is busy)"
+  "jei.simpleores.no_core_nearby": "No Gravity Core of the right tier within %s blocks (or it is busy)",
+  "gui.simpleores.core_bar.pick": "Right-click to pick this recipe",
+  "gui.simpleores.core_bar.unpick": "Right-click to unpick this recipe"
 }

@@ -27,7 +27,9 @@ import java.util.Optional;
 ///  1. the player opens their inventory, finds a Gravity Core recipe in JEI and clicks "+";
 ///  2. the client sends this message to the server (with the recipe ID);
 ///  3. the server takes the ingredients from the player's inventory and puts them
-///     into the orbit of the nearest Gravity Core (within RANGE blocks).
+///     into the orbit of the nearest Gravity Core (within RANGE blocks);
+///  4. that recipe becomes the core's picked recipe, so it starts right away
+///     (no need to choose it in the selection bar).
 ///
 /// Shift + click moves as many sets of ingredients as the player has (up to MAX_SETS).
 public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) implements CustomPacketPayload {
@@ -51,6 +53,7 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
 
     /// Runs on the server when the message arrives. It checks everything again,
     /// because the server never trusts the client.
+    @SuppressWarnings("unchecked")
     public static void handle(MoveItemsToCore message, IPayloadContext context) {
         Player player = context.player();
         if (!(player.level() instanceof ServerLevel level)) return;
@@ -65,7 +68,8 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
         if (sets <= 0) return;
 
         List<ItemStack> taken = takeFromInventory(player, recipe, sets);
-        for (ItemStack leftover : core.insertFromPlayer(player, taken)) {
+        RecipeHolder<GravityCoreRecipe> gravityHolder = (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder.get();
+        for (ItemStack leftover : core.insertFromPlayer(player, taken, gravityHolder)) {
             player.getInventory().placeItemBackInInventory(leftover);
         }
     }

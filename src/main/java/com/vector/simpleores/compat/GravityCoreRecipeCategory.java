@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 
 /// Shows the Gravity Core recipes in JEI:
 /// ingredients on the left, result on the right, and the tier and time at the bottom.
+/// The bottom line cycles through the tiers once per second (real clock), and the slots cycle
+/// through the amounts of every tier ("count_per_tier"), in the same order.
 ///
 /// The recipes are given to JEI as a RecipeHolder (recipe + its ID). Thanks to the ID,
 /// JEI can show the "Bookmark" button and the "Move Items" button knows which recipe to send.
@@ -70,24 +72,35 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeHolder<GravityCoreRecipe> holder, IFocusGroup focuses) {
         GravityCoreRecipe recipe = holder.value();
+        List<Integer> tiers = tiersOf(recipe);
         List<GravityCoreRecipe.Part> parts = recipe.getParts();
+
+        // Every slot cycles through the tiers in the same order and with the same number of entries,
+        // so JEI always shows the ingredients and the result of the SAME tier at the same time.
+        // Ingredients with several possible items (tags) also cycle through those items inside each tier.
+        int variants = variantsOf(recipe);
+
         for (int i = 0; i < parts.size(); i++) {
             GravityCoreRecipe.Part part = parts.get(i);
-            // Every possible item of the ingredient, already with the right amount
-            List<ItemStack> stacks = part.item().items().map(item -> new ItemStack(item, part.count())).toList();
+            List<ItemStack> options = part.item().items().map(item -> new ItemStack(item, 1)).toList();
+            List<ItemStack> stacks = new ArrayList<>();
+            for (int tier : tiers) {
+                for (int v = 0; v < variants && !options.isEmpty(); v++) {
+                    stacks.add(options.get(v % options.size()).copyWithCount(part.countFor(tier)));
+                }
+            }
             builder.addSlot(RecipeIngredientRole.INPUT, 1 + (i % COLUMNS) * 18, 1 + (i / COLUMNS) * 18)
                     .setStandardSlotBackground()
                     .addItemStacks(stacks);
         }
 
-        // The result. With "count_per_tier" the slot cycles through the amount of every tier.
         List<ItemStack> results = new ArrayList<>();
-        for (CoreTier tier : CoreTier.values()) {
-            if (recipe.worksInTier(tier.level)) results.add(recipe.createResult(tier.level));
+        for (int tier : tiers) {
+            for (int v = 0; v < variants; v++) results.add(recipe.createResult(tier));
         }
         builder.addSlot(RecipeIngredientRole.OUTPUT, 138, 19)
                 .setOutputSlotBackground()
-                .addItemStacks(recipe.getCountPerTier().isEmpty() ? List.of(recipe.createResult(recipe.getTier())) : results);
+                .addItemStacks(results);
     }
 
     @Override
@@ -95,39 +108,36 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         GravityCoreRecipe recipe = holder.value();
         var font = Minecraft.getInstance().font;
 
-        /// Bottom line: "Tier 2 - 4.0s". It cycles through the tiers (like the result slot does)
-        int shownTier = shownTier(recipe, recipeSlotsView);
+        /// Bottom line: "Tier 2 - 4.0s". It cycles through the tiers once per second
+        int shownTier = shownTier(recipe);
         Component text = Component.translatable("jei.simpleores.gravity_craft.info",
                 shownTier, recipe.timeFor(shownTier) / 20f);
         guiGraphics.text(font, text, 1, HEIGHT - 9, 0xFF404040, false);
     }
 
-    /// Which tier the bottom line should show right now.
-    /// If the recipe has "count_per_tier", it follows the amount JEI is showing in the result slot,
-    /// so the text and the slot always match. If several tiers give the same amount (or there is no
-    /// "count_per_tier"), it cycles between the possible tiers once per second, like JEI does.
-    private static int shownTier(GravityCoreRecipe recipe, IRecipeSlotsView slots) {
+    /// How many entries each tier has in the slots: the most possible items of any ingredient (tags), at least 1.
+    private static int variantsOf(GravityCoreRecipe recipe) {
+        int variants = 1;
+        for (GravityCoreRecipe.Part part : recipe.getParts()) {
+            variants = Math.max(variants, (int) part.item().items().count());
+        }
+        return variants;
+    }
+
+    /// Tiers in which the recipe works (e.g. 1, 2, 3, 4 for a tier 1 recipe; only 2 for an upgrade from tier 2).
+    private static List<Integer> tiersOf(GravityCoreRecipe recipe) {
         List<Integer> tiers = new ArrayList<>();
         for (CoreTier tier : CoreTier.values()) {
             if (recipe.worksInTier(tier.level)) tiers.add(tier.level);
         }
-        if (tiers.isEmpty()) return recipe.getTier();
-        if (tiers.size() == 1) return tiers.get(0);
+        if (tiers.isEmpty()) tiers.add(recipe.getTier());
+        return tiers;
+    }
 
-        List<Integer> candidates = tiers;
-        if (!recipe.getCountPerTier().isEmpty()) {
-            Optional<ItemStack> shown = slots.getSlotViews(RecipeIngredientRole.OUTPUT).stream()
-                    .findFirst()
-                    .flatMap(slot -> slot.getDisplayedIngredient(VanillaTypes.ITEM_STACK));
-            if (shown.isPresent()) {
-                int count = shown.get().getCount();
-                List<Integer> matching = tiers.stream()
-                        .filter(tier -> recipe.createResult(tier).getCount() == count)
-                        .toList();
-                if (!matching.isEmpty()) candidates = matching;
-            }
-        }
-        int index = (int) ((System.currentTimeMillis() / 1000) % candidates.size());
-        return candidates.get(index);
+    /// Which tier the bottom line shows right now: it changes every second, using the real clock,
+    /// so it keeps cycling everywhere (recipe screen, bookmarks, inventory, with or without shift).
+    private static int shownTier(GravityCoreRecipe recipe) {
+        List<Integer> tiers = tiersOf(recipe);
+        return tiers.get((int) ((System.currentTimeMillis() / 1000) % tiers.size()));
     }
 }

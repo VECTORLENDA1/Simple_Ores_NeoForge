@@ -1,5 +1,6 @@
 package com.vector.simpleores.compat;
 
+import com.vector.simpleores.gravitycraft.GravityCoreBlockEntity;
 import com.vector.simpleores.gravitycraft.GravityCoreRecipe;
 import com.vector.simpleores.gravitycraft.MoveItemsToCore;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
@@ -28,7 +29,8 @@ import java.util.Optional;
 /// (the real work happens on the server, in MoveItemsToCore).
 ///
 /// Before that, it checks what's missing so JEI can show it:
-///  - missing ingredients are highlighted in red (like normal recipes);
+///  - missing ingredients are highlighted in red (like normal recipes), using the amounts
+///    for the tier of the nearest core;
 ///  - if there is no suitable core nearby, the button shows a message.
 public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
         implements IRecipeTransferHandler<C, RecipeHolder<GravityCoreRecipe>> {
@@ -64,13 +66,18 @@ public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
                                                          boolean maxTransfer, boolean doTransfer) {
         GravityCoreRecipe recipe = holder.value();
 
+        // The amounts can depend on the tier of the core ("count_per_tier"), so first find the core.
+        // Without a core nearby, the amounts of the recipe's own tier are used to mark what's missing.
+        GravityCoreBlockEntity core = MoveItemsToCore.findCore(player, recipe);
+        int coreTier = core != null ? core.getTier().level : recipe.getTier();
+
         // 1. Mark in red the ingredients the player doesn't have enough of.
         //    The JEI input slots are in the same order as the recipe ingredients.
         List<IRecipeSlotView> inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT);
         List<IRecipeSlotView> missing = new ArrayList<>();
         List<GravityCoreRecipe.Part> parts = recipe.getParts();
         for (int i = 0; i < parts.size() && i < inputSlots.size(); i++) {
-            if (MoveItemsToCore.countInInventory(player, parts.get(i)) < parts.get(i).count()) {
+            if (MoveItemsToCore.countInInventory(player, parts.get(i)) < parts.get(i).countFor(coreTier)) {
                 missing.add(inputSlots.get(i));
             }
         }
@@ -79,7 +86,7 @@ public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
         }
 
         // 2. There must be a core nearby that can make this recipe.
-        if (MoveItemsToCore.findCore(player, recipe) == null) {
+        if (core == null) {
             return helper.createUserErrorWithTooltip(Component.translatable("jei.simpleores.no_core_nearby", MoveItemsToCore.RANGE));
         }
 

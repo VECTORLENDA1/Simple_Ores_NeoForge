@@ -64,10 +64,12 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
         GravityCoreBlockEntity core = findCore(player, recipe);
         if (core == null) return;
 
-        int sets = Math.min(setsInInventory(player, recipe), message.moveAll() ? MAX_SETS : 1);
+        // The amounts can depend on the tier of the core ("count_per_tier" in the ingredients)
+        int coreTier = core.getTier().level;
+        int sets = Math.min(setsInInventory(player, recipe, coreTier), message.moveAll() ? MAX_SETS : 1);
         if (sets <= 0) return;
 
-        List<ItemStack> taken = takeFromInventory(player, recipe, sets);
+        List<ItemStack> taken = takeFromInventory(player, recipe, coreTier, sets);
         RecipeHolder<GravityCoreRecipe> gravityHolder = (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder.get();
         for (ItemStack leftover : core.insertFromPlayer(player, taken, gravityHolder)) {
             player.getInventory().placeItemBackInInventory(leftover);
@@ -102,20 +104,23 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
         return count;
     }
 
-    /// How many full sets of ingredients the player has (0 = something is missing).
-    public static int setsInInventory(Player player, GravityCoreRecipe recipe) {
+    /// How many full sets of ingredients (for a core of the given tier) the player has (0 = something is missing).
+    public static int setsInInventory(Player player, GravityCoreRecipe recipe, int coreTier) {
         int sets = Integer.MAX_VALUE;
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            sets = Math.min(sets, countInInventory(player, part) / part.count());
+            int needed = part.countFor(coreTier);
+            if (needed <= 0) continue;
+            sets = Math.min(sets, countInInventory(player, part) / needed);
         }
-        return sets;
+        return sets == Integer.MAX_VALUE ? 0 : sets;
     }
 
-    /// Removes the ingredients for the given number of sets from the player's inventory and returns them.
-    private static List<ItemStack> takeFromInventory(Player player, GravityCoreRecipe recipe, int sets) {
+    /// Removes the ingredients for the given number of sets (for a core of the given tier)
+    /// from the player's inventory and returns them.
+    private static List<ItemStack> takeFromInventory(Player player, GravityCoreRecipe recipe, int coreTier, int sets) {
         List<ItemStack> taken = new ArrayList<>();
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            int missing = part.count() * sets;
+            int missing = part.countFor(coreTier) * sets;
             for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
                 if (missing <= 0) break;
                 if (part.item().test(stack)) {

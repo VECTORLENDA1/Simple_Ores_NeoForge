@@ -1,0 +1,11 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 1,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "simpleores:astralite_block" }
+  ],
+  "result": {
+    "id": "simpleores:astralite", "count": 9
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 4,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "simpleores:obscurite_block" }
+  ],
+  "result": {
+    "id": "simpleores:obscurite", "count": 9
+  }
+}

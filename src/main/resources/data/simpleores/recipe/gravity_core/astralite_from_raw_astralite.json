@@ -1,13 +1,14 @@
 {
   "type": "simpleores:gravity_craft",
+  "experience": 1,
   "tier": 1,
   "time_per_tier": [100, 80, 40, 0],
   "ingredients": [
-    { "item": "simpleores:raw_ignithra", "count_per_tier": [12, 16, 20, 24] },
+    { "item": "simpleores:raw_astralite", "count_per_tier": [12, 16, 20, 24] },
     { "item": "simpleores:antracite" }
   ],
   "result": {
-    "id": "simpleores:ignithra"
+    "id": "simpleores:astralite"
   },
   "count_per_tier": [16, 24, 32, 40]
 }

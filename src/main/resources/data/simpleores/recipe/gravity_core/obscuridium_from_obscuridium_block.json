@@ -1,0 +1,11 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time_per_tier": [100, 80, 60, 0],
+  "ingredients": [
+    { "item": "simpleores:obscuridium_block" }
+  ],
+  "result": {
+    "id": "simpleores:obscuridium", "count": 9
+  }
+}

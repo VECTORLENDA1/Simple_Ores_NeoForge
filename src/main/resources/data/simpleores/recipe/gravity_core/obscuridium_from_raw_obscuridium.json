@@ -1,0 +1,14 @@
+{
+  "type": "simpleores:gravity_craft",
+  "experience": 3,
+  "tier": 3,
+  "time_per_tier": [100, 80, 60, 0],
+  "ingredients": [
+    { "item": "simpleores:raw_obscuridium", "count_per_tier": [2, 4, 6, 8] },
+    { "item": "simpleores:antracite" }
+  ],
+  "result": {
+    "id": "simpleores:obscuridium"
+  },
+  "count_per_tier": [3, 6, 9, 12]
+}

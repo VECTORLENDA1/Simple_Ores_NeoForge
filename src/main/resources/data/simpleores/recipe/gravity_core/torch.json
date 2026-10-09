@@ -1,0 +1,12 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 1,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "simpleores:antracite" },
+    { "item": "minecraft:stick" }
+  ],
+  "result": {
+    "id": "minecraft:torch", "count": 12
+  }
+}

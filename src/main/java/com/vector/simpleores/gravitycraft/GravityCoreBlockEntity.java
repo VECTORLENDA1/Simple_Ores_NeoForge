@@ -48,11 +48,11 @@ import java.util.*;
 /// The orbit itself is drawn by GravityCoreRenderer.
 public class GravityCoreBlockEntity extends BlockEntity {
     /// Distance (in blocks) at which the core captures items.
-    public static final double CAPTURE_RADIUS = 2.0;
+    public static final double CAPTURE_RADIUS = 1.0;
     /// Tag added to items created by a core, so that cores don't capture them again.
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
     /// Maximum number of candidates sent to the client (the bar scrolls through them).
-    public static final int MAX_CANDIDATES = 50;
+    public static final int MAX_CANDIDATES = 20;
     private static final Codec<ResourceKey<Recipe<?>>> RECIPE_KEY_CODEC = ResourceKey.codec(Registries.RECIPE);
 
     /// Items in orbit.

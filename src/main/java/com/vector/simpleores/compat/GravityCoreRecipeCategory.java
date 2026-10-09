@@ -21,12 +21,13 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 
 /// Shows the Gravity Core recipes in JEI:
 /// ingredients on the left, result on the right, and the tier and time at the bottom.
-/// The bottom line cycles through the tiers once per second (real clock), and the slots cycle
-/// through the amounts of every tier ("count_per_tier"), in the same order.
+/// The bottom line cycles through the tiers once per second (real clock), and the amounts drawn on
+/// the slots ("count_per_tier") follow the same clock, so they always belong to the tier shown.
 ///
 /// The recipes are given to JEI as a RecipeHolder (recipe + its ID). Thanks to the ID,
 /// JEI can show the "Bookmark" button and the "Move Items" button knows which recipe to send.
@@ -72,35 +73,46 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeHolder<GravityCoreRecipe> holder, IFocusGroup focuses) {
         GravityCoreRecipe recipe = holder.value();
-        List<Integer> tiers = tiersOf(recipe);
         List<GravityCoreRecipe.Part> parts = recipe.getParts();
 
-        // Every slot cycles through the tiers in the same order and with the same number of entries,
-        // so JEI always shows the ingredients and the result of the SAME tier at the same time.
-        // Ingredients with several possible items (tags) also cycle through those items inside each tier.
-        int variants = variantsOf(recipe);
-
+        // The slots only show the items (amount 1, so JEI draws no number). The amount is drawn on top
+        // by AmountOverlay, following the same clock as the bottom line: JEI stops cycling its slots
+        // while shift is held down, and this way the amounts keep changing with the tier anyway.
         for (int i = 0; i < parts.size(); i++) {
             GravityCoreRecipe.Part part = parts.get(i);
-            List<ItemStack> options = part.item().items().map(item -> new ItemStack(item, 1)).toList();
-            List<ItemStack> stacks = new ArrayList<>();
-            for (int tier : tiers) {
-                for (int v = 0; v < variants && !options.isEmpty(); v++) {
-                    stacks.add(options.get(v % options.size()).copyWithCount(part.countFor(tier)));
-                }
-            }
+            List<ItemStack> stacks = part.item().items().map(item -> new ItemStack(item, 1)).toList();
             builder.addSlot(RecipeIngredientRole.INPUT, 1 + (i % COLUMNS) * 18, 1 + (i / COLUMNS) * 18)
                     .setStandardSlotBackground()
-                    .addItemStacks(stacks);
+                    .addItemStacks(stacks)
+                    .setOverlay(new AmountOverlay(recipe, part::countFor), 0, 0);
         }
 
-        List<ItemStack> results = new ArrayList<>();
-        for (int tier : tiers) {
-            for (int v = 0; v < variants; v++) results.add(recipe.createResult(tier));
-        }
         builder.addSlot(RecipeIngredientRole.OUTPUT, 138, 19)
-                .setOutputSlotBackground()
-                .addItemStacks(results);
+                .setOutputSlotBackground().add(recipe.createResult(recipe.getTier()).copyWithCount(1))
+                .setOverlay(new AmountOverlay(recipe, tier -> recipe.createResult(tier).getCount()), 0, 0);
+    }
+
+    /// Draws the amount of a slot (bottom right, like Minecraft does) for the tier the bottom line shows.
+    /// Nothing is drawn when the amount is 1, also like Minecraft.
+    private record AmountOverlay(GravityCoreRecipe recipe, IntUnaryOperator amountForTier) implements IDrawable {
+        @Override
+        public int getWidth() {
+            return 16;
+        }
+
+        @Override
+        public int getHeight() {
+            return 16;
+        }
+
+        @Override
+        public void draw(GuiGraphicsExtractor guiGraphics, int xOffset, int yOffset) {
+            int amount = amountForTier.applyAsInt(shownTier(recipe));
+            if (amount == 1) return;
+            var font = Minecraft.getInstance().font;
+            String text = String.valueOf(amount);
+            guiGraphics.text(font, Component.literal(text), xOffset + 17 - font.width(text), yOffset + 9, 0xFFFFFFFF, true);
+        }
     }
 
     @Override
@@ -113,15 +125,6 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         Component text = Component.translatable("jei.simpleores.gravity_craft.info",
                 shownTier, recipe.timeFor(shownTier) / 20f);
         guiGraphics.text(font, text, 1, HEIGHT - 9, 0xFF404040, false);
-    }
-
-    /// How many entries each tier has in the slots: the most possible items of any ingredient (tags), at least 1.
-    private static int variantsOf(GravityCoreRecipe recipe) {
-        int variants = 1;
-        for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            variants = Math.max(variants, (int) part.item().items().count());
-        }
-        return variants;
     }
 
     /// Tiers in which the recipe works (e.g. 1, 2, 3, 4 for a tier 1 recipe; only 2 for an upgrade from tier 2).

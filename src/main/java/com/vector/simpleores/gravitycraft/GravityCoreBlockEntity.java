@@ -35,6 +35,7 @@ import net.neoforged.neoforge.transfer.item.ItemUtil;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 /// The "brain" of the Gravity Core:
 ///  1. it captures items dropped near the core and puts them in orbit;
@@ -48,9 +49,11 @@ import java.util.*;
 /// The orbit itself is drawn by GravityCoreRenderer.
 public class GravityCoreBlockEntity extends BlockEntity {
     /// Distance (in blocks) at which the core captures items.
-    public static final double CAPTURE_RADIUS = 1.0;
+    public static final double CAPTURE_RADIUS = 2.0;
     /// Tag added to items created by a core, so that cores don't capture them again.
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
+    /// How many times faster the items orbit at the end of a Craft (1 = no speed-up).
+    private static final float CRAFT_SPEED_BOOST = 10;
     /// Maximum number of candidates sent to the client (the bar scrolls through them).
     public static final int MAX_CANDIDATES = 20;
     private static final Codec<ResourceKey<Recipe<?>>> RECIPE_KEY_CODEC = ResourceKey.codec(Registries.RECIPE);
@@ -116,13 +119,16 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return Mth.lerp(partialTick, prevOrbitAngle, orbitAngle);
     }
 
-    /// How fast the items orbit right now. During a Craft they go up to 5x faster,
-    /// and during an upgrade the speed also slowly changes to the speed of the new tier.
+    /// How fast the items orbit right now. During a Craft they speed up to CRAFT_SPEED_BOOST times
+    /// the normal speed, and during an upgrade the speed also slowly changes to the speed of the new tier.
+    /// The speed-up is fast at the start of the Craft and then levels off (ease-out curve),
+    /// so the items are already spinning fast soon after the Craft starts.
     private float currentOrbitSpeed() {
         float progress = getCraftProgress(0);
         CoreTier to = upgradeTarget != null ? upgradeTarget : getTier();
         float tierSpeed = Mth.lerp(progress, getTier().orbitSpeed, to.orbitSpeed);
-        return 0.05f * tierSpeed * (1 + 4 * progress);
+        float boost = 1 - (1 - progress) * (1 - progress) * (1 - progress); // 0 -> 1, rising fast at the start
+        return 0.05f * tierSpeed * (1 + (CRAFT_SPEED_BOOST - 1) * boost);
     }
 
     /// 0.0 = Craft starting, 1.0 = Craft finished. Also 0 when the core is not crafting.
@@ -341,7 +347,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
         changed();
     }
 
-    /// Works out the recipes the orbiting items can still become (see "candidates").
+    /// Works out the recipes the orbiting items can still become (see "candidates"):
+    /// first the ones that can be crafted right now, then the ones that still need more items.
     private void updateCandidates() {
         candidates.clear();
         if (items.isEmpty()) return;
@@ -356,9 +363,15 @@ public class GravityCoreBlockEntity extends BlockEntity {
             target = null; // the recipe no longer exists (e.g. a datapack was removed)
         }
 
-        allRecipes().stream()
+        // Recipes that use all the orbiting items, best first (see priority)
+        List<RecipeHolder<GravityCoreRecipe>> possible = allRecipes().stream()
                 .filter(holder -> holder.value().worksInTier(coreTier) && holder.value().usesAll(items))
                 .sorted(priority(coreTier).reversed())
+                .toList();
+
+        // First the recipes that can be crafted right now with the orbiting items,
+        // then the ones that still need more items
+        Stream.concat(possible.stream().filter(this::canCraft), possible.stream().filter(holder -> !canCraft(holder)))
                 .limit(MAX_CANDIDATES)
                 .forEach(holder -> candidates.add(CoreCandidate.of(holder, items, coreTier)));
     }

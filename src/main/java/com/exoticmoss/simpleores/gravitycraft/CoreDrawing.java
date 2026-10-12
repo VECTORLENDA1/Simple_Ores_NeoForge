@@ -41,9 +41,12 @@ public class CoreDrawing {
                                 int coreColor, int spotColor, int glowColor, int diskColor, int beamColor,
                                 float beamLength, Shading shading) {
         RenderType type = RenderTypes.entityTranslucentEmissive(WHITE);
+        // The sphere itself is opaque: with shaders a translucent/emissive sphere looks washed out,
+        // and a black one (the Black Hole) becomes invisible, so only the glow and disk were showing
+        RenderType solidType = RenderTypes.entityCutout(WHITE);
 
         // ---- Sphere with moving spots
-        collector.submitCustomGeometry(pose, type, (p, v) -> sphere(p, v, radius, time, coreColor, spotColor, shading));
+        collector.submitCustomGeometry(pose, solidType, (p, v) -> sphere(p, v, radius, time, coreColor, spotColor, shading));
 
         // ---- Glow (corona): two transparent layers, the outer one fainter
         collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor)));

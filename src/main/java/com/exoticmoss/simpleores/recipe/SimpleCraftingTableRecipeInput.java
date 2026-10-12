@@ -1,0 +1,17 @@
+package com.exoticmoss.simpleores.recipe;
+
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeInput;
+import com.exoticmoss.simpleores.block.entity.CraftingTableItemHandler;
+
+public record SimpleCraftingTableRecipeInput(CraftingTableItemHandler input) implements RecipeInput {
+    @Override
+    public ItemStack getItem(int pIndex) {
+        return input.getStackInSlot(pIndex);
+    }
+
+    @Override
+    public int size() {
+        return 25;
+    }
+}

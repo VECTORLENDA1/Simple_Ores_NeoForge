@@ -40,10 +40,10 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     private static final RenderType BAR_TYPE = RenderTypes.entityTranslucentEmissive(
             Identifier.fromNamespaceAndPath(SimpleOres.MODID, "textures/entity/gravity_core.png"));
     /// Colors of the selection bar (0xAARRGGBB).
-    private static final int BAR_BACKGROUND = 0xA0101018;
-    private static final int SLOT_MISSING = 0x70606070;   // recipe still missing items
-    private static final int SLOT_COMPLETE = 0x9040B050;  // every item is orbiting
-    private static final int SLOT_PICKED = 0xB0FFB020;    // the recipe the player picked
+    private static final int BAR_BACKGROUND = 0xD008080C;
+    private static final int SLOT_MISSING = 0xA0404050;   // recipe still missing items
+    private static final int SLOT_COMPLETE = 0xB0309040;  // every item is orbiting
+    private static final int SLOT_PICKED = 0xC0E09018;    // the recipe the player picked
     private static final int SLOT_HOVERED = 0xFFFFFFFF;   // border of the slot the player is looking at
     private static final int BAR_DOTS = 0xE0FFFFFF;       // "..." = more recipes (mouse wheel)
     /// Size of the items inside the slots.

@@ -35,6 +35,7 @@ public class ModCreativeModTabs {
                     output.accept(ModItems.RAW_OBSCURIDIUM.get());
                     output.accept(ModItems.OBSCURIDIUM.get());
                     output.accept(ModItems.OBSCURITE.get());
+                    output.accept(ModItems.WITHER_REAPER.get());
 
 
                     //BLOCKS//

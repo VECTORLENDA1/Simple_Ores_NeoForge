@@ -52,5 +52,8 @@
   "jei.simpleores.missing_items": "Missing items",
   "jei.simpleores.no_core_nearby": "No Gravity Core of the right tier within %s blocks (or it is busy)",
   "gui.simpleores.core_bar.pick": "Right-click to pick this recipe",
-  "gui.simpleores.core_bar.unpick": "Right-click to unpick this recipe"
+  "gui.simpleores.core_bar.unpick": "Right-click to unpick this recipe",
+
+  "item.simpleores.wither_reaper": "Wither Reaper",
+  "item.simpleores.wither_reaper.tooltip": "33% chance to make Wither Skeletons drop their skull"
 }

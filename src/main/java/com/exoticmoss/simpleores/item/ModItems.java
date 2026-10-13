@@ -1,6 +1,7 @@
 package com.exoticmoss.simpleores.item;
 
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ToolMaterial;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -25,6 +26,10 @@ public class ModItems {
     public static final DeferredItem<Item> RAW_OBSCURIDIUM = ITEMS.registerSimpleItem("raw_obscuridium");
     public static final DeferredItem<Item> OBSCURIDIUM = ITEMS.registerSimpleItem("obscuridium");
     public static final DeferredItem<Item> OBSCURITE = ITEMS.registerSimpleItem("obscurite");
+
+    //Weapons//
+    public static final DeferredItem<Item> WITHER_REAPER = ITEMS.registerItem("wither_reaper", WitherReaperItem::new,
+            p -> p.sword(ToolMaterial.DIAMOND, 3, -2.4F));
 
 
 

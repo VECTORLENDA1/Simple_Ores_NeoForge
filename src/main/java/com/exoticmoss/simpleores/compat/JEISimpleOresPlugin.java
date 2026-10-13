@@ -80,10 +80,7 @@ public class JEISimpleOresPlugin implements IModPlugin {
         @SubscribeEvent
         public static void onDatapackSync(OnDatapackSyncEvent event) {
             event.sendRecipes(
-                    ModRecipes.GRAVITY_CRAFT_TYPE.get(),
-                    ModRecipes.SIMPLE_CRAFTING_TABLE_TYPE.get(),
-                    ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get(),
-                    ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get());
+                    ModRecipes.GRAVITY_CRAFT_TYPE.get());
         }
     }
 

@@ -7,10 +7,6 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
-import com.exoticmoss.simpleores.screen.ModMenuTypes;
-import com.exoticmoss.simpleores.screen.custom.AtomicCraftingTableScreen;
-import com.exoticmoss.simpleores.screen.custom.SimpleCraftingTableScreen;
-import com.exoticmoss.simpleores.screen.custom.UltraCraftingTableScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,7 +17,6 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.NeoForge;
@@ -47,7 +42,6 @@ public class SimpleOres {
         ModItems.Register(modEventBus);
         ModBlocks.Register(modEventBus);
         ModRecipes.register(modEventBus);
-        ModMenuTypes.register(modEventBus);
         ModBlockEntities.register(modEventBus);
 
 
@@ -97,13 +91,6 @@ public class SimpleOres {
         @SubscribeEvent
         public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
             event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
-        }
-
-        @SubscribeEvent
-        public static void registerScreens(RegisterMenuScreensEvent event) {
-            event.register(ModMenuTypes.SIMPLE_CRAFTING_TABLE_MENU.get(), SimpleCraftingTableScreen::new);
-            event.register(ModMenuTypes.ULTRA_CRAFTING_TABLE_MENU.get(), UltraCraftingTableScreen::new);
-            event.register(ModMenuTypes.ATOMIC_CRAFTING_TABLE_MENU.get(), AtomicCraftingTableScreen::new);
         }
 
     }

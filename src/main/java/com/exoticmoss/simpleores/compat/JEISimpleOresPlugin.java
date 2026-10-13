@@ -44,10 +44,6 @@ public class JEISimpleOresPlugin implements IModPlugin {
         var guiHelper = registration.getJeiHelpers().getGuiHelper();
         registration.addRecipeCategories(new GravityCoreRecipeCategory(guiHelper));
 
-        // CRAFTING TABLES (disabled)
-        //registration.addRecipeCategories(new SimpleCraftingTableRecipeCategory(guiHelper));
-        //registration.addRecipeCategories(new UltraCraftingTableRecipeCategory(guiHelper));
-        //registration.addRecipeCategories(new AtomicCraftingTableRecipeCategory(guiHelper));
     }
 
     @Override
@@ -57,13 +53,6 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 new ArrayList<>(syncedRecipes.byType(ModRecipes.GRAVITY_CRAFT_TYPE.get()));
         registration.addRecipes(GravityCoreRecipeCategory.RECIPE_TYPE, gravityRecipes);
 
-        // CRAFTING TABLES (disabled)
-        //registration.addRecipes(SimpleCraftingTableRecipeCategory.SIMPLE_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        syncedRecipes.byType(ModRecipes.SIMPLE_CRAFTING_TABLE_TYPE.get()).stream().map(RecipeHolder::value).toList());
-        //registration.addRecipes(UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        syncedRecipes.byType(ModRecipes.ULTRA_CRAFTING_TABLE_TYPE.get()).stream().map(RecipeHolder::value).toList());
-        //registration.addRecipes(AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        syncedRecipes.byType(ModRecipes.ATOMIC_CRAFTING_TABLE_TYPE.get()).stream().map(RecipeHolder::value).toList());
     }
 
     // "Move Items" (+) button: works with the survival inventory and the creative inventory open
@@ -76,17 +65,6 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 new GravityCoreTransferHandler<>(CreativeModeInventoryScreen.ItemPickerMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
     }
 
-    // CRAFTING TABLES (disabled): clickable area on the arrow of each table
-    //@Override
-    //public void registerGuiHandlers(IGuiHandlerRegistration registration) {
-    //    registration.addRecipeClickArea(SimpleCraftingTableScreen.class, 112, 54, 22, 16,
-    //            SimpleCraftingTableRecipeCategory.SIMPLE_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
-    //    registration.addRecipeClickArea(UltraCraftingTableScreen.class, 148, 73, 22, 16,
-    //            UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
-    //    registration.addRecipeClickArea(AtomicCraftingTableScreen.class, 185, 91, 22, 16,
-    //            AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE);
-    //}
-
     // Shows the recipes when the block is clicked inside JEI
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
@@ -94,13 +72,6 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
-        // CRAFTING TABLES (disabled)
-        //registration.addCraftingStation(SimpleCraftingTableRecipeCategory.SIMPLE_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        ModBlocks.SIMPLE_CRAFTING_TABLE.get());
-        //registration.addCraftingStation(UltraCraftingTableRecipeCategory.ULTRA_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        ModBlocks.ULTRA_CRAFTING_TABLE.get());
-        //registration.addCraftingStation(AtomicCraftingTableRecipeCategory.ATOMIC_CRAFTING_TABLE_RECIPE_CATEGORY_RECIPE_TYPE,
-        //        ModBlocks.ATOMIC_CRAFTING_TABLE.get());
     }
 
     // Server: asks for our recipes to be sent to the players

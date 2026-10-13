@@ -1,9 +1,6 @@
 package com.exoticmoss.simpleores.block.entity;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
-import com.exoticmoss.simpleores.block.entity.custom.AtomicCraftingTableEntity;
-import com.exoticmoss.simpleores.block.entity.custom.SimpleCraftingTableEntity;
-import com.exoticmoss.simpleores.block.entity.custom.UltraCraftingTableEntity;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -15,18 +12,6 @@ import java.util.function.Supplier;
 public class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, "simpleores");
-
-public static final Supplier<BlockEntityType<SimpleCraftingTableEntity>> SIMPLE_CRAFTING_TABLE_BE =
-        BLOCK_ENTITIES.register("simple_crafting_table_be", () -> new BlockEntityType<>(
-                SimpleCraftingTableEntity::new, ModBlocks.SIMPLE_CRAFTING_TABLE.get()));
-
-    public static final Supplier<BlockEntityType<UltraCraftingTableEntity>> ULTRA_CRAFTING_TABLE_BE =
-            BLOCK_ENTITIES.register("ultra_crafting_table_be", () -> new BlockEntityType<>(
-                    UltraCraftingTableEntity::new, ModBlocks.ULTRA_CRAFTING_TABLE.get()));
-
-    public static final Supplier<BlockEntityType<AtomicCraftingTableEntity>> ATOMIC_CRAFTING_TABLE_BE =
-            BLOCK_ENTITIES.register("atomic_crafting_table_be", () -> new BlockEntityType<>(
-                    AtomicCraftingTableEntity::new, ModBlocks.ATOMIC_CRAFTING_TABLE.get()));
 
     // A single block entity for the 4 cores
     public static final Supplier<BlockEntityType<GravityCoreBlockEntity>> GRAVITY_CORE_BE =

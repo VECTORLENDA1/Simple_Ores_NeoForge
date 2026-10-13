@@ -1,9 +1,5 @@
 package com.exoticmoss.simpleores.block;
 
-
-import com.exoticmoss.simpleores.block.custom.AtomicCraftingTable;
-import com.exoticmoss.simpleores.block.custom.SimpleCraftingTable;
-import com.exoticmoss.simpleores.block.custom.UltraCraftingTable;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
 import net.minecraft.util.valueproviders.UniformInt;
@@ -88,20 +84,6 @@ public class ModBlocks {
                     .strength(9999f).sound(SoundType.STONE));
 
 
-    //Entity Blocks
-    // (The 3 crafting tables are DISABLED: still registered, but with no recipe and hidden from the creative tab)
-    public static final DeferredBlock<Block> SIMPLE_CRAFTING_TABLE = registerBlockItem("simple_crafting_table", SimpleCraftingTable::new,
-            () -> BlockBehaviour.Properties.of().strength(2.5f,10)
-                    .requiresCorrectToolForDrops().sound(SoundType.METAL));
-
-    public static final DeferredBlock<Block> ULTRA_CRAFTING_TABLE = registerBlockItem("ultra_crafting_table", UltraCraftingTable::new,
-            () -> BlockBehaviour.Properties.of().strength(2.5f,10)
-                    .requiresCorrectToolForDrops().sound(SoundType.METAL));
-
-    public static final DeferredBlock<Block> ATOMIC_CRAFTING_TABLE = registerBlockItem("atomic_crafting_table", AtomicCraftingTable::new,
-            () -> BlockBehaviour.Properties.of().strength(2.5f,10)
-                    .requiresCorrectToolForDrops().sound(SoundType.METAL));
-
     //Gravity Cores (one per tier)
     public static final DeferredBlock<Block> GRAVITY_CORE_SUN = registerGravityCore(CoreTier.SUN);
     public static final DeferredBlock<Block> GRAVITY_CORE_RED_GIANT = registerGravityCore(CoreTier.RED_GIANT);
@@ -111,7 +93,7 @@ public class ModBlocks {
     // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun)
     private static DeferredBlock<Block> registerGravityCore(CoreTier tier) {
         return registerBlockItem("gravity_core_" + tier.id, properties -> new GravityCoreBlock(tier, properties),
-                () -> BlockBehaviour.Properties.of().strength(4f, 20).requiresCorrectToolForDrops()
+                () -> BlockBehaviour.Properties.of().strength(10f, 9999).requiresCorrectToolForDrops()
                         .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> tier.light));
     }
 

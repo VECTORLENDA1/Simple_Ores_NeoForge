@@ -56,15 +56,6 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.NETHER_ANTRACITE_ORE.get());
                     output.accept(ModBlocks.ANTRACITE_BLOCK.get());
                     output.accept(ModBlocks.BEDROCK_OBSCURIDIUM_ORE.get());
-                    output.accept(ModBlocks.OBSCURIDIUM_BLOCK.get());
-                    output.accept(ModBlocks.RAW_OBSCURIDIUM_BLOCK.get());
-                    output.accept(ModBlocks.OBSCURITE_BLOCK.get());
-
-                    //ENTITY BLOCK//
-                    // Crafting tables DISABLED (remove the "//" to show them again)
-                    //output.accept(ModBlocks.SIMPLE_CRAFTING_TABLE.get());
-                    //output.accept(ModBlocks.ULTRA_CRAFTING_TABLE.get());
-                    //output.accept(ModBlocks.ATOMIC_CRAFTING_TABLE.get());
 
                     //GRAVITY CORES//
                     output.accept(ModBlocks.GRAVITY_CORE_SUN.get());

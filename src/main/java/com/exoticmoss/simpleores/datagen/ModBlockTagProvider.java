@@ -38,9 +38,6 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
-                .add(ModBlocks.SIMPLE_CRAFTING_TABLE.getKey())
-                .add(ModBlocks.ULTRA_CRAFTING_TABLE.getKey())
-                .add(ModBlocks.ATOMIC_CRAFTING_TABLE.getKey())
                 .add(ModBlocks.GRAVITY_CORE_SUN.getKey())
                 .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
                 .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
@@ -61,8 +58,7 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.RAW_ASTRALITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_NEXALITE_BLOCK.getKey())
                 .add(ModBlocks.NETHER_ANTRACITE_ORE.getKey())
-                .add(ModBlocks.ANTRACITE_BLOCK.getKey())
-                .add(ModBlocks.SIMPLE_CRAFTING_TABLE.getKey());
+                .add(ModBlocks.ANTRACITE_BLOCK.getKey());
 
         tag(BlockTags.NEEDS_DIAMOND_TOOL)
                 .add(ModBlocks.CELESTINE_BLOCK.getKey())

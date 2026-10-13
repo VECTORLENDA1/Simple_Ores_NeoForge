@@ -29,7 +29,7 @@ public class ModItems {
 
     //Weapons//
     public static final DeferredItem<Item> WITHER_REAPER = ITEMS.registerItem("wither_reaper", WitherReaperItem::new,
-            p -> p.sword(ToolMaterial.DIAMOND, 3, -2.4F));
+            p -> p.sword(ToolMaterial.DIAMOND, 6, -2.4F));
 
 
 

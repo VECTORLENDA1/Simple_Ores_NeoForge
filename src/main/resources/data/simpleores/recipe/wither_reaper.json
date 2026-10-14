@@ -4,7 +4,7 @@
   "key": {
     "B": "minecraft:bone_block",
     "N": "simpleores:nexalite_block",
-    "D": "minecraft:diamond_sword",
+    "D": "minecraft:netherite_sword",
     "S": "minecraft:soul_sand"
   },
   "pattern": [

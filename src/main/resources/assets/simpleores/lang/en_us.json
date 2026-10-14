@@ -35,12 +35,7 @@
   "block.simpleores.obscurite_block": "Block of Obscurite",
   "block.simpleores.raw_obscuridium_block": "Block of Raw Obscuridium",
 
-  "3": "||CRAFTING TABLES||",
-  "block.simpleores.simple_crafting_table": "Simple Crafting Table",
-  "block.simpleores.ultra_crafting_table": "Ultra Crafting Table",
-  "block.simpleores.atomic_crafting_table": "Atomic Crafting Table",
-
-  "4": "||TOOLTIPS||",
+  "3": "||TOOLTIPS||",
   "bedrockobscuridiumoreblock": "Maybe some T.N.T can help (layer -60) :)",
   "creativetab.simpleores": "Simple Ores",
   "block.simpleores.gravity_core_sun": "Sun",
@@ -55,5 +50,5 @@
   "gui.simpleores.core_bar.unpick": "Right-click to unpick this recipe",
 
   "item.simpleores.wither_reaper": "Wither Reaper",
-  "item.simpleores.wither_reaper.tooltip": "33% chance to make Wither Skeletons drop their skull"
+  "item.simpleores.wither_reaper.tooltip": "33% chance to make Wither Skeletons drop their head"
 }

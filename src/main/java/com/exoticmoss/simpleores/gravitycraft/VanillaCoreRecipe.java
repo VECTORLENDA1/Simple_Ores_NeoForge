@@ -15,6 +15,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.item.crafting.SmeltingRecipe;
+import net.neoforged.neoforge.common.Tags;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -149,11 +150,14 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         return new VanillaCoreRecipe(recipe, new ArrayList<>(parts.values()), result);
     }
 
-    /// Turns a furnace recipe (e.g. raw beef -> steak, iron ore -> iron ingot) into a Gravity Core recipe:
+    /// Turns a furnace recipe (e.g. raw beef -> steak, sand -> glass) into a Gravity Core recipe:
     /// 1 ingredient -> the result. null = it can't be used.
     private static @Nullable VanillaCoreRecipe convertCooking(SmeltingRecipe recipe) {
         Ingredient input = recipe.input();
         if (input.items().findAny().isEmpty()) return null; // empty tag: the recipe can never be made
+        // Ores and raw ores are left out: they have their own recipes with fuel (antracite or coal)
+        // that multiply the result, like the Simple Ores ores (gravity_core/vanilla/)
+        if (input.items().anyMatch(item -> item.is(Tags.Items.ORES) || item.is(Tags.Items.RAW_MATERIALS))) return null;
 
         ItemStack result = recipe.assemble(new SingleRecipeInput(ItemStack.EMPTY));
         if (result.isEmpty()) return null;

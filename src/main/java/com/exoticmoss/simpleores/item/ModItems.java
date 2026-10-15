@@ -1,7 +1,6 @@
 package com.exoticmoss.simpleores.item;
 
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ToolMaterial;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -29,7 +28,7 @@ public class ModItems {
 
     //Weapons//
     public static final DeferredItem<Item> WITHER_REAPER = ITEMS.registerItem("wither_reaper", WitherReaperItem::new,
-            p -> p.sword(ToolMaterial.DIAMOND, 6, -2.4F));
+            p -> p.sword(ModToolMaterials.WITHER_REAPER, 6, -2.4F));
 
 
 

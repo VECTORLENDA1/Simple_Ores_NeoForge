@@ -18,7 +18,7 @@ public class ModToolMaterials {
             BlockTags.INCORRECT_FOR_DIAMOND_TOOL, // blocks this weapon can't mine/drop
             2000,                                 // durability (uses)
             8.0F,                                 // mining speed
-            4.0F,                                 // extra attack damage (added to the damage in ModItems)
+            9.0F,                                 // extra attack damage (added to the damage in ModItems)
             14,                                   // enchantability
             WITHER_REAPER_REPAIR);                // repair items
 }

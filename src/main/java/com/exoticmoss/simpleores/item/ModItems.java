@@ -28,7 +28,7 @@ public class ModItems {
 
     //Weapons//
     public static final DeferredItem<Item> WITHER_REAPER = ITEMS.registerItem("wither_reaper", WitherReaperItem::new,
-            p -> p.sword(ModToolMaterials.WITHER_REAPER, 6, -2.4F));
+            p -> p.sword(ModToolMaterials.WITHER_REAPER, 0, -2.0F)); /// base damage = 1, base attack speed = -4.0
 
 
 

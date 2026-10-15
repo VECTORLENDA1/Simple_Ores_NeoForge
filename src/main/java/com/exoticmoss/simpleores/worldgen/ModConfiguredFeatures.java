@@ -56,19 +56,19 @@ public class ModConfiguredFeatures {
         //OVERWORLD ORES
         register(context, OVERWORLD_IGNITHRA_ORE_KEY, Feature.ORE, new OreConfiguration(overworldignithraOres, 8));//vein size
         register(context, OVERWORLD_DEEPSLATE_IGNITHRA_ORE_KEY, Feature.ORE, new OreConfiguration(overworldignithraOres, 8));
-        register(context, OVERWORLD_DEEPSLATE_ASTRALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldastraliteOre, 7));
-        register(context, OVERWORLD_DEEPSLATE_NEXALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldnexaliteOre, 7));
-        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, Feature.ORE, new OreConfiguration(overworldobscuridiumOre, 4));
+        register(context, OVERWORLD_DEEPSLATE_ASTRALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldastraliteOre, 4));
+        register(context, OVERWORLD_DEEPSLATE_NEXALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldnexaliteOre, 4));
+        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, Feature.ORE, new OreConfiguration(overworldobscuridiumOre, 3));
 
         //NETHER ORES
         register(context, NETHER_ANTRACITE_ORE_KEY, Feature.ORE, new OreConfiguration(netherrackReplaceables,
-                ModBlocks.NETHER_ANTRACITE_ORE.get().defaultBlockState(),10));//vein size
+                ModBlocks.NETHER_ANTRACITE_ORE.get().defaultBlockState(),8));//vein size
 
         //END ORES
         register(context, END_STONE_CELESTINE_ORE_KEY, Feature.ORE, new OreConfiguration(endReplaceables,
-                ModBlocks.END_STONE_CELESTINE_ORE.get().defaultBlockState(),6));//vein size
+                ModBlocks.END_STONE_CELESTINE_ORE.get().defaultBlockState(),4));//vein size
         register(context, END_STONE_ZENITHRA_ORE_KEY, Feature.ORE, new OreConfiguration(endReplaceables,
-                ModBlocks.END_STONE_ZENITHRA_ORE.get().defaultBlockState(),6));
+                ModBlocks.END_STONE_ZENITHRA_ORE.get().defaultBlockState(),4));
     }
 
 

@@ -16,9 +16,9 @@ public class ModToolMaterials {
 
     public static final ToolMaterial WITHER_REAPER = new ToolMaterial(
             BlockTags.INCORRECT_FOR_DIAMOND_TOOL, // blocks this weapon can't mine/drop
-            1561,                                 // durability (uses)
+            2000,                                 // durability (uses)
             8.0F,                                 // mining speed
-            3.0F,                                 // extra attack damage (added to the damage in ModItems)
-            10,                                   // enchantability
+            4.0F,                                 // extra attack damage (added to the damage in ModItems)
+            14,                                   // enchantability
             WITHER_REAPER_REPAIR);                // repair items
 }

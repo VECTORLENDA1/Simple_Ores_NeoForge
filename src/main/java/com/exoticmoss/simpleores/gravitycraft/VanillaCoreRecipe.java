@@ -13,6 +13,8 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.SmeltingRecipe;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -38,10 +40,11 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
     /// Time per tier: the same for the first 3 tiers, instant (0) in the Black Hole.
     private static final List<Integer> TIME_PER_TIER = List.of(VANILLA_TIME, VANILLA_TIME, VANILLA_TIME, 0);
 
-    private final CraftingRecipe original;
+    /// The crafting table recipe this came from. null for furnace (cooking) recipes.
+    private final @Nullable CraftingRecipe original;
     private final ItemStack result;
 
-    private VanillaCoreRecipe(CraftingRecipe original, List<Part> parts, ItemStack result) {
+    private VanillaCoreRecipe(@Nullable CraftingRecipe original, List<Part> parts, ItemStack result) {
         // No result template: the result is a ready ItemStack (see createResult / getUpgradeTier below)
         super(1, VANILLA_TIME, parts, null, List.of(), TIME_PER_TIER);
         this.original = original;
@@ -62,6 +65,7 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
 
     /// Items left behind by the used ingredients (e.g. a milk bucket leaves an empty bucket).
     public List<ItemStack> remainders(List<ItemStack> used) {
+        if (original == null) return List.of(); // furnace recipes leave nothing behind
         List<ItemStack> singles = new ArrayList<>();
         for (ItemStack stack : used) {
             for (int i = 0; i < stack.getCount(); i++) singles.add(stack.copyWithCount(1));
@@ -102,10 +106,13 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         List<RecipeHolder<GravityCoreRecipe>> list = new ArrayList<>();
         Map<ResourceKey<Recipe<?>>, RecipeHolder<GravityCoreRecipe>> byId = new HashMap<>();
         for (RecipeHolder<?> holder : manager.getRecipes()) {
-            if (!(holder.value() instanceof CraftingRecipe crafting)) continue;
             if (!holder.id().identifier().getNamespace().equals("minecraft")) continue;
             try {
-                VanillaCoreRecipe converted = convert(crafting);
+                // Crafting table recipes and furnace recipes (cooking food, smelting ores...)
+                VanillaCoreRecipe converted;
+                if (holder.value() instanceof CraftingRecipe crafting) converted = convert(crafting);
+                else if (holder.value() instanceof SmeltingRecipe smelting) converted = convertCooking(smelting);
+                else continue;
                 if (converted == null) continue;
                 RecipeHolder<GravityCoreRecipe> convertedHolder = new RecipeHolder<>(holder.id(), converted);
                 list.add(convertedHolder);
@@ -119,7 +126,7 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         cached = List.copyOf(list);
         cachedById = Map.copyOf(byId);
         cachedFor = manager;
-        SimpleOres.LOGGER.info("Gravity Core: {} vanilla crafting recipes available", cached.size());
+        SimpleOres.LOGGER.info("Gravity Core: {} vanilla crafting and cooking recipes available", cached.size());
     }
 
     /// Turns a crafting recipe into a Gravity Core recipe. null = it can't be used (special recipe).
@@ -140,5 +147,17 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         if (result.isEmpty()) return null;
 
         return new VanillaCoreRecipe(recipe, new ArrayList<>(parts.values()), result);
+    }
+
+    /// Turns a furnace recipe (e.g. raw beef -> steak, iron ore -> iron ingot) into a Gravity Core recipe:
+    /// 1 ingredient -> the result. null = it can't be used.
+    private static @Nullable VanillaCoreRecipe convertCooking(SmeltingRecipe recipe) {
+        Ingredient input = recipe.input();
+        if (input.items().findAny().isEmpty()) return null; // empty tag: the recipe can never be made
+
+        ItemStack result = recipe.assemble(new SingleRecipeInput(ItemStack.EMPTY));
+        if (result.isEmpty()) return null;
+
+        return new VanillaCoreRecipe(null, List.of(new Part(input, 1, List.of())), result);
     }
 }

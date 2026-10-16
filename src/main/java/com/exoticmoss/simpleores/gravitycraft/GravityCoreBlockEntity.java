@@ -131,6 +131,21 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return 0.05f * tierSpeed * (1 + (CRAFT_SPEED_BOOST - 1) * boost);
     }
 
+    /// Ticks of the current Craft (0 when not crafting) and how many it needs in total (0 = not crafting).
+    public int getCraftTime() {
+        return craftTime;
+    }
+
+    public int getCraftTotal() {
+        return craftTotal;
+    }
+
+    /// What the current Craft will give (empty when not crafting). Only works on the server.
+    public ItemStack getCraftingResult() {
+        if (crafting == null || craftTotal <= 0) return ItemStack.EMPTY;
+        return findByKey(crafting).map(recipe -> recipe.value().createResult(getTier().level)).orElse(ItemStack.EMPTY);
+    }
+
     /// 0.0 = Craft starting, 1.0 = Craft finished. Also 0 when the core is not crafting.
     public float getCraftProgress(float partialTick) {
         if (craftTotal <= 0) return 0;

@@ -37,6 +37,11 @@ repositories {
         name = "ModMaven"
         url = "https://modmaven.dev"
     }
+    maven {
+        // WTHIT (shows what is inside the Gravity Core when looking at it)
+        name = "WTHIT"
+        url = "https://maven2.bai.lol"
+    }
 }
 
 base {
@@ -133,6 +138,9 @@ dependencies {
 
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     localRuntime("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+    // WTHIT is optional: only its API is used to compile (see compat/wthit)
+    compileOnly("mcp.mobius.waila:wthit-api:neo-${wthit_version}")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar

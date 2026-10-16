@@ -38,7 +38,7 @@ public class SimpleOresJERPlugin implements IJERPlugin {
         worldGen.register(stack(ModBlocks.DEEPSLATE_NEXALITE_ORE),
                 new DistributionSquare(4, 4, -60, -20), Restriction.OVERWORLD, true, oreDrop(ModItems.RAW_NEXALITE));
 
-        // Obscuridium: near the bedrock, drops itself 20% of the times
+        // Obscuridium: near the bedrock, drops itself 33% of the times
         worldGen.register(stack(ModBlocks.BEDROCK_OBSCURIDIUM_ORE),
                 new DistributionSquare(3, 3, -63, -59), Restriction.OVERWORLD, false,
                 new LootDrop(stack(ModBlocks.BEDROCK_OBSCURIDIUM_ORE), 0.2F));

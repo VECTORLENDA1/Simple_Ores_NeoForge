@@ -29,35 +29,35 @@ public class ModPlacedFeatures {
         HolderGetter<ConfiguredFeature<?, ?>> configuredFeatures = context.lookup(Registries.CONFIGURED_FEATURE);
 
         register(context, IGNITHRA_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_IGNITHRA_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(8,//how many veins per chunk
+                ModOrePlacement.commonOrePlacement(10,//how many veins per chunk
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(0), VerticalAnchor.absolute(90))));
 
         register(context, END_STONE_CELESTINE_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.END_STONE_CELESTINE_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(4,
+                ModOrePlacement.commonOrePlacement(8,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(10), VerticalAnchor.absolute(50))));
 
         register(context, NETHER_ANTRACITE_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.NETHER_ANTRACITE_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(10,
+                ModOrePlacement.commonOrePlacement(12,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(0), VerticalAnchor.absolute(126))));
 
         register(context, END_STONE_ZENITHRA_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.END_STONE_ZENITHRA_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(4,
+                ModOrePlacement.commonOrePlacement(8,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(10), VerticalAnchor.absolute(50))));
 
         register(context, DEEPSLATE_ASTRALITE_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_DEEPSLATE_ASTRALITE_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(4,
+                ModOrePlacement.commonOrePlacement(6,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(-60), VerticalAnchor.absolute(-20))));
 
         register(context, DEEPSLATE_IGNITHRA_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_DEEPSLATE_IGNITHRA_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(7,
+                ModOrePlacement.commonOrePlacement(10,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(-30), VerticalAnchor.absolute(0))));
 
         register(context, DEEPSLATE_NEXALITE_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_DEEPSLATE_NEXALITE_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(4,
+                ModOrePlacement.commonOrePlacement(6,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(-60), VerticalAnchor.absolute(-20))));
 
         register(context, BEDROCK_OBSCURIDIUM_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(3,
+                ModOrePlacement.commonOrePlacement(4,
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(-63), VerticalAnchor.absolute(-59))));
     }
 

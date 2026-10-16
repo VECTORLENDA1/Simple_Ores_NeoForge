@@ -1,0 +1,13 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 1,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "simpleores:raw_ignithra", "count_per_tier": [6, 8, 10, 12] },
+    { "item": "#minecraft:coals" }
+  ],
+  "result": {
+    "id": "simpleores:ignithra"
+  },
+  "count_per_tier": [8, 12, 16, 20]
+}

@@ -2,6 +2,9 @@ package com.exoticmoss.simpleores.gravitycraft;
 
 import com.mojang.serialization.Codec;
 import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -430,6 +433,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
             List<ItemStack> used = consume(recipe.get().value());
             // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
             ItemStack result = recipe.get().value().createResult(getTier().level);
+            // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
+            // the enchantments, the used durability, the name and the settings of the old one
+            keepToolData(used, result);
 
             if (recipe.get().value().getUpgradeTier() != null) {
                 finishUpgrade(result);
@@ -450,6 +456,30 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
         // If there are still enough items for the same recipe, the next Craft starts right away
         onItemsChanged();
+    }
+
+    /// When the result is a tool and one of the ingredients is a tool too, the result keeps the
+    /// enchantments, the damage (used durability), the custom name, the anvil repair cost and the
+    /// custom data (e.g. the mining mode of the Mega tools) of that ingredient.
+    private static void keepToolData(List<ItemStack> used, ItemStack result) {
+        if (!result.isDamageableItem() || result.getCount() != 1) return;
+        for (ItemStack old : used) {
+            if (!old.isDamageableItem()) continue;
+
+            ItemEnchantments enchantments = old.get(DataComponents.ENCHANTMENTS);
+            if (enchantments != null && !enchantments.isEmpty()) result.set(DataComponents.ENCHANTMENTS, enchantments);
+            // The same damage points as before (never enough to break the new tool)
+            result.setDamageValue(Math.min(old.getDamageValue(), result.getMaxDamage() - 1));
+            copy(old, result, DataComponents.CUSTOM_NAME);
+            copy(old, result, DataComponents.REPAIR_COST);
+            copy(old, result, DataComponents.CUSTOM_DATA);
+            return;
+        }
+    }
+
+    private static <T> void copy(ItemStack from, ItemStack to, DataComponentType<T> type) {
+        T value = from.get(type);
+        if (value != null) to.set(type, value);
     }
 
     /// Uses up the ingredients of the recipe. Returns the items that were used.

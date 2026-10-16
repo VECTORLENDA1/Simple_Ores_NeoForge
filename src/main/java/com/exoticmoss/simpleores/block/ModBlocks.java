@@ -1,5 +1,11 @@
 package com.exoticmoss.simpleores.block;
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.item.component.DamageResistant;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
 import net.minecraft.util.valueproviders.UniformInt;
@@ -90,11 +96,22 @@ public class ModBlocks {
     public static final DeferredBlock<Block> GRAVITY_CORE_PULSAR = registerGravityCore(CoreTier.PULSAR);
     public static final DeferredBlock<Block> GRAVITY_CORE_BLACK_HOLE = registerGravityCore(CoreTier.BLACK_HOLE);
 
-    // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun)
+    /// Damage the Gravity Cores dropped as items never take (fire, lava, explosions, lightning, cactus...).
+    /// The list is in data/simpleores/tags/damage_type/gravity_core_immune.json
+    public static final TagKey<DamageType> GRAVITY_CORE_IMMUNE =
+            TagKey.create(Registries.DAMAGE_TYPE, Identifier.fromNamespaceAndPath(MODID, "gravity_core_immune"));
+
+    // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun) and its item.
+    // The block can't be blown up (same resistance as bedrock) and the Wither / Ender Dragon can't break it
+    // (tags wither_immune and dragon_immune). The item can't be destroyed by fire, lava or explosions.
     private static DeferredBlock<Block> registerGravityCore(CoreTier tier) {
-        return registerBlockItem("gravity_core_" + tier.id, properties -> new GravityCoreBlock(tier, properties),
-                () -> BlockBehaviour.Properties.of().strength(10f, 9999).requiresCorrectToolForDrops()
+        String name = "gravity_core_" + tier.id;
+        DeferredBlock<Block> block = BLOCKS.registerBlock(name, properties -> new GravityCoreBlock(tier, properties),
+                () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
                         .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> tier.light));
+        ModItems.ITEMS.registerSimpleBlockItem(name, block, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
+                context -> new DamageResistant(context.getOrThrow(GRAVITY_CORE_IMMUNE))));
+        return block;
     }
 
 

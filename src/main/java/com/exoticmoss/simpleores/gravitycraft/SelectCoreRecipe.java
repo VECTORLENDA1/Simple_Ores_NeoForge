@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import java.util.Optional;
 
@@ -35,7 +35,7 @@ public record SelectCoreRecipe(BlockPos pos, Optional<ResourceKey<Recipe<?>>> re
     }
 
     /// Runs on the server. The core itself checks that the recipe is one of its candidates.
-    public static void handle(SelectCoreRecipe message, IPayloadContext context) {
+    public static void handle(SelectCoreRecipe message, ServerPlayNetworking.Context context) {
         Player player = context.player();
         if (player.position().distanceToSqr(Vec3.atCenterOf(message.pos())) > RANGE * RANGE) return;
         if (player.level().getBlockEntity(message.pos()) instanceof GravityCoreBlockEntity core) {

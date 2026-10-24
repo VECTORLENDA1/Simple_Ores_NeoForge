@@ -15,7 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -92,7 +92,7 @@ public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
 
         // 3. Everything is OK: when clicked, ask the server to move the items.
         if (doTransfer) {
-            ClientPacketDistributor.sendToServer(new MoveItemsToCore(holder.id(), maxTransfer));
+            ClientPlayNetworking.send(new MoveItemsToCore(holder.id(), maxTransfer));
         }
         return null;
     }

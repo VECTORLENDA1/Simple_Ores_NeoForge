@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.exoticmoss.simpleores.mixin.client",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"MinecraftMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

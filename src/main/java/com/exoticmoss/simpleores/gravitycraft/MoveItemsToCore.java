@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -54,7 +54,7 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
     /// Runs on the server when the message arrives. It checks everything again,
     /// because the server never trusts the client.
     @SuppressWarnings("unchecked")
-    public static void handle(MoveItemsToCore message, IPayloadContext context) {
+    public static void handle(MoveItemsToCore message, ServerPlayNetworking.Context context) {
         Player player = context.player();
         if (!(player.level() instanceof ServerLevel level)) return;
 

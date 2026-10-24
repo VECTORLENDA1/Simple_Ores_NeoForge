@@ -11,7 +11,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfigur
 import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
 import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTest;
 import net.minecraft.world.level.levelgen.structure.templatesystem.TagMatchTest;
-import net.neoforged.neoforge.common.Tags;
+import net.fabricmc.fabric.api.tag.convention.v2.ConventionalBlockTags;
 import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.block.ModBlocks;
 
@@ -34,8 +34,8 @@ public class ModConfiguredFeatures {
     public static void bootstrap(BootstrapContext<ConfiguredFeature<?, ?>>context) {
         RuleTest stoneReplaceables = new TagMatchTest(BlockTags.STONE_ORE_REPLACEABLES);
         RuleTest deepslateReplaceables = new TagMatchTest(BlockTags.DEEPSLATE_ORE_REPLACEABLES);
-        RuleTest netherrackReplaceables = new TagMatchTest(Tags.Blocks.NETHERRACKS);
-        RuleTest endReplaceables = new TagMatchTest(Tags.Blocks.END_STONES);
+        RuleTest netherrackReplaceables = new TagMatchTest(ConventionalBlockTags.NETHERRACKS);
+        RuleTest endReplaceables = new TagMatchTest(ConventionalBlockTags.END_STONES);
 
 
         List<OreConfiguration.TargetBlockState> overworldignithraOres = List.of(OreConfiguration.target(stoneReplaceables,

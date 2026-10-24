@@ -1,10 +1,11 @@
 package com.exoticmoss.simpleores.item;
 
-import net.minecraft.core.registries.Registries;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.neoforged.neoforge.registries.DeferredHolder;
 import com.exoticmoss.simpleores.block.ModBlocks;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
@@ -12,13 +13,11 @@ import static com.exoticmoss.simpleores.SimpleOres.MODID;
 
 //Creates the mod's tab in the creative inventory, with all its items
 public class ModCreativeModTabs {
-    public static final net.neoforged.neoforge.registries.DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
-            net.neoforged.neoforge.registries.DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
-
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> SIMPLE_ORES = CREATIVE_MODE_TABS.register("simpleores",
-            () -> CreativeModeTab.builder()
+    // Fabric places the mod tabs after the vanilla ones (NeoForge's withTabsBefore(COMBAT) does not exist here)
+    public static final CreativeModeTab SIMPLE_ORES = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB,
+            Identifier.fromNamespaceAndPath(MODID, "simpleores"),
+            FabricCreativeModeTab.builder()
             .title(Component.translatable("creativetab.simpleores"))
-            .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> ModItems.CELESTINE.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
 
@@ -67,7 +66,7 @@ public class ModCreativeModTabs {
             })
                 .build());
 
-    public static void register(net.neoforged.bus.api.IEventBus eventBus) {
-        CREATIVE_MODE_TABS.register(eventBus);
+    /// Loads this class, which registers the tab
+    public static void register() {
     }
 }

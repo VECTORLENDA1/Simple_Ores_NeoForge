@@ -1,6 +1,5 @@
 package com.exoticmoss.simpleores.screen;
 
-import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.gravitycraft.CoreCandidate;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
@@ -11,12 +10,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.event.client.player.ClientHotbarScrollEvents;
 import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
@@ -36,7 +32,7 @@ import java.util.Optional;
 ///
 /// This class only handles the looking/clicking. The bar is drawn by GravityCoreRenderer,
 /// and the candidates come from the server (GravityCoreBlockEntity).
-@EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)
+/// The events are registered in register() (called by the client entrypoint, SimpleOresClient).
 public class CoreSelectionBar {
     /// How many recipes the bar shows at the same time.
     public static final int VISIBLE = 5;
@@ -137,10 +133,15 @@ public class CoreSelectionBar {
 
     // ---------------------------------------------------------------- events
 
+    /// Registers the client events (Fabric API) used by the bar. The right-click comes from
+    /// MinecraftMixin, because Fabric has no cancellable "use key pressed" event.
+    public static void register() {
+        ClientTickEvents.END_CLIENT_TICK.register(CoreSelectionBar::onClientTick);
+        ClientHotbarScrollEvents.ALLOW.register((inventory, currentSlot, selected, scrollX, scrollY) -> !onScroll(scrollY));
+    }
+
     /// Every tick: finds the bar slot the player is looking at.
-    @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
-        Minecraft mc = Minecraft.getInstance();
+    public static void onClientTick(Minecraft mc) {
         BlockPos oldCore = hoveredCore;
         int oldSlot = hoveredSlot;
         hoveredCore = null;
@@ -182,40 +183,39 @@ public class CoreSelectionBar {
     }
 
     /// Right-click while looking at a slot: picks that recipe (or unpicks it if it's already picked).
-    @SubscribeEvent
-    public static void onUse(InputEvent.InteractionKeyMappingTriggered event) {
-        if (!event.isUseItem() || hoveredCore == null) return;
+    /// Returns true when the click was for the bar (then the item in hand / the block behind it is not used).
+    public static boolean onUse() {
+        if (hoveredCore == null) return false;
         Minecraft mc = Minecraft.getInstance();
         CoreCandidate candidate = hoveredCandidate(mc);
-        if (candidate == null || !(mc.level.getBlockEntity(hoveredCore) instanceof GravityCoreBlockEntity core)) return;
+        if (candidate == null || !(mc.level.getBlockEntity(hoveredCore) instanceof GravityCoreBlockEntity core)) return false;
 
-        // The click was for the bar: don't use the item in hand / the block behind it
-        event.setCanceled(true);
-        event.setSwingHand(false);
+        // The click was for the bar: don't use the item in hand / the block behind it (and don't swing the hand)
 
         long now = mc.level.getGameTime();
         boolean held = now >= lastClick && now - lastClick <= 5;
         lastClick = now;
-        if (held) return; // the button is being held down
+        if (held) return true; // the button is being held down
 
         boolean picked = candidate.id().equals(core.getTarget());
-        ClientPacketDistributor.sendToServer(new SelectCoreRecipe(hoveredCore, picked ? Optional.empty() : Optional.of(candidate.id())));
+        ClientPlayNetworking.send(new SelectCoreRecipe(hoveredCore, picked ? Optional.empty() : Optional.of(candidate.id())));
         textTimer = 10; // refresh the text on the next tick
+        return true;
     }
 
     /// Mouse wheel while looking at a bar with more than VISIBLE recipes: scrolls it.
-    @SubscribeEvent
-    public static void onScroll(InputEvent.MouseScrollingEvent event) {
-        if (hoveredCore == null) return;
+    /// Returns true when the bar scrolled (then the selected hotbar slot doesn't change).
+    public static boolean onScroll(double scrollDeltaY) {
+        if (hoveredCore == null) return false;
         Minecraft mc = Minecraft.getInstance();
-        if (!(mc.level.getBlockEntity(hoveredCore) instanceof GravityCoreBlockEntity core)) return;
+        if (!(mc.level.getBlockEntity(hoveredCore) instanceof GravityCoreBlockEntity core)) return false;
         int total = core.getCandidates().size();
-        if (total <= VISIBLE) return;
+        if (total <= VISIBLE) return false;
 
-        int step = event.getScrollDeltaY() > 0 ? -1 : 1;
+        int step = scrollDeltaY > 0 ? -1 : 1;
         scroll.put(hoveredCore, Mth.clamp(scrollOf(hoveredCore, total) + step, 0, total - VISIBLE));
         textTimer = 10;
-        event.setCanceled(true); // don't change the selected hotbar slot
+        return true; // don't change the selected hotbar slot
     }
 
     // ---------------------------------------------------------------- helpers

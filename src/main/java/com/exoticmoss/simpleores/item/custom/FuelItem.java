@@ -1,10 +1,6 @@
 package com.exoticmoss.simpleores.item.custom;
 
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.level.block.entity.FuelValues;
-import org.jetbrains.annotations.Nullable;
 
 public class FuelItem extends Item {
     private int burntime = 0;
@@ -14,11 +10,9 @@ public class FuelItem extends Item {
         this.burntime = burntime;
     }
 
-    // getBurnTime now also receives the FuelValues
-    @Override
-    public int getBurnTime(ItemStack itemStack, @Nullable RecipeType<?> recipeType, FuelValues fuelValues) {
+    // The burn time is given to the furnaces through Fabric's FuelValueEvents (see ModItems)
+    public int getBurnTime() {
         return this.burntime;
     }
 
 }
-

@@ -21,7 +21,6 @@ import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -258,8 +257,10 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
 
     /// The sphere, disk, beams and orbits go outside the block: this makes Minecraft draw them
     /// even when the block itself is just off screen.
+    /// (Fabric has no per-block-entity render box like NeoForge's getRenderBoundingBox, so the core is
+    /// drawn as a "global" block entity, like the beacon.)
     @Override
-    public AABB getRenderBoundingBox(GravityCoreBlockEntity core) {
-        return new AABB(core.getBlockPos()).inflate(5);
+    public boolean shouldRenderOffScreen() {
+        return true;
     }
 }

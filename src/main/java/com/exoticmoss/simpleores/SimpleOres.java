@@ -2,96 +2,54 @@ package com.exoticmoss.simpleores;
 
 import com.mojang.logging.LogUtils;
 import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
-import com.exoticmoss.simpleores.gravitycraft.GravityCoreRenderer;
-import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
+import com.exoticmoss.simpleores.item.custom.WitherReaperEvents;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
-import net.minecraft.resources.Identifier;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.exoticmoss.simpleores.worldgen.ModBiomeModifiers;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.recipe.v1.sync.RecipeSynchronization;
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.item.ModCreativeModTabs;
 import com.exoticmoss.simpleores.item.ModItems;
 import org.slf4j.Logger;
 
-@Mod(SimpleOres.MODID)
-public class SimpleOres {
+public class SimpleOres implements ModInitializer {
     public static final String MODID = "simpleores";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public SimpleOres(IEventBus modEventBus, ModContainer modContainer) {
-
-
-        modEventBus.addListener(this::commonSetup);
-        NeoForge.EVENT_BUS.register(this);
-
-        ModItems.Register(modEventBus);
-        ModBlocks.Register(modEventBus);
-        ModRecipes.register(modEventBus);
-        ModBlockEntities.register(modEventBus);
+    @Override
+    public void onInitialize() {
+        ModItems.Register();
+        ModBlocks.Register();
+        ModRecipes.register();
+        ModBlockEntities.register();
 
 
 
-        ModCreativeModTabs.register(modEventBus);
+        ModCreativeModTabs.register();
 
-        modEventBus.addListener(this::addCreative);
-        modEventBus.addListener(this::registerPayloads);
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Ores in the biomes (replaces the NeoForge biome modifier files)
+        ModBiomeModifiers.bootstrap();
+        // Wither Reaper: extra Wither Skeleton skulls
+        WitherReaperEvents.register();
+
+        // The client no longer receives recipes automatically: Fabric sends our Gravity Core recipes
+        // to the players (JEI uses them)
+        RecipeSynchronization.synchronizeRecipeSerializer(ModRecipes.GRAVITY_CRAFT_SERIALIZER.get());
+
+        registerPayloads();
     }
 
     // Network messages sent between client and server
-    private void registerPayloads(RegisterPayloadHandlersEvent event) {
+    private void registerPayloads() {
         // JEI "Move Items" button for Gravity Core recipes (client -> server)
-        event.registrar("1").playToServer(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC, MoveItemsToCore::handle)
+        PayloadTypeRegistry.serverboundPlay().register(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(MoveItemsToCore.TYPE, MoveItemsToCore::handle);
         // Selection bar above the Gravity Core: the player picked a recipe (client -> server)
-                .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle);
-    }
-
-    private void commonSetup(final FMLCommonSetupEvent event) {
-    }
-
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
-    }
-
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-    }
-
-    @EventBusSubscriber(modid = MODID, value = Dist.CLIENT)
-    public static class ClientModEvents {
-        @SubscribeEvent
-        public static void onClientSetup(FMLClientSetupEvent event) {
-
-        }
-
-        @SubscribeEvent
-        public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        }
-
-        @SubscribeEvent
-        public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
-            event.registerBlockEntityRenderer(ModBlockEntities.GRAVITY_CORE_BE.get(), GravityCoreRenderer::new);
-        }
-
-        // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)
-        @SubscribeEvent
-        public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
-            event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
-        }
-
+        PayloadTypeRegistry.serverboundPlay().register(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(SelectCoreRecipe.TYPE, SelectCoreRecipe::handle);
     }
 }

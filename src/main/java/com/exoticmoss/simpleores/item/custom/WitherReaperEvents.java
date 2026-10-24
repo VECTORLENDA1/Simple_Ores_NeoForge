@@ -1,37 +1,35 @@
 package com.exoticmoss.simpleores.item.custom;
 
-import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.item.ModItems;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 /// Wither Reaper: a Wither Skeleton killed by a player holding it has a 33% chance to drop its skull.
-@EventBusSubscriber(modid = SimpleOres.MODID)
+/// On Fabric this runs when the death loot table of the Wither Skeleton is rolled (LootTableEvents.MODIFY_DROPS),
+/// instead of NeoForge's LivingDropsEvent.
 public class WitherReaperEvents {
-    @SubscribeEvent
-    public static void onLivingDrops(LivingDropsEvent event) {
-        LivingEntity entity = event.getEntity();
-        if (!entity.is(EntityTypes.WITHER_SKELETON)) return;
-        if (!(event.getSource().getEntity() instanceof Player player)) return;
-        if (!player.getMainHandItem().is(ModItems.WITHER_REAPER.get())) return;
+    public static void register() {
+        LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> {
+            Entity entity = context.getOptionalParameter(LootContextParams.THIS_ENTITY);
+            if (entity == null || entity.getType() != EntityTypes.WITHER_SKELETON) return;
+            // Only the death loot of the Wither Skeleton (not other tables rolled for it)
+            if (table.unwrapKey().isEmpty() || !table.unwrapKey().equals(entity.getLootTable())) return;
+            if (!(context.getOptionalParameter(LootContextParams.ATTACKING_ENTITY) instanceof Player player)) return;
+            if (!player.getMainHandItem().is(ModItems.WITHER_REAPER.get())) return;
 
-        // The normal (vanilla) drop already gave a skull: don't give a second one
-        for (ItemEntity drop : event.getDrops()) {
-            if (drop.getItem().is(Items.WITHER_SKELETON_SKULL)) return;
-        }
+            // The normal (vanilla) drop already gave a skull: don't give a second one
+            for (ItemStack drop : drops) {
+                if (drop.is(Items.WITHER_SKELETON_SKULL)) return;
+            }
 
-        if (entity.getRandom().nextFloat() < WitherReaperItem.SKULL_CHANCE) {
-            ItemEntity skull = new ItemEntity(entity.level(), entity.getX(), entity.getY(), entity.getZ(),
-                    new ItemStack(Items.WITHER_SKELETON_SKULL));
-            skull.setDefaultPickUpDelay();
-            event.getDrops().add(skull);
-        }
+            if (entity.getRandom().nextFloat() < WitherReaperItem.SKULL_CHANCE) {
+                drops.add(new ItemStack(Items.WITHER_SKELETON_SKULL));
+            }
+        });
     }
 }

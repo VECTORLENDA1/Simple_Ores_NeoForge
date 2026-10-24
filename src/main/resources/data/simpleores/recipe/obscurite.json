@@ -1,5 +1,5 @@
 {
-  "neoforge:conditions": [ { "type": "neoforge:never" } ],
+  "fabric:load_conditions": [ { "condition": "fabric:false" } ],
   "type": "simpleores:simple_crafting_table",
   "category": "misc" ,
   "ingredient": {

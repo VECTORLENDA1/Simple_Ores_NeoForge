@@ -1,34 +1,33 @@
 package com.exoticmoss.simpleores.recipe;
 
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreRecipe;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 
 
 public class ModRecipes {
-    public static final DeferredRegister<RecipeSerializer<?>> SERIALIZERS =
-            DeferredRegister.create(BuiltInRegistries.RECIPE_SERIALIZER, "simpleores");
-    public static final DeferredRegister<RecipeType<?>> TYPES =
-            DeferredRegister.create(BuiltInRegistries.RECIPE_TYPE, "simpleores");
-
-    // Gravity Core recipes ("type": "simpleores:gravity_craft")
-    public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_CRAFT_SERIALIZER =
-            SERIALIZERS.register("gravity_craft", () -> new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
-    public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_CRAFT_TYPE =
-            TYPES.register("gravity_craft", () -> new RecipeType<>() {
+    private static final RecipeSerializer<GravityCoreRecipe> GRAVITY_CRAFT_SERIALIZER_VALUE = Registry.register(
+            BuiltInRegistries.RECIPE_SERIALIZER, Identifier.fromNamespaceAndPath("simpleores", "gravity_craft"),
+            new RecipeSerializer<>(GravityCoreRecipe.CODEC, GravityCoreRecipe.STREAM_CODEC));
+    private static final RecipeType<GravityCoreRecipe> GRAVITY_CRAFT_TYPE_VALUE = Registry.register(
+            BuiltInRegistries.RECIPE_TYPE, Identifier.fromNamespaceAndPath("simpleores", "gravity_craft"),
+            new RecipeType<>() {
                 @Override
                 public String toString() {
                     return "gravity_craft";
                 }
             });
 
-    public static void register(IEventBus eventBus) {
-        SERIALIZERS.register(eventBus);
-        TYPES.register(eventBus);
+    // Gravity Core recipes ("type": "simpleores:gravity_craft")
+    public static final Supplier<RecipeSerializer<GravityCoreRecipe>> GRAVITY_CRAFT_SERIALIZER = () -> GRAVITY_CRAFT_SERIALIZER_VALUE;
+    public static final Supplier<RecipeType<GravityCoreRecipe>> GRAVITY_CRAFT_TYPE = () -> GRAVITY_CRAFT_TYPE_VALUE;
+
+    /// Loads this class, which registers the recipe serializer and type
+    public static void register() {
     }
 }

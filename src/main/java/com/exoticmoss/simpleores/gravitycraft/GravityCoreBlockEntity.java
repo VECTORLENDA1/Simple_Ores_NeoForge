@@ -32,10 +32,10 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.item.ItemUtil;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -554,9 +554,14 @@ public class GravityCoreBlockEntity extends BlockEntity {
             return;
         }
 
-        ResourceHandler<ItemResource> below = level.getCapability(Capabilities.Item.BLOCK, worldPosition.below(), Direction.UP);
-        if (below != null) {
-            result = ItemUtil.insertItemReturnRemaining(below, result, false, null);
+        // Fabric Transfer API: the item storage of the block below, seen from its top side
+        Storage<ItemVariant> below = ItemStorage.SIDED.find(level, worldPosition.below(), Direction.UP);
+        if (below != null && !result.isEmpty()) {
+            try (Transaction transaction = Transaction.openOuter()) {
+                long inserted = below.insert(ItemVariant.of(result), result.getCount(), transaction);
+                transaction.commit();
+                result.shrink((int) inserted);
+            }
         }
         if (!result.isEmpty()) {
             Vec3 c = center();

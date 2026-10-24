@@ -15,7 +15,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.item.crafting.SmeltingRecipe;
-import net.neoforged.neoforge.common.Tags;
+import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -157,7 +157,7 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         if (input.items().findAny().isEmpty()) return null; // empty tag: the recipe can never be made
         // Ores and raw ores are left out: they have their own recipes with fuel (antracite or coal)
         // that multiply the result, like the Simple Ores ores (gravity_core/vanilla/)
-        if (input.items().anyMatch(item -> item.is(Tags.Items.ORES) || item.is(Tags.Items.RAW_MATERIALS))) return null;
+        if (input.items().anyMatch(item -> item.is(ConventionalItemTags.ORES) || item.is(ConventionalItemTags.RAW_MATERIALS))) return null;
 
         ItemStack result = recipe.assemble(new SingleRecipeInput(ItemStack.EMPTY));
         if (result.isEmpty()) return null;

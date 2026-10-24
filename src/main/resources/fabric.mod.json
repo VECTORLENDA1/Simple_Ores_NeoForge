@@ -1,0 +1,36 @@
+{
+	"schemaVersion": 1,
+	"id": "${mod_id}",
+	"version": "${version}",
+	"name": "Simple_Ores",
+	"description": "Example mod description.",
+	"authors": [
+		"ExoticMoss"
+	],
+	"license": "MIT License",
+	"icon": "logo.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.exoticmoss.simpleores.SimpleOres"
+		],
+		"client": [
+			"com.exoticmoss.simpleores.SimpleOresClient"
+		],
+		"jei_mod_plugin": [
+			"com.exoticmoss.simpleores.compat.JEISimpleOresPlugin"
+		]
+	},
+	"mixins": [
+		{
+			"config": "simpleores.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

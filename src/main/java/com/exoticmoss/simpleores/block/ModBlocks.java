@@ -105,10 +105,10 @@ public class ModBlocks {
     // (tags wither_immune and dragon_immune). The item can't be destroyed by fire, lava or explosions.
     private static Registered<Block, Block> registerGravityCore(CoreTier tier) {
         String name = "gravity_core_" + tier.id;
-        Registered<Block, Block> block = BLOCKS.registerBlock(name, properties -> new GravityCoreBlock(tier, properties),
+        Registered<Block, Block> block = registerBlock(name, properties -> new GravityCoreBlock(tier, properties),
                 () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
                         .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> tier.light));
-        ModItems.ITEMS.registerSimpleBlockItem(name, block, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
+        ModItems.registerSimpleBlockItem(name, block.get(), properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
                 context -> new DamageResistant(context.getOrThrow(GRAVITY_CORE_IMMUNE))));
         return block;
     }

@@ -1,5 +1,6 @@
 package com.exoticmoss.simpleores.gravitycraft;
 
+import net.minecraft.world.entity.ExperienceOrb;
 import com.mojang.serialization.Codec;
 import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
 import net.minecraft.core.component.DataComponentType;
@@ -441,6 +442,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
                 finishUpgrade(result);
                 return; // the block no longer exists
             }
+            // Cooking (ores, raw ores, food...) gives the furnace's experience for every item made
+            if (level instanceof ServerLevel serverLevel) giveExperience(serverLevel, CookingExperience.of(serverLevel, used, result));
             // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
             while (!result.isEmpty()) {
                 deliver(result.split(result.getMaxStackSize()));
@@ -558,6 +561,18 @@ public class GravityCoreBlockEntity extends BlockEntity {
         if (!result.isEmpty()) {
             Vec3 c = center();
             spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));
+        }
+    }
+
+    /// Experience goes straight to the player of the craft (like the result); without a player (machines)
+    /// it comes out of the core as experience orbs.
+    private void giveExperience(ServerLevel serverLevel, int amount) {
+        if (amount <= 0) return;
+        Player player = owner == null ? null : level.getPlayerByUUID(owner);
+        if (player != null) {
+            player.giveExperiencePoints(amount);
+        } else {
+            ExperienceOrb.award(serverLevel, center(), amount);
         }
     }
 

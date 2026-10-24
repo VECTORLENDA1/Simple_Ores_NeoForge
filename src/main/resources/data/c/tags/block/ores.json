@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "#c:ores/ignithra",
+    "#c:ores/astralite",
+    "#c:ores/nexalite",
+    "#c:ores/celestine",
+    "#c:ores/zenithra",
+    "#c:ores/antracite",
+    "#c:ores/obscuridium"
+  ]
+}

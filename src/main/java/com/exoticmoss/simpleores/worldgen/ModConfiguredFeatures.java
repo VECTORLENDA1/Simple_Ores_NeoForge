@@ -10,6 +10,8 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
 import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTest;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest;
 import net.minecraft.world.level.levelgen.structure.templatesystem.TagMatchTest;
 import net.neoforged.neoforge.common.Tags;
 import com.exoticmoss.simpleores.SimpleOres;
@@ -49,7 +51,7 @@ public class ModConfiguredFeatures {
                 OreConfiguration.target(deepslateReplaceables, ModBlocks.DEEPSLATE_NEXALITE_ORE.get().defaultBlockState())
         );
         List<OreConfiguration.TargetBlockState> overworldobscuridiumOre = List.of(
-                OreConfiguration.target(deepslateReplaceables, ModBlocks.BEDROCK_OBSCURIDIUM_ORE.get().defaultBlockState())
+                OreConfiguration.target(new BlockMatchTest(Blocks.BEDROCK), ModBlocks.BEDROCK_OBSCURIDIUM_ORE.get().defaultBlockState())
         );
 
 
@@ -58,7 +60,7 @@ public class ModConfiguredFeatures {
         register(context, OVERWORLD_DEEPSLATE_IGNITHRA_ORE_KEY, Feature.ORE, new OreConfiguration(overworldignithraOres, 10));
         register(context, OVERWORLD_DEEPSLATE_ASTRALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldastraliteOre, 6));
         register(context, OVERWORLD_DEEPSLATE_NEXALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldnexaliteOre, 6));
-        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, Feature.ORE, new OreConfiguration(overworldobscuridiumOre, 4));
+        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, Feature.ORE, new OreConfiguration(overworldobscuridiumOre, 6));
 
         //NETHER ORES
         register(context, NETHER_ANTRACITE_ORE_KEY, Feature.ORE, new OreConfiguration(netherrackReplaceables,

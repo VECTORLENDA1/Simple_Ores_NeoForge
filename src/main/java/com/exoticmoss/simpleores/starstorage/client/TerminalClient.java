@@ -11,7 +11,7 @@ public final class TerminalClient {
     /// The server sent the contents of the network: open the screen, or update the one that is open.
     public static void receive(TerminalContents message) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen instanceof TerminalScreen screen && screen.pos().equals(message.pos())) {
+        if (minecraft.gui.screen() instanceof TerminalScreen screen && screen.pos().equals(message.pos())) {
             screen.update(message);
         } else if (message.open()) {
             minecraft.gui.setScreen(new TerminalScreen(message));

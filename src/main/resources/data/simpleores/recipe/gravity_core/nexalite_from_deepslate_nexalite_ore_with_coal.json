@@ -1,0 +1,14 @@
+{
+  "type": "simpleores:gravity_craft",
+  "experience": 0.5,
+  "tier": 1,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "simpleores:deepslate_nexalite_ore", "count_per_tier": [6, 8, 10, 12] },
+    { "item": "#minecraft:coals" }
+  ],
+  "result": {
+    "id": "simpleores:nexalite"
+  },
+  "count_per_tier": [8, 12, 16, 20]
+}

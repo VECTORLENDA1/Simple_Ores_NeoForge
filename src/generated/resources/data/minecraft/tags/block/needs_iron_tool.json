@@ -7,7 +7,6 @@
     "simpleores:raw_astralite_block",
     "simpleores:raw_nexalite_block",
     "simpleores:nether_antracite_ore",
-    "simpleores:antracite_block",
-    "simpleores:simple_crafting_table"
+    "simpleores:antracite_block"
   ]
 }

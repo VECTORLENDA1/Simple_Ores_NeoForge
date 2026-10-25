@@ -1,0 +1,14 @@
+{
+  "values": [
+    "#minecraft:is_fire",
+    "#minecraft:is_explosion",
+    "#minecraft:is_lightning",
+    "minecraft:cactus",
+    "minecraft:falling_anvil",
+    "minecraft:falling_block",
+    "minecraft:magic",
+    "minecraft:indirect_magic",
+    "minecraft:wither",
+    "minecraft:sonic_boom"
+  ]
+}

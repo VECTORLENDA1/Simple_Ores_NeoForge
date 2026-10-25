@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "simpleores:gravity_core_sun",
+    "simpleores:gravity_core_red_giant",
+    "simpleores:gravity_core_pulsar",
+    "simpleores:gravity_core_black_hole"
+  ]
+}

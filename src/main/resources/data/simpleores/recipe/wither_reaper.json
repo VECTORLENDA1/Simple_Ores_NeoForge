@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "B": "minecraft:bone_block",
+    "N": "simpleores:nexalite_block",
+    "D": "minecraft:netherite_sword",
+    "S": "minecraft:soul_sand"
+  },
+  "pattern": [
+    "BNB",
+    "NDN",
+    "SNS"
+  ],
+  "result": {
+    "id": "simpleores:wither_reaper"
+  }
+}

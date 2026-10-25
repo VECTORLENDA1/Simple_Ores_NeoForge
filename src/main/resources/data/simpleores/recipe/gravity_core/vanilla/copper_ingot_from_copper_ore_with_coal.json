@@ -1,0 +1,14 @@
+{
+  "type": "simpleores:gravity_craft",
+  "experience": 1,
+  "tier": 1,
+  "time_per_tier": [100, 80, 40, 0],
+  "ingredients": [
+    { "item": "#c:ores/copper", "count_per_tier": [6, 8, 10, 12] },
+    { "item": "#minecraft:coals" }
+  ],
+  "result": {
+    "id": "minecraft:copper_ingot"
+  },
+  "count_per_tier": [8, 12, 16, 20]
+}

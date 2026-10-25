@@ -60,7 +60,7 @@ public class ModConfiguredFeatures {
         register(context, OVERWORLD_DEEPSLATE_IGNITHRA_ORE_KEY, Feature.ORE, new OreConfiguration(overworldignithraOres, 10));
         register(context, OVERWORLD_DEEPSLATE_ASTRALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldastraliteOre, 6));
         register(context, OVERWORLD_DEEPSLATE_NEXALITE_ORE_KEY, Feature.ORE, new OreConfiguration(overworldnexaliteOre, 6));
-        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, Feature.ORE, new OreConfiguration(overworldobscuridiumOre, 6));
+        register(context, OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY, ModFeatures.BEDROCK_ORE, new OreConfiguration(overworldobscuridiumOre, 6));
 
         //NETHER ORES
         register(context, NETHER_ANTRACITE_ORE_KEY, Feature.ORE, new OreConfiguration(netherrackReplaceables,

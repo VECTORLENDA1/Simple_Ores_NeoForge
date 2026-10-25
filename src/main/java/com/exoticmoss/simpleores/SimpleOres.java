@@ -6,6 +6,7 @@ import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.item.custom.WitherReaperEvents;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
+import com.exoticmoss.simpleores.worldgen.ModFeatures;
 import com.exoticmoss.simpleores.worldgen.ModBiomeModifiers;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -25,6 +26,7 @@ public class SimpleOres implements ModInitializer {
         ModItems.Register();
         ModBlocks.Register();
         ModRecipes.register();
+        ModFeatures.register();
         ModBlockEntities.register();
 
 

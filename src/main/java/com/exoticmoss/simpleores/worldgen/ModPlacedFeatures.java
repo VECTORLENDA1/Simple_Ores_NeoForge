@@ -57,8 +57,8 @@ public class ModPlacedFeatures {
                         HeightRangePlacement.uniform(VerticalAnchor.absolute(-60), VerticalAnchor.absolute(-20))));
 
         register(context, BEDROCK_OBSCURIDIUM_ORE_PLACED_KEY, configuredFeatures.getOrThrow(ModConfiguredFeatures.OVERWORLD_BEDROCK_OBSCURIDIUM_ORE_KEY),
-                ModOrePlacement.commonOrePlacement(4,
-                        HeightRangePlacement.uniform(VerticalAnchor.absolute(-63), VerticalAnchor.absolute(-59))));
+                ModOrePlacement.commonOrePlacement(5,
+                        HeightRangePlacement.uniform(VerticalAnchor.absolute(-63), VerticalAnchor.absolute(-60))));
     }
 
 

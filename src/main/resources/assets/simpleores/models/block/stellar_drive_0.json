@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "simpleores:block/stellar_machine_top",
+    "side": "simpleores:block/stellar_machine_side",
+    "front": "simpleores:block/stellar_drive_front_0"
+  }
+}

@@ -41,7 +41,10 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.GRAVITY_CORE_SUN.getKey())
                 .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
                 .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
-                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
+                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey())
+                .add(ModBlocks.MAGNETAR_CORE.getKey())
+                .add(ModBlocks.STELLAR_DRIVE.getKey())
+                .add(ModBlocks.STELLAR_TERMINAL.getKey());
 
 
         tag(BlockTags.NEEDS_STONE_TOOL)

@@ -8,6 +8,9 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.item.component.DamageResistant;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
+import com.exoticmoss.simpleores.starstorage.MagnetarBlock;
+import com.exoticmoss.simpleores.starstorage.StellarDriveBlock;
+import com.exoticmoss.simpleores.starstorage.StellarTerminalBlock;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -95,6 +98,23 @@ public class ModBlocks {
     public static final DeferredBlock<Block> GRAVITY_CORE_RED_GIANT = registerGravityCore(CoreTier.RED_GIANT);
     public static final DeferredBlock<Block> GRAVITY_CORE_PULSAR = registerGravityCore(CoreTier.PULSAR);
     public static final DeferredBlock<Block> GRAVITY_CORE_BLACK_HOLE = registerGravityCore(CoreTier.BLACK_HOLE);
+
+    //Star storage (Magnetar network)
+    public static final DeferredBlock<Block> MAGNETAR_CORE = BLOCKS.registerBlock("magnetar_core", MagnetarBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
+                    .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> 13));
+    public static final DeferredBlock<Block> STELLAR_DRIVE = registerBlockItem("stellar_drive", StellarDriveBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
+                    .lightLevel(state -> state.getValue(StellarDriveBlock.CELLS) > 0 ? 6 : 0));
+    public static final DeferredBlock<Block> STELLAR_TERMINAL = registerBlockItem("stellar_terminal", StellarTerminalBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
+                    .lightLevel(state -> 7));
+
+    static {
+        // The Magnetar item can't be destroyed by fire, lava or explosions (like the Gravity Cores)
+        ModItems.ITEMS.registerSimpleBlockItem("magnetar_core", MAGNETAR_CORE, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
+                context -> new DamageResistant(context.getOrThrow(ModBlocks.GRAVITY_CORE_IMMUNE))));
+    }
 
     /// Damage the Gravity Cores dropped as items never take (fire, lava, explosions, lightning, cactus...).
     /// The list is in data/simpleores/tags/damage_type/gravity_core_immune.json

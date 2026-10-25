@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "N": "simpleores:nexalite",
+    "C": "minecraft:chest",
+    "A": "simpleores:astralite"
+  },
+  "pattern": [
+    "INI",
+    "ACA",
+    "INI"
+  ],
+  "result": {
+    "id": "simpleores:stellar_drive"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 4,
+  "time": 400,
+  "ingredients": [
+    {
+      "item": "simpleores:obscuridium",
+      "count": 4
+    },
+    {
+      "item": "simpleores:celestine_block",
+      "count": 2
+    },
+    {
+      "item": "simpleores:zenithra_block",
+      "count": 2
+    },
+    {
+      "item": "minecraft:nether_star"
+    },
+    {
+      "item": "minecraft:ender_eye",
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "simpleores:singularity_cell"
+  }
+}

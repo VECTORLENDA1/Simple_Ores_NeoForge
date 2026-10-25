@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "A": "simpleores:astralite",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "IGI",
+    "GRG",
+    "IAI"
+  ],
+  "result": {
+    "id": "simpleores:stellar_terminal"
+  }
+}

@@ -7,6 +7,11 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
+import com.exoticmoss.simpleores.starstorage.MagnetarItemRenderer;
+import com.exoticmoss.simpleores.starstorage.MagnetarRenderer;
+import com.exoticmoss.simpleores.starstorage.ModDataComponents;
+import com.exoticmoss.simpleores.starstorage.TerminalAction;
+import com.exoticmoss.simpleores.starstorage.TerminalContents;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -43,6 +48,7 @@ public class SimpleOres {
         ModBlocks.Register(modEventBus);
         ModRecipes.register(modEventBus);
         ModBlockEntities.register(modEventBus);
+        ModDataComponents.register(modEventBus);
 
 
 
@@ -58,7 +64,11 @@ public class SimpleOres {
         // JEI "Move Items" button for Gravity Core recipes (client -> server)
         event.registrar("1").playToServer(MoveItemsToCore.TYPE, MoveItemsToCore.STREAM_CODEC, MoveItemsToCore::handle)
         // Selection bar above the Gravity Core: the player picked a recipe (client -> server)
-                .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle);
+                .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle)
+        // Stellar Terminal: the player took or stored items (client -> server)
+                .playToServer(TerminalAction.TYPE, TerminalAction.STREAM_CODEC, TerminalAction::handle)
+        // Stellar Terminal: the items of the Magnetar network (server -> client)
+                .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -85,12 +95,15 @@ public class SimpleOres {
         @SubscribeEvent
         public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
             event.registerBlockEntityRenderer(ModBlockEntities.GRAVITY_CORE_BE.get(), GravityCoreRenderer::new);
+            event.registerBlockEntityRenderer(ModBlockEntities.MAGNETAR_BE.get(), MagnetarRenderer::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)
         @SubscribeEvent
         public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
             event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
+            // 3D item model of the Magnetar Core ("type": "simpleores:magnetar")
+            event.register(Identifier.fromNamespaceAndPath(MODID, "magnetar"), MagnetarItemRenderer.Unbaked.MAP_CODEC);
         }
 
     }

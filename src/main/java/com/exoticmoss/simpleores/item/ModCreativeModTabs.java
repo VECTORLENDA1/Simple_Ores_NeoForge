@@ -63,6 +63,14 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.GRAVITY_CORE_PULSAR.get());
                     output.accept(ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
+                    //STAR STORAGE//
+                    output.accept(ModBlocks.MAGNETAR_CORE.get());
+                    output.accept(ModBlocks.STELLAR_DRIVE.get());
+                    output.accept(ModBlocks.STELLAR_TERMINAL.get());
+                    output.accept(ModItems.WHITE_DWARF_CELL.get());
+                    output.accept(ModItems.NEUTRON_CELL.get());
+                    output.accept(ModItems.SINGULARITY_CELL.get());
+
 
             })
                 .build());

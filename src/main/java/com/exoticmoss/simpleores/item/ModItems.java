@@ -5,6 +5,8 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import com.exoticmoss.simpleores.item.custom.*;
+import com.exoticmoss.simpleores.starstorage.CellTier;
+import com.exoticmoss.simpleores.starstorage.StarCellItem;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
 
@@ -30,6 +32,14 @@ public class ModItems {
     public static final DeferredItem<Item> WITHER_REAPER = ITEMS.registerItem("wither_reaper", WitherReaperItem::new,
             p -> p.sword(ModToolMaterials.WITHER_REAPER, 0, -2.0F)); /// base damage = 1, base attack speed = -4.0
 
+
+    //Star Cells (they keep the items of the Magnetar network)//
+    public static final DeferredItem<Item> WHITE_DWARF_CELL = ITEMS.registerItem("white_dwarf_cell",
+            p -> new StarCellItem(CellTier.WHITE_DWARF, p), p -> p.stacksTo(1));
+    public static final DeferredItem<Item> NEUTRON_CELL = ITEMS.registerItem("neutron_cell",
+            p -> new StarCellItem(CellTier.NEUTRON, p), p -> p.stacksTo(1));
+    public static final DeferredItem<Item> SINGULARITY_CELL = ITEMS.registerItem("singularity_cell",
+            p -> new StarCellItem(CellTier.SINGULARITY, p), p -> p.stacksTo(1).fireResistant());
 
 
     public static void Register(IEventBus eventBus) {

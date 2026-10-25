@@ -38,6 +38,7 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.BEDROCK_OBSCURIDIUM_ORE.getKey()) // only so the vein miners see it as a pickaxe block (who can mine it: BedrockObscuridiumOreBlock)
                 .add(ModBlocks.GRAVITY_CORE_SUN.getKey())
                 .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
                 .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())

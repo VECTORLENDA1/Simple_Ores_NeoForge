@@ -7,6 +7,7 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
+import com.exoticmoss.simpleores.worldgen.ModFeatures;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -42,6 +43,7 @@ public class SimpleOres {
         ModItems.Register(modEventBus);
         ModBlocks.Register(modEventBus);
         ModRecipes.register(modEventBus);
+        ModFeatures.register(modEventBus);
         ModBlockEntities.register(modEventBus);
 
 

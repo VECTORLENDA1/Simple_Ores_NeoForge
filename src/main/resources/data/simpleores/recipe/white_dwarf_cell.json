@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "W": "simpleores:red_dwarf_cell",
+    "G": "minecraft:glass",
+    "A": "simpleores:astralite"
+  },
+  "pattern": [
+    "GGG",
+    "GWG",
+    "WAW"
+  ],
+  "result": {
+    "id": "simpleores:white_dwarf_cell"
+  }
+}

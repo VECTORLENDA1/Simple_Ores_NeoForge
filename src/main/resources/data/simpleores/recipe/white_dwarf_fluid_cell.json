@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": "simpleores:red_dwarf_fluid_cell",
+    "N": "simpleores:nexalite",
+    "G": "minecraft:glass"
+  },
+  "pattern": [
+    "GGG",
+    "GRG",
+    "RNR"
+  ],
+  "result": {
+    "id": "simpleores:white_dwarf_fluid_cell"
+  }
+}

@@ -4,7 +4,8 @@
   "time": 200,
   "ingredients": [
     {
-      "item": "simpleores:preon_cell"
+      "item": "simpleores:preon_cell",
+      "count": 3
     },
     {
       "item": "simpleores:obscuridium",

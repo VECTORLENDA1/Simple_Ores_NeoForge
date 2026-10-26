@@ -1,23 +1,23 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 2,
-  "time": 200,
+  "tier": 3,
+  "time": 100,
   "ingredients": [
     {
       "item": "simpleores:ignithra",
-      "count": 4
+      "count": 16
     },
     {
       "item": "minecraft:redstone_block",
-      "count": 2
+      "count": 4
     },
     {
       "item": "minecraft:glowstone_dust",
-      "count": 8
+      "count": 10
     },
     {
       "item": "minecraft:sugar",
-      "count": 8
+      "count": 10
     }
   ],
   "result": {

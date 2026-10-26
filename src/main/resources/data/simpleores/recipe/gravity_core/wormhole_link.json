@@ -1,7 +1,7 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 3,
-  "time": 200,
+  "tier": 4,
+  "time": 100,
   "ingredients": [
     {
       "item": "simpleores:obscuridium",
@@ -9,11 +9,15 @@
     },
     {
       "item": "minecraft:ender_eye",
-      "count": 4
+      "count": 8
+    },
+    {
+      "item": "minecraft:ender_pearl",
+      "count": 8
     },
     {
       "item": "simpleores:nexalite",
-      "count": 4
+      "count": 10
     },
     {
       "item": "minecraft:chorus_fruit",

@@ -1,10 +1,11 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 3,
+  "tier": 2,
   "time": 200,
   "ingredients": [
     {
-      "item": "simpleores:pulsar_cell"
+      "item": "simpleores:pulsar_cell",
+      "count": 3
     },
     {
       "item": "simpleores:celestine",

@@ -1,10 +1,11 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 2,
+  "tier": 1,
   "time": 200,
   "ingredients": [
     {
-      "item": "simpleores:white_dwarf_cell"
+      "item": "simpleores:white_dwarf_cell",
+      "count": 3
     },
     {
       "item": "simpleores:celestine",

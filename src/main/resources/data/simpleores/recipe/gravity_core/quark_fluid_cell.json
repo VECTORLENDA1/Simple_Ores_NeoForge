@@ -4,7 +4,8 @@
   "time": 200,
   "ingredients": [
     {
-      "item": "simpleores:neutron_fluid_cell"
+      "item": "simpleores:neutron_fluid_cell",
+      "count": 3
     },
     {
       "item": "simpleores:ignithra",

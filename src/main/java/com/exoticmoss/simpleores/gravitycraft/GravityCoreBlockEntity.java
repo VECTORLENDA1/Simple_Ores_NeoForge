@@ -534,17 +534,24 @@ public class GravityCoreBlockEntity extends BlockEntity {
         onItemsChanged();
     }
 
-    /// Making a bigger Star Cell (or Fluid Cell) from a smaller one: the items (or liquids) inside go to the new cell.
+    /// Making a bigger Star Cell (or Fluid Cell) from smaller ones: the items (or liquids) of all of them go to the new cell.
     private static void keepCellContents(List<ItemStack> used, ItemStack result) {
-        for (ItemStack old : used) {
-            var items = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get());
-            if (items != null && result.getItem() instanceof com.exoticmoss.simpleores.starstorage.StarCellItem) {
-                result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get(), items);
+        if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.StarCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.CellContents.EMPTY;
+            for (ItemStack old : used) {
+                var items = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get());
+                if (items == null) continue;
+                for (var entry : items.entries()) merged = merged.plus(entry.create(1), entry.count());
             }
-            var fluids = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get());
-            if (fluids != null && result.getItem() instanceof com.exoticmoss.simpleores.starstorage.FluidCellItem) {
-                result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get(), fluids);
+            if (!merged.isEmpty()) result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get(), merged);
+        } else if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.FluidCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.FluidContents.EMPTY;
+            for (ItemStack old : used) {
+                var fluids = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get());
+                if (fluids == null) continue;
+                for (var entry : fluids.entries()) merged = merged.plus(entry.fluid(), entry.amount());
             }
+            if (!merged.isEmpty()) result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get(), merged);
         }
     }
 

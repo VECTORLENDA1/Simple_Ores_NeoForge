@@ -4,7 +4,8 @@
   "time": 200,
   "ingredients": [
     {
-      "item": "simpleores:blue_dwarf_fluid_cell"
+      "item": "simpleores:blue_dwarf_fluid_cell",
+      "count": 3
     },
     {
       "item": "simpleores:zenithra",

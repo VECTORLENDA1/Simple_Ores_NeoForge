@@ -58,7 +58,6 @@
   "item.simpleores.star_cell.types": "Kinds of items: %s",
   "item.simpleores.star_cell.more": " ...and %s more",
   "item.simpleores.star_cell.hint": "Put it in a Stellar Drive near a Magnetar Core",
-  "message.simpleores.magnetar.info": "Magnetar field (%5$s blocks): %1$s drives, %2$s cells, %3$s / %4$s items",
   "message.simpleores.terminal.no_magnetar": "No Magnetar Core within %s blocks",
   "screen.simpleores.terminal.title": "Magnetar Network",
   "screen.simpleores.terminal.search": "Search...",
@@ -72,5 +71,14 @@
   "screen.simpleores.terminal.sort.least": "Least first",
   "screen.simpleores.terminal.sort.a_z": "Name A-Z",
   "screen.simpleores.terminal.sort.z_a": "Name Z-A",
-  "screen.simpleores.terminal.crafting": "Crafting"
+  "screen.simpleores.terminal.crafting": "Crafting",
+  "screen.simpleores.magnetar.title": "Magnetar Core",
+  "screen.simpleores.magnetar.info": "%s drives - %s cells - %s / %s items",
+  "screen.simpleores.magnetar.hint": "Left-click a slot: take out - Right-click: keep full",
+  "screen.simpleores.magnetar.no_blocks": "No blocks with an inventory within %s blocks",
+  "screen.simpleores.magnetar.take_all": "Take all",
+  "screen.simpleores.magnetar.clear": "Clear",
+  "screen.simpleores.magnetar.empty": "Empty",
+  "screen.simpleores.magnetar.taking": "Taking out to the network",
+  "screen.simpleores.magnetar.keeping": "Keeping full of: %s"
 }

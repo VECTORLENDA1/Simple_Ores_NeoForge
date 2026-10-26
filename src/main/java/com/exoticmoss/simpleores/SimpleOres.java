@@ -15,6 +15,8 @@ import com.exoticmoss.simpleores.starstorage.StellarDriveRenderer;
 import com.exoticmoss.simpleores.starstorage.ModDataComponents;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
+import com.exoticmoss.simpleores.starstorage.MagnetarAction;
+import com.exoticmoss.simpleores.starstorage.MagnetarView;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
 import com.exoticmoss.simpleores.starstorage.client.TerminalScreen;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -77,7 +79,11 @@ public class SimpleOres {
         // Stellar Terminal: the player took or stored items (client -> server)
                 .playToServer(TerminalAction.TYPE, TerminalAction.STREAM_CODEC, TerminalAction::handle)
         // Stellar Terminal: the items of the Magnetar network (server -> client)
-                .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle);
+                .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle)
+        // Magnetar screen: the player changed the rules of the slots (client -> server)
+                .playToServer(MagnetarAction.TYPE, MagnetarAction.STREAM_CODEC, MagnetarAction::handle)
+        // Magnetar screen: the network and the blocks of the field (server -> client)
+                .playToClient(MagnetarView.TYPE, MagnetarView.STREAM_CODEC, MagnetarView::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

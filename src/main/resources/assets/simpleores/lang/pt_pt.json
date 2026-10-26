@@ -21,7 +21,6 @@
   "item.simpleores.star_cell.types": "Tipos de items: %s",
   "item.simpleores.star_cell.more": " ...e mais %s",
   "item.simpleores.star_cell.hint": "Coloca-a numa Drive Estelar perto de um Núcleo Magnetar",
-  "message.simpleores.magnetar.info": "Campo do Magnetar (%5$s blocos): %1$s drives, %2$s células, %3$s / %4$s items",
   "message.simpleores.terminal.no_magnetar": "Nenhum Núcleo Magnetar a menos de %s blocos",
   "screen.simpleores.terminal.title": "Rede Magnetar",
   "screen.simpleores.terminal.search": "Pesquisar...",
@@ -35,5 +34,14 @@
   "screen.simpleores.terminal.sort.least": "Menos primeiro",
   "screen.simpleores.terminal.sort.a_z": "Nome A-Z",
   "screen.simpleores.terminal.sort.z_a": "Nome Z-A",
-  "screen.simpleores.terminal.crafting": "Crafting"
+  "screen.simpleores.terminal.crafting": "Crafting",
+  "screen.simpleores.magnetar.title": "Núcleo Magnetar",
+  "screen.simpleores.magnetar.info": "%s drives - %s células - %s / %s items",
+  "screen.simpleores.magnetar.hint": "Clique esquerdo num slot: tirar - Clique direito: manter cheio",
+  "screen.simpleores.magnetar.no_blocks": "Nenhum bloco com inventário a menos de %s blocos",
+  "screen.simpleores.magnetar.take_all": "Tirar tudo",
+  "screen.simpleores.magnetar.clear": "Limpar",
+  "screen.simpleores.magnetar.empty": "Vazio",
+  "screen.simpleores.magnetar.taking": "A tirar para a rede",
+  "screen.simpleores.magnetar.keeping": "A manter cheio de: %s"
 }

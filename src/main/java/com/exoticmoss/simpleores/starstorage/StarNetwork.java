@@ -24,6 +24,12 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives) {
 
     // ---------------------------------------------------------------- finding the network
 
+    /// True if "pos" is inside the field of the Magnetar at "magnetarPos".
+    public static boolean inField(BlockPos magnetarPos, BlockPos pos) {
+        return Math.abs(pos.getX() - magnetarPos.getX()) <= FIELD_RADIUS && Math.abs(pos.getY() - magnetarPos.getY()) <= FIELD_RADIUS
+                && Math.abs(pos.getZ() - magnetarPos.getZ()) <= FIELD_RADIUS;
+    }
+
     /// The Magnetar whose field reaches this position (the nearest one). null = none.
     public static @Nullable MagnetarBlockEntity findMagnetar(Level level, BlockPos pos) {
         MagnetarBlockEntity[] best = {null};
@@ -57,7 +63,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives) {
 
     /// Goes through the block entities of the loaded chunks inside the cube around "center".
     /// (Much faster than looking at every block of the cube.)
-    private static void forEachBlockEntity(Level level, BlockPos center, int radius, Consumer<BlockEntity> action) {
+    static void forEachBlockEntity(Level level, BlockPos center, int radius, Consumer<BlockEntity> action) {
         int minX = center.getX() - radius, maxX = center.getX() + radius;
         int minY = center.getY() - radius, maxY = center.getY() + radius;
         int minZ = center.getZ() - radius, maxZ = center.getZ() + radius;

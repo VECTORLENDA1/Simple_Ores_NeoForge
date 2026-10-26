@@ -21,13 +21,13 @@ import java.util.Map;
 
 /// Sent by the client: craft "amount" of "item" with the Quasars of the network of the terminal at "pos".
 /// The server answers with Reply (what is missing, or that it was crafted).
-public record CraftRequest(BlockPos pos, ItemStackTemplate item, int amount) implements CustomPacketPayload {
+public record CraftRequest(BlockPos pos, ItemStackTemplate item, long amount) implements CustomPacketPayload {
     public static final Type<CraftRequest> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "craft_request"));
     public static final StreamCodec<RegistryFriendlyByteBuf, CraftRequest> STREAM_CODEC = StreamCodec.composite(
             BlockPos.STREAM_CODEC, CraftRequest::pos,
             ItemStackTemplate.STREAM_CODEC, CraftRequest::item,
-            ByteBufCodecs.VAR_INT, CraftRequest::amount,
+            ByteBufCodecs.VAR_LONG, CraftRequest::amount,
             CraftRequest::new);
 
     @Override

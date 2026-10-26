@@ -35,7 +35,7 @@ public final class Autocraft {
     /// Sub-recipes can go this deep at most (stops recipes that need themselves).
     private static final int MAX_DEPTH = 16;
     /// At most this many crafts in one request (only a safety limit: big requests are crafted little by little).
-    public static final long MAX_CRAFTS = 1_000_000_000L;
+    public static final long MAX_CRAFTS = 1_000_000_000_000_000L;
     /// Plans with only crafting table steps and at most this many crafts are crafted at once; bigger ones become
     /// a Job of a Quasar (a little every few ticks, so the server doesn't freeze).
     private static final long CRAFTS_AT_ONCE = 512;

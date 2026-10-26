@@ -73,6 +73,11 @@ public class CoreDrawing {
         }
     }
 
+    /// A see-through sphere of one color around the current position (e.g. the light shell of a star the player is looking at).
+    public static void drawShell(PoseStack pose, SubmitNodeCollector collector, float radius, int color) {
+        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> glowSphere(p, v, radius, color));
+    }
+
     // ---------------------------------------------------------------- shapes
 
     /// The main sphere. Each point mixes the core and spot colors, and gets darker near the edges.

@@ -2,6 +2,7 @@ package com.exoticmoss.simpleores.starstorage;
 
 import com.exoticmoss.simpleores.gravitycraft.CoreDrawing;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -11,6 +12,8 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -21,6 +24,8 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
 
     public static class State extends BlockEntityRenderState {
         float time;
+        /// The player is looking at the star.
+        boolean looked;
     }
 
     public StarBlockRenderer(BlockEntityRendererProvider.Context context, StarLook look) {
@@ -37,6 +42,8 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
                                    ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTick, cameraPos, breakProgress);
         state.time = (blockEntity.getLevel().getGameTime() % 100000) + partialTick;
+        state.looked = Minecraft.getInstance().hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK
+                && hit.getBlockPos().equals(blockEntity.getBlockPos());
     }
 
     @Override
@@ -52,6 +59,8 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
         pose.translate(0.5, 0.5, 0.5);
         CoreDrawing.drawStar(pose, collector, radius, time * 1.5f, look.coreColor, look.spotColor, look.glowColor,
                 0x00000000, look.beamColor, look.beamLength, shading);
+        // Looked at: a light shell around the star (instead of the box outline)
+        if (state.looked) CoreDrawing.drawShell(pose, collector, radius * 1.18f, StarLook.HIGHLIGHT_COLOR);
         pose.popPose();
     }
 

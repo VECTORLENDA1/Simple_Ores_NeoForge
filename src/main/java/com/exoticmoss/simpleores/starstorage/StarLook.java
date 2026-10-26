@@ -2,6 +2,8 @@ package com.exoticmoss.simpleores.starstorage;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /// How the stars of the star storage look (the Magnetar Core and the Stellar Terminal).
 /// They are drawn like the Gravity Cores (see CoreDrawing). To change how one looks, just change the numbers here.
@@ -15,6 +17,8 @@ public enum StarLook implements StringRepresentable {
     TERMINAL(  "terminal",   0xFFDAFFF6,  0xFF2FC79E,  0xFF46E8C4,  0x00000000,  0.30f,  0f,          0.5f);
 
     public static final Codec<StarLook> CODEC = StringRepresentable.fromEnum(StarLook::values);
+    /// Color of the light shell around the star while the player looks at it (instead of the box outline).
+    public static final int HIGHLIGHT_COLOR = 0x60FFFFFF;
 
     public final String id;
     public final int coreColor;
@@ -36,6 +40,13 @@ public enum StarLook implements StringRepresentable {
         this.radius = radius;
         this.beamLength = beamLength;
         this.itemRadius = itemRadius;
+    }
+
+    /// The part of the block that can be clicked: a box just around the star (blocks can only have boxes,
+    /// so it is the smallest box with the whole star inside). The box itself is not drawn: see StarOutline.
+    public VoxelShape shape() {
+        double from = 16 * (0.5 - radius), to = 16 * (0.5 + radius);
+        return Block.box(from, from, from, to, to, to);
     }
 
     @Override

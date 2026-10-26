@@ -19,9 +19,12 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /// The menu of the Stellar Terminal: a normal crafting grid (3x3 + result) and the player's inventory.
+/// After crafting, the grid is filled again from the network (see RefillResultSlot).
 /// The items of the network are not slots: the screen shows them and asks the server (TerminalAction).
 ///  - Shift + click on an item of the inventory stores it in the network.
 ///  - Closing the screen gives back the items left in the crafting grid.
@@ -45,7 +48,7 @@ public class TerminalMenu extends AbstractContainerMenu {
         this.player = inventory.player;
         int top = layout.inventoryTop();
 
-        addSlot(new ResultSlot(player, craftSlots, resultSlots, 0, layout.resultX() + 1, layout.resultY() + 1));
+        addSlot(new RefillResultSlot(layout.resultX() + 1, layout.resultY() + 1));
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 3; column++) {
                 addSlot(new Slot(craftSlots, column + row * 3,
@@ -77,6 +80,46 @@ public class TerminalMenu extends AbstractContainerMenu {
         }
         resultSlots.setItem(0, result);
         broadcastChanges();
+    }
+
+    /// The result slot. After crafting, the items used are put back in the crafting grid from the network
+    /// (like in Refined Storage), so the same recipe can be crafted again and again.
+    private class RefillResultSlot extends ResultSlot {
+        RefillResultSlot(int x, int y) {
+            super(player, craftSlots, resultSlots, 0, x, y);
+        }
+
+        @Override
+        public void onTake(Player player, ItemStack stack) {
+            List<ItemStack> before = new ArrayList<>();
+            for (int i = 0; i < craftSlots.getContainerSize(); i++) before.add(craftSlots.getItem(i).copy());
+            super.onTake(player, stack);
+            if (player instanceof ServerPlayer serverPlayer) refill(serverPlayer, before);
+        }
+    }
+
+    /// Puts back in the crafting grid, from the network, the items used by the last craft.
+    private void refill(ServerPlayer player, List<ItemStack> before) {
+        StarNetwork network = StarNetwork.at(player.level(), pos);
+        boolean changed = false;
+        for (int i = 0; i < before.size(); i++) {
+            ItemStack was = before.get(i);
+            if (was.isEmpty()) continue;
+            ItemStack now = craftSlots.getItem(i);
+            if (now.isEmpty()) {
+                ItemStack got = network.extract(was.copyWithCount(1), was.getCount());
+                if (got.isEmpty()) continue;
+                craftSlots.setItem(i, got);
+                changed = true;
+            } else if (ItemStack.isSameItemSameComponents(now, was) && now.getCount() < was.getCount()) {
+                ItemStack got = network.extract(was.copyWithCount(1), was.getCount() - now.getCount());
+                if (got.isEmpty()) continue;
+                now.grow(got.getCount());
+                craftSlots.setItem(i, now);
+                changed = true;
+            }
+        }
+        if (changed) TerminalContents.send(player, pos);
     }
 
     /// Closing the screen: the items left in the crafting grid go back to the player.

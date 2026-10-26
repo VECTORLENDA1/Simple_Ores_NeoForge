@@ -261,8 +261,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         if (hovered >= 0 && menu.getCarried().isEmpty()) {
             TerminalContents.Item item = shown.get(hovered);
             graphics.setTooltipForNextFrame(font, List.of(item.item().create().getHoverName(),
-                            Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count())),
-                            Component.translatable("screen.simpleores.terminal.take_hint")),
+                            Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count()))),
                     Optional.empty(), mouseX, mouseY);
         }
     }

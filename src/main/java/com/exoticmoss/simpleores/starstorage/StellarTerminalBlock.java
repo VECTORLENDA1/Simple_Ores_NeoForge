@@ -8,12 +8,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /// The Stellar Terminal: a small teal star. Right-click opens the screen with every item of the
 /// Magnetar network and a crafting grid (see TerminalScreen). It must be inside the field of a Magnetar Core.
@@ -34,6 +37,12 @@ public class StellarTerminalBlock extends BaseEntityBlock {
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.INVISIBLE;
+    }
+
+    /// Only the star can be clicked (a box just around it).
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return StarLook.TERMINAL.shape();
     }
 
     @Override

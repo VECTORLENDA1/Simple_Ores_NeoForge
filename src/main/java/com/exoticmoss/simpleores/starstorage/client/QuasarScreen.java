@@ -194,7 +194,8 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         List<QuasarJobs.View> jobs = jobs();
         for (int row = 0; row < jobRows() && jobScroll + row < jobs.size(); row++) {
             int[] box = cancelBox(row);
-            if (event.x() >= box[0] && event.x() < box[0] + box[2] && event.y() >= box[1] && event.y() < box[1] + box[2]) {
+            // (a little bigger than the X, so it is easy to hit)
+            if (event.x() >= box[0] - 3 && event.x() < box[0] + box[2] + 3 && event.y() >= box[1] - 3 && event.y() < box[1] + box[2] + 3) {
                 button(QuasarMenu.CANCEL_JOB + jobs.get(jobScroll + row).id());
                 return true;
             }

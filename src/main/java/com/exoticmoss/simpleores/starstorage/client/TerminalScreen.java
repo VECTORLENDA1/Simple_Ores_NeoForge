@@ -411,7 +411,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             return true;
         }
         if (clickTopLeft(event)) return true;
-        if (isOverNetwork(event.x(), event.y()) && !showNetwork()) return clickMiddle(event);
+        // Another view in the middle (the Quasar's auto-crafts): the whole width of the panel (its X buttons are on the right)
+        if (!showNetwork() && event.x() >= leftPos && event.x() < leftPos + imageWidth
+                && event.y() >= networkTop() && event.y() < networkTop() + layout.rows() * TerminalLayout.CELL_H) {
+            return clickMiddle(event);
+        }
         if (isOverExperience(event.x(), event.y())) {
             send(TerminalAction.TAKE_XP, Optional.empty());
             return true;

@@ -12,6 +12,7 @@ import com.exoticmoss.simpleores.starstorage.MagnetarRenderer;
 import com.exoticmoss.simpleores.starstorage.ModDataComponents;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
+import com.exoticmoss.simpleores.worldgen.ModFeatures;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -47,6 +48,7 @@ public class SimpleOres {
         ModItems.Register(modEventBus);
         ModBlocks.Register(modEventBus);
         ModRecipes.register(modEventBus);
+        ModFeatures.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         ModDataComponents.register(modEventBus);
 

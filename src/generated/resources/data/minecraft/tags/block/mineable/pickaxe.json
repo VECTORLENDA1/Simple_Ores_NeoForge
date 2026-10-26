@@ -25,6 +25,7 @@
     "simpleores:gravity_core_black_hole",
     "simpleores:magnetar_core",
     "simpleores:stellar_drive",
-    "simpleores:stellar_terminal"
+    "simpleores:stellar_terminal",
+    "simpleores:bedrock_obscuridium_ore"
   ]
 }

@@ -18,7 +18,7 @@ public record TerminalLayout(int rows) {
     public static final int TOP = 20;
     public static final int NETWORK_TOP = 82;
     /// Height of everything except the rows of the network.
-    public static final int FIXED_HEIGHT = NETWORK_TOP + 30 + 3 * SLOT + 4 + SLOT + 10;
+    public static final int FIXED_HEIGHT = NETWORK_TOP + 30 + 3 * SLOT + 4 + SLOT + 16;
 
     public int height() {
         return FIXED_HEIGHT + rows * CELL_H;

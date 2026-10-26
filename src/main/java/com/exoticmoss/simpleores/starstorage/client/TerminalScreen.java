@@ -122,6 +122,23 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     protected void addMoreWidgets() {
     }
 
+    /// True: the middle shows the items of the network (the Quasar shows its auto-crafts there in a tab).
+    protected boolean showNetwork() {
+        return true;
+    }
+
+    /// The middle part when it doesn't show the network. Returns nothing hovered.
+    protected void drawMiddle(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    }
+
+    protected boolean clickMiddle(MouseButtonEvent event) {
+        return true;
+    }
+
+    protected int networkTopY() {
+        return networkTop();
+    }
+
     /// Drawn after everything (the Quasar draws its tabs and tooltips).
     protected void drawMore(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
     }
@@ -381,6 +398,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             return true;
         }
         if (clickTopLeft(event)) return true;
+        if (isOverNetwork(event.x(), event.y()) && !showNetwork()) return clickMiddle(event);
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
             if (!menu.getCarried().isEmpty()) {
@@ -470,7 +488,9 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
 
         if (craftItem == null) drawTopLeft(graphics, mouseX, mouseY);
-        int hovered = drawNetwork(graphics, mouseX, mouseY);
+        int hovered = -1;
+        if (showNetwork()) hovered = drawNetwork(graphics, mouseX, mouseY);
+        else drawMiddle(graphics, mouseX, mouseY);
         if (craftItem != null) {
             hovered = -1;
             drawCraftPanel(graphics, mouseX, mouseY);
@@ -486,6 +506,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), leftPos + TerminalLayout.inventoryLeft(), top - 11, TEXT_DIM);
         graphics.text(font, gridLabel(), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
         for (Slot slot : menu.slots) {
+            if (!slot.isActive()) continue;
             int x = leftPos + slot.x - 1, y = topPos + slot.y - 1;
             if (slot.index == menu.resultSlot()) {
                 graphics.fill(x - 2, y - 2, x + TerminalLayout.SLOT + 2, y + TerminalLayout.SLOT + 2, RESULT_COLOR);

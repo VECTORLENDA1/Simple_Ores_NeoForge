@@ -14,15 +14,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/// Drag and drop from the JEI list onto the recipe grid of the Quasar.
+/// Drag and drop from the JEI list onto the recipe slots of the Quasar (the ones of the tab shown).
 public class QuasarGhostHandler implements IGhostIngredientHandler<QuasarScreen> {
     @Override
     public <I> List<Target<I>> getTargetsTyped(QuasarScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
         Optional<ItemStack> item = ingredient.getItemStack();
-        if (item.isEmpty() || !screen.recipeTab()) return List.of();
+        if (item.isEmpty()) return List.of();
         List<Target<I>> targets = new ArrayList<>();
-        for (int i = 0; i < QuasarMenu.GRID_SLOTS; i++) {
+        for (int i = 0; i < QuasarMenu.INVENTORY_START; i++) {
             Slot slot = screen.getMenu().slots.get(i);
+            if (i == QuasarMenu.RESULT_SLOT || !slot.isActive()) continue;
             int index = i;
             Rect2i area = new Rect2i(screen.left() + slot.x, screen.top() + slot.y, 16, 16);
             targets.add(new Target<>() {

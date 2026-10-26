@@ -48,6 +48,14 @@ public class QuasarBlockEntity extends BlockEntity {
         jobs.add(job);
     }
 
+    public List<Autocraft.Job> getJobs() {
+        return jobs;
+    }
+
+    public void cancelJob(int id) {
+        jobs.removeIf(job -> job.id == id);
+    }
+
     /// Server: works on the jobs every half second (the finished and the stuck ones go away).
     public void serverTick() {
         if (jobs.isEmpty() || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;

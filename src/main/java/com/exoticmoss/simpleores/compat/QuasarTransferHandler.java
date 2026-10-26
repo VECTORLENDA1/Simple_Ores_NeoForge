@@ -56,6 +56,7 @@ public class QuasarTransferHandler implements IRecipeTransferHandler<QuasarMenu,
                 }
                 slots.add(items);
             }
+            container.tab = QuasarMenu.TAB_CRAFTING;
             ClientPacketDistributor.sendToServer(new QuasarFill(slots));
         }
         return null;

@@ -93,5 +93,6 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
         }
         menu.broadcastChanges();
         TerminalContents.send(player, pos);
+        if (menu instanceof QuasarMenu) QuasarJobs.send(player, pos);
     }
 }

@@ -34,12 +34,9 @@ public record QuasarCore(ResourceKey<Recipe<?>> recipe) implements CustomPacketP
         return TYPE;
     }
 
-    public static void handle(QuasarCore message, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player) || !(player.containerMenu instanceof QuasarMenu menu)) return;
-        if (!(player.level().getBlockEntity(menu.pos) instanceof QuasarBlockEntity quasar)) return;
-        Optional<RecipeHolder<?>> holder = player.level().recipeAccess().byKey(message.recipe());
-        if (holder.isEmpty() || !(holder.get().value() instanceof GravityCoreRecipe recipe) || recipe.getUpgradeTier() != null) return;
-
+    /// The recipe of a Gravity Core recipe (its ingredients with the amounts of the smallest tier that makes it).
+    public static Pattern pattern(RecipeHolder<GravityCoreRecipe> holder) {
+        GravityCoreRecipe recipe = holder.value();
         int tier = recipe.getTier();
         List<List<ItemStackTemplate>> inputs = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
@@ -49,9 +46,18 @@ public record QuasarCore(ResourceKey<Recipe<?>> recipe) implements CustomPacketP
             amounts.add(part.countFor(tier));
         }
         ItemStack result = recipe.createResult(tier);
-        if (result.isEmpty()) return;
-        quasar.addPattern(new Pattern(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(),
-                inputs, amounts, Optional.of(message.recipe()), tier, false));
+        return new Pattern(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(),
+                inputs, amounts, Optional.of(holder.id()), tier, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void handle(QuasarCore message, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player) || !(player.containerMenu instanceof QuasarMenu menu)) return;
+        if (!(player.level().getBlockEntity(menu.pos) instanceof QuasarBlockEntity quasar)) return;
+        Optional<RecipeHolder<?>> holder = player.level().recipeAccess().byKey(message.recipe());
+        if (holder.isEmpty() || !(holder.get().value() instanceof GravityCoreRecipe recipe) || recipe.getUpgradeTier() != null) return;
+
+        quasar.addPattern(pattern((RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder.get()));
         QuasarPatterns.send(player, menu.pos);
     }
 }

@@ -61,7 +61,6 @@
   "screen.simpleores.terminal.craft.ctrl": "Ctrl + clique: craftar mais",
   "screen.simpleores.quasar.recipe": "Receita",
   "block.simpleores.advanced_stellar_terminal": "Terminal Estelar II",
-  "screen.simpleores.quasar.core_hint": "Usa o \"+\" do JEI numa receita do Gravity Core para a guardar aqui. São feitas pelos Gravity Cores do campo, a partir de um Terminal Estelar II.",
   "tooltip.simpleores.magnetar_core": "Liga tudo à volta (16 blocos) numa só rede de armazenamento",
   "tooltip.simpleores.stellar_terminal": "Ver, tirar e guardar os items da rede, e craftar",
   "tooltip.simpleores.advanced_stellar_terminal": "Terminal que também crafta com os Gravity Cores e fornalhas",
@@ -71,5 +70,14 @@
   "tooltip.simpleores.gravity_core_sun": "Crafta com gravidade (tier 1)",
   "tooltip.simpleores.gravity_core_red_giant": "Crafta com gravidade (tier 2)",
   "tooltip.simpleores.gravity_core_pulsar": "Crafta com gravidade (tier 3)",
-  "tooltip.simpleores.gravity_core_black_hole": "Crafta com gravidade (tier 4)"
+  "tooltip.simpleores.gravity_core_black_hole": "Crafta com gravidade (tier 4)",
+  "screen.simpleores.quasar.tab.crafting": "Receitas da crafting table",
+  "screen.simpleores.quasar.tab.core": "Receitas do Gravity Core",
+  "screen.simpleores.quasar.tab.furnace": "Receitas da fornalha",
+  "screen.simpleores.quasar.tab.jobs": "Auto-crafts a ser feitos",
+  "screen.simpleores.quasar.no_jobs": "Nenhum auto-craft a ser feito",
+  "screen.simpleores.quasar.job.working": "A trabalhar",
+  "screen.simpleores.quasar.job.waiting_items": "À espera de items",
+  "screen.simpleores.quasar.job.waiting_cores": "À espera de um Gravity Core livre",
+  "screen.simpleores.quasar.job.waiting_furnaces": "À espera das fornalhas"
 }

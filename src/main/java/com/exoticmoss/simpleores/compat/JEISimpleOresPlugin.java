@@ -67,6 +67,8 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
         // "+" on Gravity Core recipes with the Quasar screen open: saves the recipe in the Quasar
         registration.addRecipeTransferHandler(new QuasarCoreTransferHandler(), GravityCoreRecipeCategory.RECIPE_TYPE);
+        // "+" on furnace recipes with the Quasar screen open: puts the input in the furnace tab
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
     }
 
     // Drag and drop from the JEI list onto the recipe grid of the Quasar

@@ -23,6 +23,7 @@ import com.exoticmoss.simpleores.starstorage.TerminalMenu;
 import com.exoticmoss.simpleores.starstorage.QuasarFill;
 import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
 import com.exoticmoss.simpleores.starstorage.QuasarCore;
+import com.exoticmoss.simpleores.starstorage.QuasarJobs;
 import com.exoticmoss.simpleores.starstorage.QuasarSlot;
 import com.exoticmoss.simpleores.starstorage.client.BinaryScreen;
 import com.exoticmoss.simpleores.starstorage.client.QuasarScreen;
@@ -97,6 +98,7 @@ public class SimpleOres {
                 .playToServer(QuasarFill.TYPE, QuasarFill.STREAM_CODEC, QuasarFill::handle)
                 .playToServer(QuasarSlot.TYPE, QuasarSlot.STREAM_CODEC, QuasarSlot::handle)
                 .playToServer(QuasarCore.TYPE, QuasarCore.STREAM_CODEC, QuasarCore::handle)
+                .playToClient(QuasarJobs.TYPE, QuasarJobs.STREAM_CODEC, QuasarJobs::handle)
         // Auto-craft: the player asked to craft (client -> server) and the answer (server -> client)
                 .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
                 .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle);

@@ -92,5 +92,6 @@
   "item.simpleores.neutron_fluid_cell": "Célula de Líquidos de Neutrões",
   "item.simpleores.singularity_fluid_cell": "Célula de Líquidos de Singularidade",
   "item.simpleores.fluid_cell.amount": "Líquidos: %s / %s",
-  "screen.simpleores.quasar.job.waiting_results": "À espera dos resultados"
+  "screen.simpleores.quasar.job.waiting_results": "À espera dos resultados",
+  "screen.simpleores.binary.tank": "Tanque vazio"
 }

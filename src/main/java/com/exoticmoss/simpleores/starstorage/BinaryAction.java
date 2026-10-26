@@ -8,8 +8,10 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -55,21 +57,28 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
 
         BlockPos block = message.block();
-        if (message.action() != REFRESH && binary.inReach(block)
-                && player.level().getBlockEntity(block) instanceof Container container) {
+        ResourceHandler<ItemResource> items = StarAccess.items(player.level(), block);
+        ResourceHandler<FluidResource> fluids = StarAccess.fluids(player.level(), block);
+        int slotCount = items == null ? 0 : items.size();
+        int tankCount = fluids == null ? 0 : fluids.size();
+        if (message.action() != REFRESH && binary.inReach(block) && (slotCount > 0 || tankCount > 0)) {
             int slot = message.slot();
-            SlotRule old = binary.rulesOf(block).get(slot);
+            boolean tank = slot >= BinaryStarBlockEntity.TANKS;
+            boolean valid = tank ? slot - BinaryStarBlockEntity.TANKS < tankCount : slot >= 0 && slot < slotCount;
             switch (message.action()) {
                 case CLICK -> {
-                    if (slot >= 0 && slot < container.getContainerSize()) click(binary, block, container, slot, player.containerMenu.getCarried());
+                    if (!valid) break;
+                    // The item that is there now: for a tank, a bucket of its liquid
+                    ItemStack inside = tank ? tankBucket(fluids, slot - BinaryStarBlockEntity.TANKS) : StarAccess.stack(items, slot);
+                    ItemStack carried = player.containerMenu.getCarried();
+                    // A tank keeps a liquid: only a full bucket can be chosen with the mouse cursor
+                    if (tank && !carried.isEmpty() && StarFluids.fromBucket(carried) == null) break;
+                    click(binary, block, inside, slot, carried);
                 }
                 case REMOVE -> binary.setRule(block, slot, null);
                 case TAKE_ALL -> {
-                    for (int i = 0; i < container.getContainerSize(); i++) {
-                        SlotRule rule = binary.rulesOf(block).get(i);
-                        binary.setRule(block, i, new SlotRule(i, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
-                                rule == null ? Optional.empty() : rule.item()));
-                    }
+                    for (int i = 0; i < slotCount; i++) takeAll(binary, block, i);
+                    for (int t = 0; t < tankCount; t++) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
                 }
                 case CLEAR -> binary.clearRules(block);
                 default -> {
@@ -79,9 +88,22 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         BinaryView.send(player, pos, false);
     }
 
+    private static void takeAll(BinaryStarBlockEntity binary, BlockPos block, int slot) {
+        SlotRule rule = binary.rulesOf(block).get(slot);
+        binary.setRule(block, slot, new SlotRule(slot, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
+                rule == null ? Optional.empty() : rule.item()));
+    }
+
+    /// A bucket of the liquid of the tank (EMPTY if the tank is empty or the liquid has no bucket).
+    private static ItemStack tankBucket(ResourceHandler<FluidResource> fluids, int tank) {
+        FluidResource fluid = fluids.getResource(tank);
+        return fluid.isEmpty() ? ItemStack.EMPTY : StarFluids.bucket(fluid.getFluid());
+    }
+
     /// Left-click on a slot: with an item in the mouse cursor, the slot keeps that item; else the next mode.
     /// The modes that keep an item need one: the one already chosen, or the one in the slot (else they are skipped).
-    private static void click(BinaryStarBlockEntity binary, BlockPos block, Container container, int slot, ItemStack carried) {
+    /// "inside" = what is in the slot now (for a tank: a bucket of its liquid).
+    private static void click(BinaryStarBlockEntity binary, BlockPos block, ItemStack inside, int slot, ItemStack carried) {
         SlotRule old = binary.rulesOf(block).get(slot);
         int mode = old == null ? 0 : old.mode();
         Optional<ItemStackTemplate> item = old == null ? Optional.empty() : old.item();
@@ -90,8 +112,8 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
             binary.setRule(block, slot, new SlotRule(slot, (mode & SlotRule.TAKE) | SlotRule.KEEP, item));
             return;
         }
-        if (item.isEmpty() && !container.getItem(slot).isEmpty()) {
-            item = Optional.of(ItemStackTemplate.fromNonEmptyStack(container.getItem(slot).copyWithCount(1)));
+        if (item.isEmpty() && !inside.isEmpty()) {
+            item = Optional.of(ItemStackTemplate.fromNonEmptyStack(inside.copyWithCount(1)));
         }
         int[] order = {0, SlotRule.TAKE, SlotRule.KEEP, SlotRule.BOTH};
         int at = 0;

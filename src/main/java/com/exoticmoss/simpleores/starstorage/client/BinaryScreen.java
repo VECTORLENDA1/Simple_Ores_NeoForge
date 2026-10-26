@@ -5,6 +5,9 @@ import com.exoticmoss.simpleores.starstorage.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.BinaryView;
 import com.exoticmoss.simpleores.starstorage.SlotRule;
 import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.StarFluids;
+import com.exoticmoss.simpleores.starstorage.StarNetwork;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.entity.player.Inventory;
@@ -19,6 +22,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,6 +47,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
     private static final int CARD = 0xFF1C1C28;
     private static final int SLOT_COLOR = 0xFF2A2A38;
     private static final int SLOT_HOVER = 0xFF5A3A80;
+    private static final int TANK_COLOR = 0xFF1E3048;
+    private static final int TANK_TEXT = 0xFF8FD0FF;
     private static final int TAKE_COLOR = 0xFFE08A30;
     private static final int KEEP_COLOR = 0xFF40C070;
     private static final int BOTH_COLOR = 0xFFC9A6FF;
@@ -105,8 +111,18 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
         return top + height2 - BinaryMenu.INVENTORY_HEIGHT - 4;
     }
 
+    /// The slots and then the tanks of a block (all drawn as squares).
+    private static int cells(BinaryView.Block block) {
+        return block.slots().size() + block.tanks().size();
+    }
+
+    /// The slot number (for the rules) of square "cell": the tanks are BinaryStarBlockEntity.TANKS + tank.
+    private static int slotId(BinaryView.Block block, int cell) {
+        return cell < block.slots().size() ? cell : BinaryStarBlockEntity.TANKS + cell - block.slots().size();
+    }
+
     private static int rows(BinaryView.Block block) {
-        return Math.max(1, (block.slots().size() + COLUMNS - 1) / COLUMNS);
+        return Math.max(1, (cells(block) + COLUMNS - 1) / COLUMNS);
     }
 
     /// The cards that fit, from the first one shown.
@@ -163,10 +179,10 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
                 send(block.pos(), BinaryAction.CLEAR, 0);
                 return true;
             }
-            for (int slot = 0; slot < block.slots().size(); slot++) {
+            for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
                 if (event.x() >= x && event.x() < x + SLOT && event.y() >= y && event.y() < y + SLOT) {
-                    send(block.pos(), right ? BinaryAction.REMOVE : BinaryAction.CLICK, slot);
+                    send(block.pos(), right ? BinaryAction.REMOVE : BinaryAction.CLICK, slotId(block, slot));
                     return true;
                 }
             }
@@ -202,12 +218,38 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
             drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, mouseY);
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, mouseY);
 
-            for (int slot = 0; slot < block.slots().size(); slot++) {
+            for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
                 boolean hovered = mouseX >= x && mouseX < x + SLOT && mouseY >= y && mouseY < y + SLOT;
+                SlotRule rule = rules.get(slotId(block, slot));
+                if (slot >= block.slots().size()) {
+                    // A tank: blue square, the bucket of its liquid and the buckets inside
+                    BinaryView.Tank tank = block.tanks().get(slot - block.slots().size());
+                    graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : TANK_COLOR);
+                    if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
+                    if (tank.amount() > 0) {
+                        String amount = tank.amount() < StarFluids.BUCKET ? tank.amount() + "m" : StarNetwork.format(tank.amount() / StarFluids.BUCKET);
+                        graphics.text(font, Component.literal(amount), x + SLOT - 1 - font.width(amount), y + SLOT - 9, TANK_TEXT);
+                    }
+                    if (rule != null) graphics.outline(x, y, SLOT, SLOT, color(rule));
+                    if (hovered) {
+                        tooltip = new ArrayList<>();
+                        Fluid fluid = StarFluids.fromBucket(tank.bucket());
+                        tooltip.add(fluid != null ? StarFluids.name(fluid) : Component.translatable("screen.simpleores.binary.tank"));
+                        tooltip.add(Component.literal(String.format(Locale.ROOT, "%,d / %,d mB", tank.amount(), tank.capacity())).withColor(TANK_TEXT));
+                        if (rule != null && rule.keeps()) {
+                            Fluid kept = StarFluids.fromBucket(rule.item().get().create());
+                            Component name = kept != null ? StarFluids.name(kept) : rule.item().get().create().getHoverName();
+                            tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", name)
+                                    .withColor(rule.takes() ? BOTH_COLOR : KEEP_COLOR));
+                        } else if (rule != null && rule.takes()) {
+                            tooltip.add(Component.translatable("screen.simpleores.binary.taking").withColor(TAKE_COLOR));
+                        }
+                    }
+                    continue;
+                }
                 graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : SLOT_COLOR);
                 ItemStack stack = block.slots().get(slot);
-                SlotRule rule = rules.get(slot);
                 if (!stack.isEmpty()) {
                     graphics.item(stack, x + 1, y + 1);
                     if (stack.getCount() > 1) {

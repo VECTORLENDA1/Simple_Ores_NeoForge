@@ -45,7 +45,7 @@ import java.util.Optional;
 ///    on any craftable item) opens a small panel to choose how many to craft.
 /// The screen only asks the server (TerminalAction); the server changes the network and sends back the new
 /// contents (TerminalContents). The game is not paused, so the server keeps answering.
-public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> extends AbstractContainerScreen<M> {
+public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> extends AbstractContainerScreen<M> implements JeiTarget.Source {
     /// Rows of the cells panel.
     private static final int CELL_ROWS = 5;
     /// The screen asks for the contents again every this many ticks (other players may change them).
@@ -618,6 +618,40 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         int row = (int) ((y - networkTop()) / TerminalLayout.CELL_H);
         int index = (scroll + row) * TerminalLayout.COLUMNS + column;
         return index < shown.size() ? index : -1;
+    }
+
+    /// JEI: the item (or liquid) drawn under the mouse: an item of the network, or of the craft panel.
+    @Override
+    public @Nullable JeiTarget jeiTargetAt(double mouseX, double mouseY) {
+        if (craftItem != null) {
+            int x = craftLeft(), y = craftTop();
+            if (mouseX >= x + 10 && mouseX < x + 26 && mouseY >= y + 9 && mouseY < y + 25) return JeiTarget.of(craftItem.create(), x + 10, y + 9);
+            // The recipes to choose from (their main ingredient)
+            List<Pattern> options = craftOptions();
+            for (int i = 0; options.size() > 1 && i < options.size(); i++) {
+                int[] box = optionBox(i);
+                if (mouseX >= box[0] && mouseX < box[0] + box[2] && mouseY >= box[1] && mouseY < box[1] + OPTION) {
+                    return JeiTarget.of(mainInput(options.get(i)), box[0] + 2, box[1] + 2);
+                }
+            }
+            // The missing items
+            int shownMissing = Math.min(missingItems.size(), missingRows() * MISSING_COLUMNS);
+            for (int i = 0; i < shownMissing; i++) {
+                int mx = x + 4 + (i % MISSING_COLUMNS) * MISSING_CELL, my = y + 70 + optionsHeight() + (i / MISSING_COLUMNS) * (MISSING_CELL + 4);
+                if (mouseX >= mx && mouseX < mx + MISSING_CELL && mouseY >= my && mouseY < my + MISSING_CELL + 4) {
+                    return JeiTarget.of(missingItems.get(i).item().copyWithCount(1), mx + (MISSING_CELL - 16) / 2, my + 2);
+                }
+            }
+            return null;
+        }
+        if (!showNetwork()) return null;
+        int index = cellAt(mouseX, mouseY);
+        if (index < 0) return null;
+        TerminalContents.Item item = shown.get(index);
+        int visible = index - scroll * TerminalLayout.COLUMNS;
+        int x = networkLeft() + (visible % TerminalLayout.COLUMNS) * TerminalLayout.CELL_W + (TerminalLayout.CELL_W - 16) / 2;
+        int y = networkTop() + (visible / TerminalLayout.COLUMNS) * TerminalLayout.CELL_H + 3;
+        return new JeiTarget(item.item().create(), item.fluid(), x, y, 16);
     }
 
     protected int cellsLeft() {

@@ -16,6 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -189,6 +191,28 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
     }
 
     // ---------------------------------------------------------------- auto-crafts tab
+
+    /// JEI: also the saved recipes (top left) and the items of the auto-crafts.
+    @Override
+    public @Nullable JeiTarget jeiTargetAt(double mouseX, double mouseY) {
+        JeiTarget target = super.jeiTargetAt(mouseX, mouseY);
+        if (target != null) return target;
+        int index = patternAt(mouseX, mouseY);
+        if (index >= 0) {
+            int i = index - patternScroll * PATTERN_COLUMNS;
+            return JeiTarget.of(patterns().get(index).outputStack().copyWithCount(1), patternX(i) + 1, patternY(i) + 1);
+        }
+        if (menu.tab == QuasarMenu.TAB_JOBS) {
+            List<QuasarJobs.View> jobs = jobs();
+            for (int row = 0; row < jobRows() && jobScroll + row < jobs.size(); row++) {
+                int x = leftPos + 14, y = networkTopY() + row * JOB_H + 5;
+                if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16) {
+                    return JeiTarget.of(jobs.get(jobScroll + row).output().copyWithCount(1), x, y);
+                }
+            }
+        }
+        return null;
+    }
 
     private int jobRows() {
         return Math.max(1, menu.layout.rows() * TerminalLayout.CELL_H / JOB_H);

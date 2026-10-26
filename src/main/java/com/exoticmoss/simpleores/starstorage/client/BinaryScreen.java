@@ -19,6 +19,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +35,7 @@ import java.util.Optional;
 ///  - Right-click on a slot: no rule.
 ///  - "Take all": every slot of the block is TAKE. "Clear": no rules for the block.
 /// The screen only asks the server (BinaryAction); the server changes the rules and sends back the view.
-public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
+public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements JeiTarget.Source {
     private static final int WIDTH = 220;
     private static final int SLOT = 18;
     private static final int COLUMNS = 9;
@@ -126,6 +128,26 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
     }
 
     /// The cards that fit, from the first one shown.
+    /// JEI: the block of a card, the items of its slots and the liquids of its tanks.
+    @Override
+    public @Nullable JeiTarget jeiTargetAt(double mouseX, double mouseY) {
+        for (Card card : cards()) {
+            BinaryView.Block block = view.blocks().get(card.index());
+            if (mouseX >= card.x() + 2 && mouseX < card.x() + 18 && mouseY >= card.y() + 2 && mouseY < card.y() + 18) {
+                return JeiTarget.of(block.icon(), card.x() + 2, card.y() + 2);
+            }
+            for (int slot = 0; slot < cells(block); slot++) {
+                int x = slotX(card, slot), y = slotY(card, slot);
+                if (mouseX < x || mouseX >= x + SLOT || mouseY < y || mouseY >= y + SLOT) continue;
+                if (slot < block.slots().size()) return JeiTarget.of(block.slots().get(slot).copyWithCount(1), x + 1, y + 1);
+                ItemStack bucket = block.tanks().get(slot - block.slots().size()).bucket();
+                Fluid fluid = StarFluids.fromBucket(bucket);
+                return fluid == null ? null : new JeiTarget(bucket, fluid, x + 1, y + 1, 16);
+            }
+        }
+        return null;
+    }
+
     private List<Card> cards() {
         List<Card> cards = new ArrayList<>();
         int y = areaTop();

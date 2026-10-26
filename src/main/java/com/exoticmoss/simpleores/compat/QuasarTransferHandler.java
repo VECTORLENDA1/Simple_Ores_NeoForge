@@ -42,6 +42,7 @@ public class QuasarTransferHandler implements IRecipeTransferHandler<QuasarMenu,
     }
 
     @Override
+    @SuppressWarnings("removal")
     public @Nullable IRecipeTransferError transferRecipe(QuasarMenu container, RecipeHolder<CraftingRecipe> recipe,
                                                          IRecipeSlotsView recipeSlots, Player player,
                                                          boolean maxTransfer, boolean doTransfer) {

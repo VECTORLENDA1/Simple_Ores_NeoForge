@@ -18,7 +18,7 @@ public enum StarLook implements StringRepresentable {
 
     public static final Codec<StarLook> CODEC = StringRepresentable.fromEnum(StarLook::values);
     /// Color of the light shell around the star while the player looks at it (instead of the box outline).
-    public static final int HIGHLIGHT_COLOR = 0x60FFFFFF;
+    public static final int HIGHLIGHT_COLOR = 0x14FFFFFF;
 
     public final String id;
     public final int coreColor;

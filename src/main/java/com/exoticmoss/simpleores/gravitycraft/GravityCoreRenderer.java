@@ -50,7 +50,7 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     private static final int SLOT_HOVERED = 0xFFFFFFFF;   // border of the slot the player is looking at
     private static final int BAR_DOTS = 0xE0FFFFFF;       // "..." = more recipes (mouse wheel)
     /// Light shell around the sphere while the player looks at it.
-    private static final int LOOKED_COLOR = 0x60FFFFFF;
+    private static final int LOOKED_COLOR = 0x14FFFFFF;
     /// Size of the items inside the slots.
     private static final float BAR_ITEM_SCALE = 0.36f;
 

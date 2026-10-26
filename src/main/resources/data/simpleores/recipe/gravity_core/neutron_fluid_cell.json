@@ -8,20 +8,16 @@
       "count": 3
     },
     {
-      "item": "simpleores:celestine",
-      "count": 8
+      "item": "simpleores:nexalite",
+      "count": 4
     },
     {
       "item": "simpleores:zenithra",
-      "count": 8
+      "count": 4
     },
     {
-      "item": "simpleores:astralite_block",
-      "count": 2
-    },
-    {
-      "item": "minecraft:bucket",
-      "count": 2
+      "item": "minecraft:glass",
+      "count": 6
     }
   ],
   "result": {

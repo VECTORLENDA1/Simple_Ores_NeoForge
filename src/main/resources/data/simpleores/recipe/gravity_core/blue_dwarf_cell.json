@@ -8,16 +8,16 @@
       "count": 3
     },
     {
+      "item": "simpleores:astralite",
+      "count": 2
+    },
+    {
       "item": "simpleores:celestine",
+      "count": 2
+    },
+    {
+      "item": "minecraft:glass",
       "count": 4
-    },
-    {
-      "item": "minecraft:diamond",
-      "count": 2
-    },
-    {
-      "item": "minecraft:lapis_block",
-      "count": 2
     }
   ],
   "result": {

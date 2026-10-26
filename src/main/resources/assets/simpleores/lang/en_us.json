@@ -98,5 +98,15 @@
   "screen.simpleores.terminal.craft.ctrl": "Ctrl + click: craft more",
   "screen.simpleores.quasar.recipe": "Recipe",
   "block.simpleores.advanced_stellar_terminal": "Stellar Terminal II",
-  "screen.simpleores.quasar.core_hint": "Use the \"+\" of JEI on a Gravity Core recipe to save it here. They are crafted by the Gravity Cores of the field, from a Stellar Terminal II."
+  "screen.simpleores.quasar.core_hint": "Use the \"+\" of JEI on a Gravity Core recipe to save it here. They are crafted by the Gravity Cores of the field, from a Stellar Terminal II.",
+  "tooltip.simpleores.magnetar_core": "Connects everything around it (16 blocks) into one storage network",
+  "tooltip.simpleores.stellar_terminal": "See, take and store the items of the network, and craft",
+  "tooltip.simpleores.advanced_stellar_terminal": "Stellar Terminal that also crafts with Gravity Cores and furnaces",
+  "tooltip.simpleores.binary_star": "Moves items in and out of the blocks around it (8 blocks)",
+  "tooltip.simpleores.quasar": "Keeps the recipes and does the auto-craft",
+  "tooltip.simpleores.stellar_drive": "Holds up to 4 Star Cells",
+  "tooltip.simpleores.gravity_core_sun": "Crafts with gravity (tier 1)",
+  "tooltip.simpleores.gravity_core_red_giant": "Crafts with gravity (tier 2)",
+  "tooltip.simpleores.gravity_core_pulsar": "Crafts with gravity (tier 3)",
+  "tooltip.simpleores.gravity_core_black_hole": "Crafts with gravity (tier 4)"
 }

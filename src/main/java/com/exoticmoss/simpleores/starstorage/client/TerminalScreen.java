@@ -209,8 +209,24 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
     // ---------------------------------------------------------------- craft panel
 
-    private static final int CRAFT_W = 180;
-    private static final int CRAFT_H = 96;
+    private static final int CRAFT_W = 200;
+    /// Missing items: drawn as items, this many per row (with the amount under each one).
+    private static final int MISSING_COLUMNS = 8;
+    private static final int MISSING_CELL = 24;
+    private List<CraftRequest.Missing> missingItems = List.of();
+
+    /// How many rows of missing items fit above the inventory.
+    private int missingRows() {
+        int rows = (missingItems.size() + MISSING_COLUMNS - 1) / MISSING_COLUMNS;
+        int fit = Math.max(1, (layout.inventoryTop() - 14 - 18 - 84) / (MISSING_CELL + 4));
+        return Math.min(rows, fit);
+    }
+
+    /// Height of the craft panel: grows with the missing items.
+    private int craftHeight() {
+        int rows = missingRows();
+        return 72 + (rows > 0 ? 12 + rows * (MISSING_CELL + 4) : 0);
+    }
 
     private int craftLeft() {
         return leftPos + (imageWidth - CRAFT_W) / 2;
@@ -224,6 +240,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         closeCraft();
         craftItem = item;
         craftMessage.clear();
+        missingItems = List.of();
         int x = craftLeft(), y = craftTop();
         amountBox = addRenderableWidget(new EditBox(font, x + 10, y + 34, 70, 16, Component.empty()));
         amountBox.setMaxLength(6);
@@ -261,6 +278,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         }
         if (amount <= 0) return;
         craftMessage.clear();
+        missingItems = List.of();
         craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.working"));
         ClientPacketDistributor.sendToServer(new CraftRequest(menu.networkPos(), craftItem, amount));
     }
@@ -278,22 +296,35 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             return;
         }
         craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.missing").withColor(0xFFE05050));
-        for (int i = 0; i < Math.min(3, reply.missing().size()); i++) {
-            CraftRequest.Missing missing = reply.missing().get(i);
-            craftMessage.add(Component.literal(StarNetwork.format(missing.count()) + " x ").append(missing.item().getHoverName()));
-        }
-        if (reply.missing().size() > 3) craftMessage.add(Component.literal("..."));
+        missingItems = reply.missing();
     }
 
-    private void drawCraftPanel(GuiGraphicsExtractor graphics) {
+    private void drawCraftPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int x = craftLeft(), y = craftTop();
-        graphics.fill(x, y, x + CRAFT_W, y + CRAFT_H, 0xF0161622);
-        graphics.outline(x, y, CRAFT_W, CRAFT_H, PANEL_BORDER);
+        graphics.fill(x, y, x + CRAFT_W, y + craftHeight(), 0xF0161622);
+        graphics.outline(x, y, CRAFT_W, craftHeight(), PANEL_BORDER);
         ItemStack stack = craftItem.create();
         graphics.item(stack, x + 10, y + 9);
         graphics.text(font, Component.translatable("screen.simpleores.terminal.craft.title", stack.getHoverName()), x + 32, y + 13, TEXT);
         for (int i = 0; i < craftMessage.size(); i++) {
-            graphics.text(font, craftMessage.get(i), x + 10, y + 56 + i * 10, TEXT_DIM);
+            graphics.text(font, craftMessage.get(i), x + 10, y + 58 + i * 10, TEXT_DIM);
+        }
+        // The missing items, drawn as items with the amount under each one
+        int shownMissing = Math.min(missingItems.size(), missingRows() * MISSING_COLUMNS);
+        if (shownMissing < missingItems.size()) {
+            graphics.text(font, Component.literal("+" + (missingItems.size() - shownMissing + 1)), x + CRAFT_W - 30, y + 58, 0xFFFF9090);
+            shownMissing--;
+        }
+        for (int i = 0; i < shownMissing; i++) {
+            CraftRequest.Missing missing = missingItems.get(i);
+            int mx = x + 4 + (i % MISSING_COLUMNS) * MISSING_CELL, my = y + 70 + (i / MISSING_COLUMNS) * (MISSING_CELL + 4);
+            graphics.fill(mx + 1, my + 1, mx + MISSING_CELL - 1, my + MISSING_CELL + 3, 0xFF3A1E24);
+            graphics.item(missing.item(), mx + (MISSING_CELL - 16) / 2, my + 2);
+            graphics.centeredText(font, Component.literal(StarNetwork.format(missing.count())), mx + MISSING_CELL / 2, my + 18, 0xFFFF9090);
+            if (mouseX >= mx && mouseX < mx + MISSING_CELL && mouseY >= my && mouseY < my + MISSING_CELL + 4) {
+                graphics.setTooltipForNextFrame(font, List.of(missing.item().getHoverName(),
+                        Component.literal(String.format(Locale.ROOT, "%,d", missing.count()))), Optional.empty(), mouseX, mouseY);
+            }
         }
     }
 
@@ -344,7 +375,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         if (craftItem != null) {
             // The craft panel is open: only its box and buttons work
             int x = craftLeft(), y = craftTop();
-            if (event.x() >= x && event.x() < x + CRAFT_W && event.y() >= y && event.y() < y + CRAFT_H) {
+            if (event.x() >= x && event.x() < x + CRAFT_W && event.y() >= y && event.y() < y + craftHeight()) {
                 return super.mouseClicked(event, doubleClick);
             }
             return true;
@@ -442,7 +473,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         int hovered = drawNetwork(graphics, mouseX, mouseY);
         if (craftItem != null) {
             hovered = -1;
-            drawCraftPanel(graphics);
+            drawCraftPanel(graphics, mouseX, mouseY);
         }
 
         // Used / capacity
@@ -507,8 +538,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 TerminalContents.Item item = shown.get(index);
                 if (craftItem != null) continue;
                 graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
-                Component count = item.count() == 0 ? Component.translatable("screen.simpleores.terminal.craft") : Component.literal(StarNetwork.format(item.count()));
-                graphics.centeredText(font, count, x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, item.count() == 0 ? 0xFF7FE0C0 : TEXT);
+                if (item.count() == 0) {
+                    TinyText.craft(graphics, x + (TerminalLayout.CELL_W - TinyText.CRAFT_WIDTH) / 2, y + TerminalLayout.CELL_H - 8, 0xFF7FE0C0);
+                } else {
+                    graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, TEXT);
+                }
             }
         }
         // Scroll bar (only when there are more rows than fit)

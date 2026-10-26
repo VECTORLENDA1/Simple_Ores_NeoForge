@@ -34,8 +34,13 @@ import java.util.Optional;
 public final class Autocraft {
     /// Sub-recipes can go this deep at most (stops recipes that need themselves).
     private static final int MAX_DEPTH = 16;
-    /// At most this many crafts in one request (so a huge request can't freeze the server).
-    public static final int MAX_CRAFTS = 20_000;
+    /// At most this many crafts in one request (only a safety limit: big requests are crafted little by little).
+    public static final long MAX_CRAFTS = 1_000_000_000L;
+    /// Plans with only crafting table steps and at most this many crafts are crafted at once; bigger ones become
+    /// a Job of a Quasar (a little every few ticks, so the server doesn't freeze).
+    private static final long CRAFTS_AT_ONCE = 512;
+    /// A Job makes at most this many crafting table crafts each time it works.
+    private static final int CRAFTS_PER_WORK = 256;
     /// A job that makes no progress for this many ticks is cancelled (5 minutes).
     private static final int GIVE_UP_TICKS = 6000;
 
@@ -70,7 +75,7 @@ public final class Autocraft {
         craft.craftAny(item, amount, 0);
         if (craft.crafts > MAX_CRAFTS) return new Result(Map.of(), "screen.simpleores.terminal.craft.too_big");
         if (!craft.missing.isEmpty()) return new Result(craft.missing, null);
-        if (craft.steps.stream().anyMatch(step -> step.pattern().advanced())) {
+        if (craft.steps.stream().anyMatch(step -> step.pattern().advanced()) || craft.crafts > CRAFTS_AT_ONCE) {
             if (network.quasars().isEmpty()) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
             // A Quasar of this dimension if there is one (the network can reach others with Wormhole Links)
             QuasarBlockEntity quasar = network.quasars().stream().filter(other -> other.getLevel() == level).findFirst()
@@ -312,7 +317,9 @@ public final class Autocraft {
         /// Crafting table: crafts as many times as possible now.
         private boolean workCrafting(ServerLevel level, StarNetwork network, Step step) {
             boolean progress = false;
-            while (done < step.times()) {
+            int count = 0;
+            RecipeHolder<CraftingRecipe> last = null;
+            while (done < step.times() && count++ < CRAFTS_PER_WORK) {
                 List<ItemStack> grid = new ArrayList<>();
                 for (ItemStackTemplate item : step.items()) {
                     if (item == null) {
@@ -329,11 +336,14 @@ public final class Autocraft {
                 }
                 while (grid.size() < Pattern.SIZE) grid.add(ItemStack.EMPTY);
                 CraftingInput input = CraftingInput.of(3, 3, grid);
-                Optional<RecipeHolder<CraftingRecipe>> recipe = level.recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, level);
+                // The same recipe as the last craft (much faster than looking for it again)
+                Optional<RecipeHolder<CraftingRecipe>> recipe = last != null && last.value().matches(input, level)
+                        ? Optional.of(last) : level.recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, level);
                 if (recipe.isEmpty()) {
                     giveBack(network, grid);
                     return progress;
                 }
+                last = recipe.get();
                 ItemStack result = recipe.get().value().assemble(input);
                 NonNullList<ItemStack> remaining = recipe.get().value().getRemainingItems(input);
                 arrived(result);

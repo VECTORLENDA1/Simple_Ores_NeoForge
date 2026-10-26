@@ -182,7 +182,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         craftMessage.clear();
         int x = craftLeft(), y = craftTop();
         amountBox = addRenderableWidget(new EditBox(font, x + 10, y + 34, 70, 16, Component.empty()));
-        amountBox.setFilter(value -> value.matches("\\d{0,6}"));
+        amountBox.setMaxLength(6);
         amountBox.setValue("1");
         startButton = addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.terminal.craft.start"), b -> startCraft())
                 .bounds(x + 86, y + 33, 40, 18).build());
@@ -211,7 +211,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         if (craftItem == null) return;
         int amount;
         try {
-            amount = Integer.parseInt(amountBox.getValue());
+            amount = Integer.parseInt(amountBox.getValue().replaceAll("[^0-9]", ""));
         } catch (NumberFormatException e) {
             amount = 0;
         }

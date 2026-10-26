@@ -22,3 +22,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: build
+
+      - name: Probe API (temporary)
+        if: always()
+        run: |
+          J=$(for f in $(find build ~/.gradle -name "*.jar" 2>/dev/null); do unzip -l "$f" 2>/dev/null | grep -q "net/minecraft/client/gui/screens/inventory/AbstractContainerScreen.class" && echo "$f"; done | head -1)
+          echo "JAR=$J"
+          JAVAP=$(find / -name javap -path "*bin*" 2>/dev/null | head -1)
+          for c in net.minecraft.client.gui.screens.inventory.AbstractContainerScreen net.minecraft.world.inventory.AbstractContainerMenu net.minecraft.world.inventory.ResultSlot net.minecraft.world.inventory.TransientCraftingContainer net.minecraft.world.inventory.CraftingMenu net.minecraft.world.inventory.AbstractCraftingMenu net.minecraft.world.inventory.MenuType net.minecraft.client.input.MouseButtonEvent net.minecraft.client.input.InputWithModifiers net.minecraft.world.inventory.Slot net.minecraft.client.gui.screens.MenuScreens net.minecraft.world.inventory.ResultContainer net.minecraft.world.inventory.CraftingContainer; do echo "=== $c"; $JAVAP -cp "$J" -p $c 2>&1 | grep -v "lambda\$" | head -150; done
+          for c in net.neoforged.neoforge.common.extensions.IMenuTypeExtension net.neoforged.neoforge.client.event.RegisterMenuScreensEvent; do echo "=== $c"; for f in $(find build ~/.gradle -name "*.jar" 2>/dev/null); do unzip -l "$f" 2>/dev/null | grep -q "$(echo $c | tr . /).class" && $JAVAP -cp "$f" -p $c 2>&1 | head -40 && break; done; done
+          echo "=== ServerPlayer openMenu"; $JAVAP -cp "$J" -p net.minecraft.server.level.ServerPlayer | grep -i openMenu
+          for f in $(find build ~/.gradle -name "*.jar" 2>/dev/null); do unzip -l "$f" 2>/dev/null | grep -q "net/neoforged/neoforge/common/extensions/IPlayerExtension.class" && $JAVAP -cp "$f" -p net.neoforged.neoforge.common.extensions.IPlayerExtension | grep -i menu && break; done

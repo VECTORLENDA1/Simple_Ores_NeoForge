@@ -166,7 +166,8 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         if (tab == 1) {
             int top = topPos + menu.layout.inventoryTop();
             graphics.fill(leftPos + TerminalLayout.craftLeft() - 2, top - 13, leftPos + imageWidth - 4, top + 3 * 18 + 2, 0xFF101018);
-            graphics.text(font, Component.translatable("screen.simpleores.quasar.core_soon"), leftPos + TerminalLayout.craftLeft(), top + 20, TEXT_DIM);
+            List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.translatable("screen.simpleores.quasar.core_hint"), imageWidth - TerminalLayout.craftLeft() - 8);
+            for (int i = 0; i < lines.size(); i++) graphics.text(font, lines.get(i), leftPos + TerminalLayout.craftLeft(), top + 4 + i * 10, TEXT_DIM, false);
         }
         int hovered = patternAt(mouseX, mouseY);
         if (hovered >= 0) {

@@ -83,6 +83,10 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Recipes the orbiting items can still become, best first. Shown in the selection bar.
     /// When a target is picked, this only has the target.
     private final List<CoreCandidate> candidates = new ArrayList<>();
+    /// Auto-craft: the result goes to the network of the Magnetar whose field reaches this position (see
+    /// insertFromNetwork). null = the result goes to the player / the inventory below, as always.
+    @Nullable
+    private BlockPos networkPos = null;
     /// Server: the candidates must be worked out again (e.g. after the world is loaded).
     private boolean candidatesOutdated = true;
 
@@ -267,6 +271,27 @@ public class GravityCoreBlockEntity extends BlockEntity {
         }
         owner = player.getUUID();
         target = recipe.id();
+        level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
+        onItemsChanged();
+        return leftovers;
+    }
+
+    /// True if the core is doing nothing (no items in orbit, not crafting): the auto-craft can use it.
+    public boolean isFree() {
+        return craftTotal == 0 && items.isEmpty() && upgradeTarget == null;
+    }
+
+    /// Auto-craft (Quasar): puts the ingredients in the orbit and picks the recipe; the result goes to the
+    /// network of "networkPos". Returns whatever didn't fit.
+    public List<ItemStack> insertFromNetwork(List<ItemStack> stacks, RecipeHolder<GravityCoreRecipe> recipe, BlockPos networkPos) {
+        List<ItemStack> leftovers = new ArrayList<>();
+        for (ItemStack stack : stacks) {
+            addToOrbit(stack);
+            if (!stack.isEmpty()) leftovers.add(stack);
+        }
+        owner = null;
+        target = recipe.id();
+        this.networkPos = networkPos.immutable();
         level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
         onItemsChanged();
         return leftovers;
@@ -548,6 +573,16 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Player -> goes to the player's inventory (if it's full, it drops in front of the player).
     /// Machine -> goes to the inventory under the core (hopper, chest...) or pops out on top of the core.
     private void deliver(ItemStack result) {
+        // Auto-craft: to the network (what doesn't fit pops out of the core)
+        if (networkPos != null) {
+            result = com.exoticmoss.simpleores.starstorage.StarNetwork.at(level, networkPos).insert(result);
+            if (items.isEmpty()) networkPos = null;
+            if (!result.isEmpty()) {
+                Vec3 c = center();
+                spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));
+            }
+            return;
+        }
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
             giveToPlayer(player, result);
@@ -639,6 +674,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         super.saveAdditional(output);
         output.store("items", ItemStack.CODEC.listOf(), items);
         output.storeNullable("owner", UUIDUtil.CODEC, owner);
+        output.storeNullable("network_pos", BlockPos.CODEC, networkPos);
         output.putInt("craft_time", craftTime);
         output.putInt("craft_total", craftTotal);
         output.storeNullable("upgrade_target", CoreTier.CODEC, upgradeTarget);
@@ -653,6 +689,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         items.clear();
         items.addAll(input.read("items", ItemStack.CODEC.listOf()).orElse(List.of()));
         owner = input.read("owner", UUIDUtil.CODEC).orElse(null);
+        networkPos = input.read("network_pos", BlockPos.CODEC).orElse(null);
         craftTime = input.getIntOr("craft_time", 0);
         craftTotal = input.getIntOr("craft_total", 0);
         upgradeTarget = input.read("upgrade_target", CoreTier.CODEC).orElse(null);

@@ -84,7 +84,10 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
             items.add(new Item(entry.getKey(), entry.getValue()));
         }
         List<ItemStackTemplate> craftables = new ArrayList<>();
-        for (Pattern pattern : network.patterns()) craftables.add(pattern.output());
+        boolean cores = AdvancedTerminalBlock.usesCores(player.level(), pos);
+        for (Pattern pattern : network.patterns()) {
+            if (cores || !pattern.isCore()) craftables.add(pattern.output());
+        }
         PacketDistributor.sendToPlayer(player, new TerminalContents(pos, items, network.usedItems(), network.capacity(), network.cells(), craftables));
     }
 

@@ -86,7 +86,6 @@
   "screen.simpleores.quasar.title": "Quasar",
   "screen.simpleores.quasar.save": "Save",
   "screen.simpleores.quasar.recipes": "Recipes: %s",
-  "screen.simpleores.quasar.core_soon": "Gravity Core recipes: level 2 (soon)",
   "screen.simpleores.terminal.craft": "Craft",
   "screen.simpleores.terminal.craft.title": "Craft: %s",
   "screen.simpleores.terminal.craft.start": "Craft",
@@ -97,5 +96,7 @@
   "screen.simpleores.terminal.craft.too_big": "Too many crafts at once",
   "screen.simpleores.terminal.craft.changed": "The items changed: try again",
   "screen.simpleores.terminal.craft.ctrl": "Ctrl + click: craft more",
-  "screen.simpleores.quasar.recipe": "Recipe"
+  "screen.simpleores.quasar.recipe": "Recipe",
+  "block.simpleores.advanced_stellar_terminal": "Stellar Terminal II",
+  "screen.simpleores.quasar.core_hint": "Use the \"+\" of JEI on a Gravity Core recipe to save it here. They are crafted by the Gravity Cores of the field, from a Stellar Terminal II."
 }

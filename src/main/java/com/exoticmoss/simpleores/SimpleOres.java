@@ -22,6 +22,7 @@ import com.exoticmoss.simpleores.starstorage.ModMenus;
 import com.exoticmoss.simpleores.starstorage.TerminalMenu;
 import com.exoticmoss.simpleores.starstorage.QuasarFill;
 import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
+import com.exoticmoss.simpleores.starstorage.QuasarCore;
 import com.exoticmoss.simpleores.starstorage.QuasarSlot;
 import com.exoticmoss.simpleores.starstorage.client.BinaryScreen;
 import com.exoticmoss.simpleores.starstorage.client.QuasarScreen;
@@ -95,6 +96,7 @@ public class SimpleOres {
                 .playToClient(QuasarPatterns.TYPE, QuasarPatterns.STREAM_CODEC, QuasarPatterns::handle)
                 .playToServer(QuasarFill.TYPE, QuasarFill.STREAM_CODEC, QuasarFill::handle)
                 .playToServer(QuasarSlot.TYPE, QuasarSlot.STREAM_CODEC, QuasarSlot::handle)
+                .playToServer(QuasarCore.TYPE, QuasarCore.STREAM_CODEC, QuasarCore::handle)
         // Auto-craft: the player asked to craft (client -> server) and the answer (server -> client)
                 .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
                 .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle);
@@ -127,6 +129,7 @@ public class SimpleOres {
             event.registerBlockEntityRenderer(ModBlockEntities.MAGNETAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.MAGNETAR));
             event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL));
             event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_DRIVE_BE.get(), StellarDriveRenderer::new);
+            event.registerBlockEntityRenderer(ModBlockEntities.ADVANCED_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL_2));
             event.registerBlockEntityRenderer(ModBlockEntities.BINARY_STAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.BINARY));
             event.registerBlockEntityRenderer(ModBlockEntities.QUASAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.QUASAR));
         }

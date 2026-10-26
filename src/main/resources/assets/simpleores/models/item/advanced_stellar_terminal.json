@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "simpleores:item/advanced_stellar_terminal"
+  }
+}

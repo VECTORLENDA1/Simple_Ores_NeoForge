@@ -15,6 +15,8 @@ public enum StarLook implements StringRepresentable {
     MAGNETAR(  "magnetar",   0xFFEAF2FF,  0xFF8A6CFF,  0xFFA070FF,  0xFFC9A6FF,  0x00000000,  0.35f,  1.2f,        0.5f),
     /// The Stellar Terminal: a calm teal star, without beams.
     TERMINAL(  "terminal",   0xFFDAFFF6,  0xFF2FC79E,  0xFF46E8C4,  0x00000000,  0x00000000,  0.35f,  0f,          0.5f),
+    /// The Stellar Terminal level 2: a golden star.
+    TERMINAL_2("terminal_2", 0xFFFFF6D8,  0xFFFFB020,  0xFFFFC850,  0x00000000,  0x00000000,  0.35f,  0f,          0.5f),
     /// The Binary Star: two small stars (an orange one and a blue one, see StarDrawing.COMPANION_*) turning
     /// around each other, giving matter to each other: it moves the items in and out of the blocks around it.
     BINARY(    "binary",     0xFFFFE2B0,  0xFFFF9A3C,  0xFFFFB45A,  0x00000000,  0x00000000,  0.35f,  0f,          0.5f),

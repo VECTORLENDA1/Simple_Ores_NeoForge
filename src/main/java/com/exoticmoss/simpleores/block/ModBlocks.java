@@ -8,6 +8,7 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.item.component.DamageResistant;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
+import com.exoticmoss.simpleores.starstorage.AdvancedTerminalBlock;
 import com.exoticmoss.simpleores.starstorage.BinaryStarBlock;
 import com.exoticmoss.simpleores.starstorage.MagnetarBlock;
 import com.exoticmoss.simpleores.starstorage.QuasarBlock;
@@ -113,6 +114,9 @@ public class ModBlocks {
     public static final DeferredBlock<Block> STELLAR_TERMINAL = registerBlockItem("stellar_terminal", StellarTerminalBlock::new,
             () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
                     .noOcclusion().lightLevel(state -> 11));
+    public static final DeferredBlock<Block> ADVANCED_TERMINAL = registerBlockItem("advanced_stellar_terminal", AdvancedTerminalBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 13));
     public static final DeferredBlock<Block> BINARY_STAR = registerBlockItem("binary_star", BinaryStarBlock::new,
             () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
                     .noOcclusion().lightLevel(state -> 11));

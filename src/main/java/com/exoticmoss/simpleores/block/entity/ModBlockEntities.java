@@ -2,6 +2,7 @@ package com.exoticmoss.simpleores.block.entity;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
+import com.exoticmoss.simpleores.starstorage.AdvancedTerminalBlockEntity;
 import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.QuasarBlockEntity;
@@ -33,6 +34,9 @@ public class ModBlockEntities {
 
     public static final Supplier<BlockEntityType<StellarTerminalBlockEntity>> STELLAR_TERMINAL_BE =
             BLOCK_ENTITIES.register("stellar_terminal_be", () -> new BlockEntityType<>(StellarTerminalBlockEntity::new, ModBlocks.STELLAR_TERMINAL.get()));
+
+    public static final Supplier<BlockEntityType<AdvancedTerminalBlockEntity>> ADVANCED_TERMINAL_BE =
+            BLOCK_ENTITIES.register("advanced_terminal_be", () -> new BlockEntityType<>(AdvancedTerminalBlockEntity::new, ModBlocks.ADVANCED_TERMINAL.get()));
 
     public static final Supplier<BlockEntityType<BinaryStarBlockEntity>> BINARY_STAR_BE =
             BLOCK_ENTITIES.register("binary_star_be", () -> new BlockEntityType<>(BinaryStarBlockEntity::new, ModBlocks.BINARY_STAR.get()));

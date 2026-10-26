@@ -17,6 +17,9 @@ public class QuasarBlockEntity extends BlockEntity {
     public static final int MAX_PATTERNS = 54;
 
     private final List<Pattern> patterns = new ArrayList<>();
+    /// Auto-craft jobs with Gravity Core steps (they take time). Not saved: they stop if the world is closed.
+    private final List<Autocraft.Job> jobs = new ArrayList<>();
+    private int ticks;
 
     public QuasarBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.QUASAR_BE.get(), pos, state);
@@ -39,6 +42,17 @@ public class QuasarBlockEntity extends BlockEntity {
         if (index < 0 || index >= patterns.size()) return;
         patterns.remove(index);
         setChanged();
+    }
+
+    public void startJob(Autocraft.Job job) {
+        jobs.add(job);
+    }
+
+    /// Server: works on the jobs every half second (the finished and the stuck ones go away).
+    public void serverTick() {
+        if (jobs.isEmpty() || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (++ticks % Autocraft.GravityCoreTicks.HALF_SECOND != 0) return;
+        jobs.removeIf(job -> !job.tick(serverLevel) || job.done());
     }
 
     @Override

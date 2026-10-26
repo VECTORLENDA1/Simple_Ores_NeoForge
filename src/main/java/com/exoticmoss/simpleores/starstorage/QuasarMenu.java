@@ -154,7 +154,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
                 else if (choices.get(i).isEmpty()) inputs.add(List.of(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))));
                 else inputs.add(choices.get(i));
             }
-            quasar.addPattern(new Pattern(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(), inputs));
+            quasar.addPattern(Pattern.crafting(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(), inputs));
         } else if (id == CLEAR) {
             for (int i = 0; i < GRID_SLOTS; i++) setSlot(i, ItemStack.EMPTY, List.of());
         } else if (id >= REMOVE) {

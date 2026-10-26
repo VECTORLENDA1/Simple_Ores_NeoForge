@@ -50,9 +50,10 @@ public class QuasarBlock extends BaseEntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof QuasarBlockEntity) {
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new QuasarMenu(id, inventory, pos),
+            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new QuasarMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
                     Component.translatable("screen.simpleores.quasar.title")), pos);
             QuasarPatterns.send(serverPlayer, pos);
+            TerminalContents.send(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
     }

@@ -96,5 +96,6 @@
   "screen.simpleores.terminal.craft.no_recipe": "No recipe for this item",
   "screen.simpleores.terminal.craft.too_big": "Too many crafts at once",
   "screen.simpleores.terminal.craft.changed": "The items changed: try again",
-  "screen.simpleores.terminal.craft.ctrl": "Ctrl + click: craft more"
+  "screen.simpleores.terminal.craft.ctrl": "Ctrl + click: craft more",
+  "screen.simpleores.quasar.recipe": "Recipe"
 }

@@ -4,7 +4,9 @@ import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -53,7 +55,11 @@ public class BinaryStarBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (player instanceof ServerPlayer serverPlayer) BinaryView.send(serverPlayer, pos, true);
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new BinaryMenu(id, inventory, pos, 240),
+                    Component.translatable("screen.simpleores.binary.title")), pos);
+            BinaryView.send(serverPlayer, pos, false);
+        }
         return InteractionResult.SUCCESS;
     }
 

@@ -18,12 +18,14 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
-/// The menu of the Quasar: a recipe grid (3x3 + result) and the player's inventory.
+/// The menu of the Quasar: like the Stellar Terminal (the items of the network can be taken and stored,
+/// see TerminalScreen), but instead of a crafting grid it has a recipe grid (3x3 + result): it doesn't craft,
+/// it only makes the recipes that the Quasar keeps.
 /// The recipe grid only shows items (it doesn't keep them): clicking a slot of the grid with an item in the
 /// mouse cursor puts a picture of it there; clicking with an empty cursor (or right-clicking) empties it.
 /// JEI's "+" button fills the grid too (QuasarFill). The result is worked out by the server.
 /// Buttons: SAVE saves the recipe in the Quasar, CLEAR empties the grid, REMOVE + n removes the saved recipe n.
-public class QuasarMenu extends AbstractContainerMenu {
+public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int GRID_SLOTS = Pattern.SIZE;
     public static final int RESULT_SLOT = GRID_SLOTS;
     public static final int INVENTORY_START = GRID_SLOTS + 1;
@@ -31,34 +33,42 @@ public class QuasarMenu extends AbstractContainerMenu {
     public static final int CLEAR = 1;
     public static final int REMOVE = 100;
 
-    /// Where everything is (pixels from the top left corner of the panel).
-    public static final int WIDTH = 176;
-    public static final int HEIGHT = 230;
-    public static final int GRID_X = 30;
-    public static final int GRID_Y = 24;
-    public static final int RESULT_X = 124;
-    public static final int RESULT_Y = 42;
-    public static final int PATTERNS_Y = 96;
-    public static final int INVENTORY_Y = 148;
-
     public final BlockPos pos;
+    public final TerminalLayout layout;
     private final Player player;
     private final SimpleContainer grid = new SimpleContainer(GRID_SLOTS + 1);
     /// Server: the items that can go in each slot of the grid (from JEI, or just the item put there).
     private final List<List<ItemStackTemplate>> choices = new ArrayList<>();
 
-    public QuasarMenu(int id, Inventory inventory, BlockPos pos) {
+    public QuasarMenu(int id, Inventory inventory, BlockPos pos, int rows) {
         super(ModMenus.QUASAR.get(), id);
         this.pos = pos;
+        this.layout = new TerminalLayout(rows);
         this.player = inventory.player;
+        int top = layout.inventoryTop();
         for (int i = 0; i < GRID_SLOTS; i++) choices.add(List.of());
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 3; column++) {
-                addSlot(new PictureSlot(column + row * 3, GRID_X + 1 + column * 18, GRID_Y + 1 + row * 18));
+                addSlot(new PictureSlot(column + row * 3, TerminalLayout.craftLeft() + column * TerminalLayout.SLOT + 1, top + row * TerminalLayout.SLOT + 1));
             }
         }
-        addSlot(new PictureSlot(RESULT_SLOT, RESULT_X + 1, RESULT_Y + 1));
-        addStandardInventorySlots(inventory, 8, INVENTORY_Y);
+        addSlot(new PictureSlot(RESULT_SLOT, layout.resultX() + 1, layout.resultY() + 1));
+        addStandardInventorySlots(inventory, TerminalLayout.inventoryLeft() + 1, top + 1);
+    }
+
+    @Override
+    public BlockPos networkPos() {
+        return pos;
+    }
+
+    @Override
+    public TerminalLayout layout() {
+        return layout;
+    }
+
+    @Override
+    public int resultSlot() {
+        return RESULT_SLOT;
     }
 
     /// A slot of the recipe grid: it shows a picture of an item, it never gives or takes real items.
@@ -96,6 +106,13 @@ public class QuasarMenu extends AbstractContainerMenu {
         grid.setItem(slot, stack);
         choices.set(slot, slotChoices);
         updateResult();
+    }
+
+    /// JEI: an item dragged from the JEI list onto a slot of the grid.
+    public void setPicture(int slot, ItemStack stack) {
+        if (slot < 0 || slot >= GRID_SLOTS) return;
+        if (stack.isEmpty()) setSlot(slot, ItemStack.EMPTY, List.of());
+        else setSlot(slot, stack.copyWithCount(1), List.of(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))));
     }
 
     /// JEI: fills the grid with the items of a recipe (for each slot, the items that can go there).
@@ -149,14 +166,24 @@ public class QuasarMenu extends AbstractContainerMenu {
 
     // ---------------------------------------------------------------- the rest
 
+    /// Shift + click on an item of the inventory stores it in the network (like in the terminal).
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        if (index < INVENTORY_START || !(player instanceof ServerPlayer serverPlayer)) return ItemStack.EMPTY;
+        Slot slot = slots.get(index);
+        ItemStack stack = slot.getItem();
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        ItemStack left = StarNetwork.at(player.level(), pos).insert(stack.copy());
+        if (left.getCount() != stack.getCount()) {
+            slot.set(left);
+            TerminalContents.send(serverPlayer, pos);
+        }
         return ItemStack.EMPTY;
     }
 
     @Override
     public boolean stillValid(Player player) {
         return player.level().getBlockState(pos).getBlock() instanceof QuasarBlock
-                && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= 8 * 8;
+                && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= TerminalAction.RANGE * TerminalAction.RANGE;
     }
 }

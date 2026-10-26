@@ -18,14 +18,14 @@ public final class TerminalClient {
     /// The server sent the contents of the network: update the screen that is open.
     public static void receive(TerminalContents message) {
         last = message;
-        if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen screen && screen.getMenu().pos.equals(message.pos())) {
+        if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen<?> screen && screen.getMenu().networkPos().equals(message.pos())) {
             screen.update(message);
         }
     }
 
     /// The answer of the server to a craft request.
     public static void receiveReply(CraftRequest.Reply reply) {
-        if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen screen) screen.onCraftReply(reply);
+        if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen<?> screen) screen.onCraftReply(reply);
     }
 
     /// The last contents of the terminal at "pos" (empty if none came yet).

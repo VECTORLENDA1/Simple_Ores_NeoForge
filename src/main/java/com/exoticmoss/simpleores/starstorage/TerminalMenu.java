@@ -28,7 +28,7 @@ import java.util.Optional;
 /// The items of the network are not slots: the screen shows them and asks the server (TerminalAction).
 ///  - Shift + click on an item of the inventory stores it in the network.
 ///  - Closing the screen gives back the items left in the crafting grid.
-public class TerminalMenu extends AbstractContainerMenu {
+public class TerminalMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int RESULT_SLOT = 0;
     public static final int CRAFT_START = 1;
     public static final int CRAFT_END = 10;
@@ -56,6 +56,21 @@ public class TerminalMenu extends AbstractContainerMenu {
             }
         }
         addStandardInventorySlots(inventory, TerminalLayout.inventoryLeft() + 1, top + 1);
+    }
+
+    @Override
+    public BlockPos networkPos() {
+        return pos;
+    }
+
+    @Override
+    public TerminalLayout layout() {
+        return layout;
+    }
+
+    @Override
+    public int resultSlot() {
+        return RESULT_SLOT;
     }
 
     // ---------------------------------------------------------------- crafting

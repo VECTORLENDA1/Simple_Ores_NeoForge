@@ -6,7 +6,7 @@ import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
 import com.exoticmoss.simpleores.starstorage.TerminalLayout;
-import com.exoticmoss.simpleores.starstorage.TerminalMenu;
+import com.exoticmoss.simpleores.starstorage.NetworkMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -16,6 +16,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -38,29 +39,29 @@ import java.util.Optional;
 ///    on any craftable item) opens a small panel to choose how many to craft.
 /// The screen only asks the server (TerminalAction); the server changes the network and sends back the new
 /// contents (TerminalContents). The game is not paused, so the server keeps answering.
-public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
+public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> extends AbstractContainerScreen<M> {
     /// Rows of the cells panel.
     private static final int CELL_ROWS = 5;
     /// The screen asks for the contents again every this many ticks (other players may change them).
     private static final int REFRESH_TICKS = 20;
     /// Colors (0xAARRGGBB).
     private static final int PANEL = 0xE0101018;
-    private static final int PANEL_BORDER = 0xFF8060C0;
+    protected static final int PANEL_BORDER = 0xFF8060C0;
     private static final int CELL_COLOR = 0xFF2A2A38;
-    private static final int CELL_HOVER = 0xFF5A3A80;
-    private static final int SLOT_COLOR = 0xFF20202C;
+    protected static final int CELL_HOVER = 0xFF5A3A80;
+    protected static final int SLOT_COLOR = 0xFF20202C;
     private static final int RESULT_COLOR = 0xFF34344A;
     private static final int BAR_BACK = 0xFF15151E;
     private static final int SCROLL_BAR = 0xFF8060C0;
-    private static final int TEXT = 0xFFFFFFFF;
-    private static final int TEXT_DIM = 0xFFA0A0B0;
+    protected static final int TEXT = 0xFFFFFFFF;
+    protected static final int TEXT_DIM = 0xFFA0A0B0;
 
     /// How the items are sorted (kept while the game is open).
     private static final String[] SORT_KEYS = {"most", "least", "a_z", "z_a"};
     private static int sort = 0;
 
-    private final TerminalLayout layout;
-    private TerminalContents contents;
+    protected final TerminalLayout layout;
+    protected TerminalContents contents;
     /// The items shown (after the search and the sorting).
     private List<TerminalContents.Item> shown = List.of();
     private String search = "";
@@ -77,11 +78,52 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     private final List<Component> craftMessage = new ArrayList<>();
     private Button clearButton;
 
-    public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, TerminalLayout.WIDTH, menu.layout.height());
-        this.layout = menu.layout;
-        this.contents = TerminalClient.last(menu.pos);
+    public TerminalScreen(M menu, Inventory inventory, Component title) {
+        super(menu, inventory, title, TerminalLayout.WIDTH, menu.layout().height());
+        this.layout = menu.layout();
+        this.contents = TerminalClient.last(menu.networkPos());
         filter();
+    }
+
+    // ---------------------------------------------------------------- what the Quasar changes (see QuasarScreen)
+
+    /// True: the items of the Quasars can be crafted here ("Craft"). The Quasar screen only makes recipes.
+    protected boolean crafting() {
+        return true;
+    }
+
+    /// The top left part: how full the cells are (the Quasar shows its recipes there).
+    protected void drawTopLeft(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        drawCells(graphics);
+    }
+
+    /// Mouse wheel / click on the top left part. true = done.
+    protected boolean scrollTopLeft(double x, double y, int step) {
+        if (!isOverCells(x, y)) return false;
+        cellScroll = Mth.clamp(cellScroll + step, 0, Math.max(0, contents.cells().size() - CELL_ROWS));
+        return true;
+    }
+
+    protected boolean clickTopLeft(MouseButtonEvent event) {
+        return false;
+    }
+
+    /// The small X of the grid: puts the items of the crafting grid back in the network.
+    protected void clearGrid() {
+        send(TerminalAction.CLEAR_GRID, Optional.empty());
+    }
+
+    /// The text above the grid.
+    protected Component gridLabel() {
+        return Component.translatable("screen.simpleores.terminal.crafting");
+    }
+
+    /// More widgets (the Quasar adds its "Save" button).
+    protected void addMoreWidgets() {
+    }
+
+    /// Drawn after everything (the Quasar draws its tabs and tooltips).
+    protected void drawMore(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
     }
 
     /// New contents from the server.
@@ -95,7 +137,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         String text = search.trim().toLowerCase(Locale.ROOT);
         List<TerminalContents.Item> all = new ArrayList<>(contents.items());
         // The items that can be crafted and that the network doesn't have: shown with "Craft"
-        for (ItemStackTemplate craftable : contents.craftables()) {
+        for (ItemStackTemplate craftable : crafting() ? contents.craftables() : List.<ItemStackTemplate>of()) {
             ItemStack stack = craftable.create();
             if (all.stream().noneMatch(item -> ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
                 all.add(new TerminalContents.Item(craftable, 0));
@@ -125,8 +167,8 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         return Math.max(0, totalRows - layout.rows());
     }
 
-    private void send(int action, Optional<ItemStackTemplate> item) {
-        ClientPacketDistributor.sendToServer(new TerminalAction(menu.pos, action, item));
+    protected void send(int action, Optional<ItemStackTemplate> item) {
+        ClientPacketDistributor.sendToServer(new TerminalAction(menu.networkPos(), action, item));
     }
 
     // ---------------------------------------------------------------- layout and buttons
@@ -154,11 +196,13 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         // Small X at the top right of the crafting grid: puts the items of the grid back in the network
         int gridRight = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT;
         // (the X is drawn in extractRenderState, so it is exactly in the middle of the button)
-        clearButton = addRenderableWidget(Button.builder(Component.empty(), b -> send(TerminalAction.CLEAR_GRID, Optional.empty()))
+        clearButton = addRenderableWidget(Button.builder(Component.empty(), b -> clearGrid())
                 .bounds(gridRight - 11, topPos + layout.inventoryTop() - 12, 11, 11).build());
+        addMoreWidgets();
     }
 
     private boolean isCraftable(ItemStackTemplate item) {
+        if (!crafting()) return false;
         ItemStack stack = item.create();
         return contents.craftables().stream().anyMatch(craftable -> ItemStack.isSameItemSameComponents(craftable.create(), stack));
     }
@@ -218,7 +262,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         if (amount <= 0) return;
         craftMessage.clear();
         craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.working"));
-        ClientPacketDistributor.sendToServer(new CraftRequest(menu.pos, craftItem, amount));
+        ClientPacketDistributor.sendToServer(new CraftRequest(menu.networkPos(), craftItem, amount));
     }
 
     /// The server answered the craft request.
@@ -269,11 +313,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (scrollY == 0) return true;
         int step = scrollY > 0 ? -1 : 1;
-        if (isOverCells(x, y)) {
-            cellScroll = Mth.clamp(cellScroll + step, 0, Math.max(0, contents.cells().size() - CELL_ROWS));
-        } else {
-            scroll = Mth.clamp(scroll + step, 0, maxScroll());
-        }
+        if (!scrollTopLeft(x, y, step)) scroll = Mth.clamp(scroll + step, 0, maxScroll());
         return true;
     }
 
@@ -309,6 +349,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
             }
             return true;
         }
+        if (clickTopLeft(event)) return true;
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
             if (!menu.getCarried().isEmpty()) {
@@ -374,15 +415,15 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         return index < shown.size() ? index : -1;
     }
 
-    private int cellsLeft() {
+    protected int cellsLeft() {
         return leftPos + 10;
     }
 
-    private int cellsWidth() {
+    protected int cellsWidth() {
         return 160;
     }
 
-    private boolean isOverCells(double x, double y) {
+    protected boolean isOverCells(double x, double y) {
         return x >= cellsLeft() && x < cellsLeft() + cellsWidth() && y >= topPos + TerminalLayout.TOP && y < networkTop();
     }
 
@@ -397,7 +438,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
         graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
 
-        if (craftItem == null) drawCells(graphics);
+        if (craftItem == null) drawTopLeft(graphics, mouseX, mouseY);
         int hovered = drawNetwork(graphics, mouseX, mouseY);
         if (craftItem != null) {
             hovered = -1;
@@ -412,10 +453,10 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         // Inventory and crafting: the frames of the slots (the items are drawn by the screen itself)
         int top = topPos + layout.inventoryTop();
         graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), leftPos + TerminalLayout.inventoryLeft(), top - 11, TEXT_DIM);
-        graphics.text(font, Component.translatable("screen.simpleores.terminal.crafting"), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
+        graphics.text(font, gridLabel(), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
         for (Slot slot : menu.slots) {
             int x = leftPos + slot.x - 1, y = topPos + slot.y - 1;
-            if (slot.index == TerminalMenu.RESULT_SLOT) {
+            if (slot.index == menu.resultSlot()) {
                 graphics.fill(x - 2, y - 2, x + TerminalLayout.SLOT + 2, y + TerminalLayout.SLOT + 2, RESULT_COLOR);
             }
             graphics.fill(x + 1, y + 1, x + TerminalLayout.SLOT - 1, y + TerminalLayout.SLOT - 1, SLOT_COLOR);
@@ -445,6 +486,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
             if (item.count() > 0 && isCraftable(item.item())) lines.add(Component.translatable("screen.simpleores.terminal.craft.ctrl").withColor(0xFF7FE0C0));
             graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
         }
+        drawMore(graphics, mouseX, mouseY);
     }
 
     /// The title and "Inventory" are drawn above (in extractRenderState).
@@ -481,7 +523,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     }
 
     /// How full each cell is: a small square with the color of the cell, a bar and the %.
-    private void drawCells(GuiGraphicsExtractor graphics) {
+    protected void drawCells(GuiGraphicsExtractor graphics) {
         int x = cellsLeft(), y = topPos + TerminalLayout.TOP;
         int width = cellsWidth();
         List<TerminalContents.Cell> cells = contents.cells();

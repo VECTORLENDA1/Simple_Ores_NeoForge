@@ -21,6 +21,8 @@ import com.exoticmoss.simpleores.starstorage.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
 import com.exoticmoss.simpleores.starstorage.QuasarFill;
 import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
+import com.exoticmoss.simpleores.starstorage.QuasarSlot;
+import com.exoticmoss.simpleores.starstorage.client.BinaryScreen;
 import com.exoticmoss.simpleores.starstorage.client.QuasarScreen;
 import com.exoticmoss.simpleores.starstorage.client.TerminalScreen;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -91,6 +93,7 @@ public class SimpleOres {
         // Quasar: the recipes saved in it (server -> client), JEI filled its grid (client -> server)
                 .playToClient(QuasarPatterns.TYPE, QuasarPatterns.STREAM_CODEC, QuasarPatterns::handle)
                 .playToServer(QuasarFill.TYPE, QuasarFill.STREAM_CODEC, QuasarFill::handle)
+                .playToServer(QuasarSlot.TYPE, QuasarSlot.STREAM_CODEC, QuasarSlot::handle)
         // Auto-craft: the player asked to craft (client -> server) and the answer (server -> client)
                 .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
                 .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle);
@@ -132,6 +135,7 @@ public class SimpleOres {
         public static void registerScreens(RegisterMenuScreensEvent event) {
             event.register(ModMenus.TERMINAL.get(), TerminalScreen::new);
             event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
+            event.register(ModMenus.BINARY.get(), BinaryScreen::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)

@@ -1,17 +1,19 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.starstorage.BinaryAction;
+import com.exoticmoss.simpleores.starstorage.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.BinaryView;
 import com.exoticmoss.simpleores.starstorage.SlotRule;
 import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import java.util.ArrayList;
@@ -22,12 +24,12 @@ import java.util.Optional;
 
 /// The screen of the Binary Star: every block with an inventory around it (chests, furnaces...),
 /// one card per block with all its slots. Mouse wheel scrolls the cards.
-///  - Left-click on a slot: TAKE on/off (its items go to the network) - orange.
-///  - Right-click on a slot: KEEP on/off (kept full of the item in it, or, if empty, the item in your hand) - green.
-///  - Both on: input and output in the same slot - light purple.
+///  - Left-click on a slot: next mode: take (orange) -> keep full (green) -> input and output (light purple) -> nothing.
+///    With an item in the mouse cursor (taken from the inventory below): the slot keeps that item.
+///  - Right-click on a slot: no rule.
 ///  - "Take all": every slot of the block is TAKE. "Clear": no rules for the block.
 /// The screen only asks the server (BinaryAction); the server changes the rules and sends back the view.
-public class BinaryScreen extends Screen {
+public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
     private static final int WIDTH = 220;
     private static final int SLOT = 18;
     private static final int COLUMNS = 9;
@@ -44,28 +46,27 @@ public class BinaryScreen extends Screen {
     private static final int TAKE_COLOR = 0xFFE08A30;
     private static final int KEEP_COLOR = 0xFF40C070;
     private static final int BOTH_COLOR = 0xFFC9A6FF;
-    private static final int FADE = 0xA0101018;
     private static final int BUTTON = 0xFF3A3A4E;
     private static final int BUTTON_HOVER = 0xFF55557A;
     private static final int BUTTON_BORDER = 0xFF70709A;
     private static final int TEXT = 0xFFFFFFFF;
     private static final int TEXT_DIM = 0xFFA0A0B0;
 
-    private final BlockPos pos;
     private BinaryView view;
     /// First card shown.
     private int scroll;
     private int ticks;
     private int left, top, height2;
+    private final BlockPos pos;
 
     /// Where one card is on the screen (only the cards that fit are placed).
     private record Card(int index, int x, int y, int height) {
     }
 
-    public BinaryScreen(BinaryView view) {
-        super(Component.translatable("screen.simpleores.binary.title"));
-        this.pos = view.pos();
-        this.view = view;
+    public BinaryScreen(BinaryMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title, BinaryMenu.WIDTH, menu.height);
+        this.pos = menu.pos;
+        this.view = BinaryClient.last(menu.pos);
     }
 
     public BlockPos pos() {
@@ -83,17 +84,15 @@ public class BinaryScreen extends Screen {
 
     @Override
     protected void init() {
-        height2 = Math.min(height - 20, 260);
-        left = (width - WIDTH) / 2;
-        top = (height - height2) / 2;
+        super.init();
+        height2 = imageHeight;
+        left = leftPos;
+        top = topPos;
     }
 
     @Override
-    public void tick() {
-        if (++ticks % REFRESH_TICKS == 0) send(pos, BinaryAction.REFRESH, 0);
-        if (minecraft.player == null || minecraft.player.position().distanceToSqr(Vec3.atCenterOf(pos)) > BinaryAction.RANGE * BinaryAction.RANGE) {
-            onClose();
-        }
+    protected void containerTick() {
+        if (++ticks % REFRESH_TICKS == 1) send(pos, BinaryAction.REFRESH, 0);
     }
 
     // ---------------------------------------------------------------- where things are
@@ -103,7 +102,7 @@ public class BinaryScreen extends Screen {
     }
 
     private int areaBottom() {
-        return top + height2 - 8;
+        return top + height2 - BinaryMenu.INVENTORY_HEIGHT - 4;
     }
 
     private static int rows(BinaryView.Block block) {
@@ -167,7 +166,7 @@ public class BinaryScreen extends Screen {
             for (int slot = 0; slot < block.slots().size(); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
                 if (event.x() >= x && event.x() < x + SLOT && event.y() >= y && event.y() < y + SLOT) {
-                    send(block.pos(), right ? BinaryAction.TOGGLE_KEEP : BinaryAction.TOGGLE_TAKE, slot);
+                    send(block.pos(), right ? BinaryAction.REMOVE : BinaryAction.CLICK, slot);
                     return true;
                 }
             }
@@ -215,10 +214,6 @@ public class BinaryScreen extends Screen {
                         String count = String.valueOf(stack.getCount());
                         graphics.text(font, Component.literal(count), x + SLOT - 1 - font.width(count), y + SLOT - 9, TEXT);
                     }
-                } else if (rule != null && rule.keeps()) {
-                    // Empty KEEP slot: its item, faded
-                    graphics.item(rule.item().get().create(), x + 1, y + 1);
-                    graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, FADE);
                 }
                 if (rule != null) graphics.outline(x, y, SLOT, SLOT, color(rule));
 
@@ -240,8 +235,14 @@ public class BinaryScreen extends Screen {
             graphics.centeredText(font, Component.literal("..."), left + WIDTH / 2, areaBottom() - 2, TEXT_DIM);
         }
 
+        // Inventory (its items are drawn by the screen itself)
+        graphics.text(font, playerInventoryTitle, left + 10, top + height2 - BinaryMenu.INVENTORY_HEIGHT + 2, TEXT_DIM);
+        for (Slot slot : menu.slots) {
+            graphics.fill(left + slot.x, top + slot.y, left + slot.x + 16, top + slot.y + 16, SLOT_COLOR);
+        }
+
         super.extractRenderState(graphics, mouseX, mouseY, a);
-        if (tooltip != null) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
+        if (tooltip != null && menu.getCarried().isEmpty()) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
     }
 
     private static int color(SlotRule rule) {
@@ -260,6 +261,10 @@ public class BinaryScreen extends Screen {
         if (font.width(text) <= width) return text;
         while (!text.isEmpty() && font.width(text + "...") > width) text = text.substring(0, text.length() - 1);
         return text + "...";
+    }
+
+    @Override
+    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
     }
 
     @Override

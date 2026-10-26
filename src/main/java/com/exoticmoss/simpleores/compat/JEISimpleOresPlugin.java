@@ -67,6 +67,12 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
     }
 
+    // Drag and drop from the JEI list onto the recipe grid of the Quasar
+    @Override
+    public void registerGuiHandlers(mezz.jei.api.registration.IGuiHandlerRegistration registration) {
+        registration.addGhostIngredientHandler(com.exoticmoss.simpleores.starstorage.client.QuasarScreen.class, new QuasarGhostHandler());
+    }
+
     // Shows the recipes when the block is clicked inside JEI
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {

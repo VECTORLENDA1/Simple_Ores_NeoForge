@@ -59,5 +59,6 @@
   "screen.simpleores.terminal.craft.no_recipe": "Sem receita para este item",
   "screen.simpleores.terminal.craft.too_big": "Crafts a mais de uma vez",
   "screen.simpleores.terminal.craft.changed": "Os items mudaram: tenta outra vez",
-  "screen.simpleores.terminal.craft.ctrl": "Ctrl + clique: craftar mais"
+  "screen.simpleores.terminal.craft.ctrl": "Ctrl + clique: craftar mais",
+  "screen.simpleores.quasar.recipe": "Receita"
 }

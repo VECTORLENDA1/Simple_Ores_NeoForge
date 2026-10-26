@@ -3,9 +3,9 @@ package com.exoticmoss.simpleores.starstorage.client;
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.starstorage.Pattern;
 import com.exoticmoss.simpleores.starstorage.QuasarMenu;
+import com.exoticmoss.simpleores.starstorage.TerminalLayout;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -19,34 +19,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/// The screen of the Quasar (see QuasarMenu for where everything is).
-///  - Two tabs at the top: crafting table recipes and Gravity Core recipes (level 2, later).
-///  - The recipe grid: put items with the mouse (they stay in your hand, only a picture goes to the grid),
-///    or use JEI's "+" button. "Save" keeps the recipe in the Quasar.
-///  - The saved recipes: right-click one to remove it. Mouse wheel scrolls.
-public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
-    private static final int COLUMNS = 9;
+/// The screen of the Quasar: like the Stellar Terminal (the items of the network, the search, the sort and
+/// the inventory), but it doesn't craft: the grid at the bottom right is the recipe grid.
+///  - Two tabs above the panel: crafting table recipes and Gravity Core recipes.
+///  - Recipe grid: click a slot with an item in the mouse cursor (only a picture of it goes there), drag an item
+///    from the JEI list onto a slot, or use JEI's "+" button. Right-click (or an empty cursor) empties a slot.
+///    "Save" keeps the recipe; the small X empties the grid.
+///  - Top left: the recipes kept in the Quasar. Right-click one to remove it. Mouse wheel scrolls.
+public class QuasarScreen extends TerminalScreen<QuasarMenu> {
+    private static final int PATTERN_COLUMNS = 8;
     private static final int PATTERN_ROWS = 2;
     private static final int TAB = 22;
-    /// Colors (0xAARRGGBB).
-    private static final int PANEL = 0xE0101018;
-    private static final int PANEL_BORDER = 0xFF8060C0;
-    private static final int SLOT_COLOR = 0xFF20202C;
-    private static final int SLOT_HOVER = 0xFF5A3A80;
-    private static final int RESULT_COLOR = 0xFF34344A;
     private static final int TAB_ON = 0xFF2A2A3E;
     private static final int TAB_OFF = 0xE0101018;
-    private static final int TEXT = 0xFFFFFFFF;
-    private static final int TEXT_DIM = 0xFFA0A0B0;
 
     /// 0 = crafting table, 1 = Gravity Core.
     private int tab;
-    private int scroll;
+    private int patternScroll;
     private Button saveButton;
-    private Button clearButton;
 
     public QuasarScreen(QuasarMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, QuasarMenu.WIDTH, QuasarMenu.HEIGHT);
+        super(menu, inventory, title);
     }
 
     private List<Pattern> patterns() {
@@ -58,16 +51,27 @@ public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
     }
 
     @Override
-    protected void init() {
-        super.init();
-        saveButton = addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.quasar.save"), b -> button(QuasarMenu.SAVE))
-                .bounds(leftPos + QuasarMenu.RESULT_X - 12, topPos + QuasarMenu.RESULT_Y + 24, 42, 16).build());
-        // Small X at the top right of the grid: empties it (the X is drawn in extractRenderState)
-        clearButton = addRenderableWidget(Button.builder(Component.empty(), b -> button(QuasarMenu.CLEAR))
-                .bounds(leftPos + QuasarMenu.GRID_X + 54 - 11, topPos + QuasarMenu.GRID_Y - 12, 11, 11).build());
+    protected boolean crafting() {
+        return false;
     }
 
-    // ---------------------------------------------------------------- mouse
+    @Override
+    protected void clearGrid() {
+        button(QuasarMenu.CLEAR);
+    }
+
+    @Override
+    protected Component gridLabel() {
+        return Component.translatable("screen.simpleores.quasar.recipe");
+    }
+
+    @Override
+    protected void addMoreWidgets() {
+        saveButton = addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.quasar.save"), b -> button(QuasarMenu.SAVE))
+                .bounds(leftPos + menu.layout.resultX() - 10, topPos + menu.layout.resultY() + 24, 40, 14).build());
+    }
+
+    // ---------------------------------------------------------------- tabs and saved recipes
 
     private int tabX(int which) {
         return leftPos + 4 + which * (TAB + 2);
@@ -77,18 +81,18 @@ public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
         return topPos - TAB + 2;
     }
 
-    private int patternX(int index) {
-        return leftPos + 8 + (index % COLUMNS) * 18;
+    private int patternX(int i) {
+        return cellsLeft() + (i % PATTERN_COLUMNS) * 18;
     }
 
-    private int patternY(int index) {
-        return topPos + QuasarMenu.PATTERNS_Y + (index / COLUMNS) * 18;
+    private int patternY(int i) {
+        return topPos + TerminalLayout.TOP + 11 + (i / PATTERN_COLUMNS) * 18;
     }
 
     /// The saved recipe under the mouse (index in the list), or -1.
     private int patternAt(double x, double y) {
-        for (int i = 0; i < COLUMNS * PATTERN_ROWS; i++) {
-            int index = scroll * COLUMNS + i;
+        for (int i = 0; i < PATTERN_COLUMNS * PATTERN_ROWS; i++) {
+            int index = patternScroll * PATTERN_COLUMNS + i;
             if (index >= patterns().size()) break;
             if (x >= patternX(i) && x < patternX(i) + 18 && y >= patternY(i) && y < patternY(i) + 18) return index;
         }
@@ -103,35 +107,49 @@ public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
                 return true;
             }
         }
-        int index = patternAt(event.x(), event.y());
-        if (index >= 0) {
-            if (event.button() == 1) button(QuasarMenu.REMOVE + index);
-            return true;
-        }
-        if (tab == 1 && isOverGrid(event.x(), event.y())) return true;
-        boolean handled = super.mouseClicked(event, doubleClick);
-        setFocused(null);
-        return handled;
+        // Gravity Core tab: the recipe grid is hidden
+        if (tab == 1 && isOverRecipeGrid(event.x(), event.y())) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
-    private boolean isOverGrid(double x, double y) {
-        return x >= leftPos + QuasarMenu.GRID_X && x < leftPos + QuasarMenu.RESULT_X + 18 && y >= topPos + QuasarMenu.GRID_Y && y < topPos + QuasarMenu.GRID_Y + 54;
+    private boolean isOverRecipeGrid(double x, double y) {
+        int top = topPos + menu.layout.inventoryTop();
+        return x >= leftPos + TerminalLayout.craftLeft() && x < leftPos + menu.layout.resultX() + 20 && y >= top - 12 && y < top + 3 * 18;
     }
 
     @Override
-    public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
-        int rows = (patterns().size() + COLUMNS - 1) / COLUMNS;
-        if (scrollY != 0) scroll = Mth.clamp(scroll + (scrollY > 0 ? -1 : 1), 0, Math.max(0, rows - PATTERN_ROWS));
+    protected boolean clickTopLeft(MouseButtonEvent event) {
+        int index = patternAt(event.x(), event.y());
+        if (index < 0) return false;
+        if (event.button() == 1) button(QuasarMenu.REMOVE + index);
+        return true;
+    }
+
+    @Override
+    protected boolean scrollTopLeft(double x, double y, int step) {
+        if (!isOverCells(x, y)) return false;
+        int rows = (patterns().size() + PATTERN_COLUMNS - 1) / PATTERN_COLUMNS;
+        patternScroll = Mth.clamp(patternScroll + step, 0, Math.max(0, rows - PATTERN_ROWS));
         return true;
     }
 
     // ---------------------------------------------------------------- drawing
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        saveButton.visible = tab == 0;
-        clearButton.visible = tab == 0;
+    protected void drawTopLeft(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        graphics.text(font, Component.translatable("screen.simpleores.quasar.recipes", patterns().size()), cellsLeft(), topPos + TerminalLayout.TOP, TEXT_DIM);
+        int hovered = patternAt(mouseX, mouseY);
+        for (int i = 0; i < PATTERN_COLUMNS * PATTERN_ROWS; i++) {
+            int index = patternScroll * PATTERN_COLUMNS + i;
+            int x = patternX(i), y = patternY(i);
+            graphics.fill(x + 1, y + 1, x + 17, y + 17, index == hovered ? CELL_HOVER : SLOT_COLOR);
+            if (index < patterns().size()) graphics.item(patterns().get(index).outputStack(), x + 1, y + 1);
+        }
+    }
 
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        if (saveButton != null) saveButton.visible = tab == 0;
         // Tabs (above the panel)
         ItemStack[] icons = {new ItemStack(Items.CRAFTING_TABLE), new ItemStack(ModBlocks.GRAVITY_CORE_SUN.get())};
         for (int which = 0; which < 2; which++) {
@@ -140,53 +158,17 @@ public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
             graphics.outline(x, y, TAB, TAB, PANEL_BORDER);
             graphics.item(icons[which], x + 3, y + 3);
         }
-
-        // Panel
-        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL);
-        graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
-        graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
-
-        if (tab == 0) {
-            // Recipe grid, arrow and result
-            for (int i = 0; i <= QuasarMenu.GRID_SLOTS; i++) {
-                Slot slot = menu.slots.get(i);
-                int x = leftPos + slot.x - 1, y = topPos + slot.y - 1;
-                if (i == QuasarMenu.RESULT_SLOT) graphics.fill(x - 2, y - 2, x + 20, y + 20, RESULT_COLOR);
-                graphics.fill(x + 1, y + 1, x + 17, y + 17, SLOT_COLOR);
-            }
-            int ax = leftPos + QuasarMenu.GRID_X + 58, ay = topPos + QuasarMenu.RESULT_Y + 8;
-            graphics.fill(ax, ay, ax + 14, ay + 2, TEXT_DIM);
-            for (int i = 0; i < 4; i++) graphics.fill(ax + 10 + i, ay - 3 + i, ax + 11 + i, ay + 5 - i, TEXT_DIM);
-        } else {
-            graphics.centeredText(font, Component.translatable("screen.simpleores.quasar.core_soon"), leftPos + imageWidth / 2, topPos + 50, TEXT_DIM);
-        }
-
-        // Saved recipes
-        graphics.text(font, Component.translatable("screen.simpleores.quasar.recipes", patterns().size()), leftPos + 8, topPos + QuasarMenu.PATTERNS_Y - 11, TEXT_DIM);
-        int hovered = patternAt(mouseX, mouseY);
-        for (int i = 0; i < COLUMNS * PATTERN_ROWS; i++) {
-            int index = scroll * COLUMNS + i;
-            int x = patternX(i), y = patternY(i);
-            graphics.fill(x + 1, y + 1, x + 17, y + 17, index == hovered ? SLOT_HOVER : SLOT_COLOR);
-            if (index < patterns().size()) graphics.item(patterns().get(index).outputStack(), x + 1, y + 1);
-        }
-
-        // Inventory
-        graphics.text(font, playerInventoryTitle, leftPos + 8, topPos + QuasarMenu.INVENTORY_Y - 11, TEXT_DIM);
-        for (int i = QuasarMenu.INVENTORY_START; i < menu.slots.size(); i++) {
-            Slot slot = menu.slots.get(i);
-            graphics.fill(leftPos + slot.x, topPos + slot.y, leftPos + slot.x + 16, topPos + slot.y + 16, SLOT_COLOR);
-        }
-
         super.extractRenderState(graphics, mouseX, mouseY, a);
+    }
 
-        if (tab == 0 && clearButton != null) {
-            int cx = clearButton.getX() + 3, cy = clearButton.getY() + 3;
-            for (int i = 0; i < 5; i++) {
-                graphics.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, TEXT);
-                graphics.fill(cx + 4 - i, cy + i, cx + 5 - i, cy + i + 1, TEXT);
-            }
+    @Override
+    protected void drawMore(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (tab == 1) {
+            int top = topPos + menu.layout.inventoryTop();
+            graphics.fill(leftPos + TerminalLayout.craftLeft() - 2, top - 13, leftPos + imageWidth - 4, top + 3 * 18 + 2, 0xFF101018);
+            graphics.text(font, Component.translatable("screen.simpleores.quasar.core_soon"), leftPos + TerminalLayout.craftLeft(), top + 20, TEXT_DIM);
         }
+        int hovered = patternAt(mouseX, mouseY);
         if (hovered >= 0) {
             Pattern pattern = patterns().get(hovered);
             List<Component> lines = new ArrayList<>();
@@ -198,19 +180,23 @@ public class QuasarScreen extends AbstractContainerScreen<QuasarMenu> {
         }
     }
 
-    /// In the Gravity Core tab the grid slots are hidden.
+    /// In the Gravity Core tab the recipe grid is hidden.
     @Override
     protected void extractSlot(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY) {
         if (tab == 1 && slot.index <= QuasarMenu.RESULT_SLOT) return;
         super.extractSlot(graphics, slot, mouseX, mouseY);
     }
 
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    /// The left and top of the panel (for the JEI drag and drop).
+    public int left() {
+        return leftPos;
     }
 
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+    public int top() {
+        return topPos;
+    }
+
+    public boolean recipeTab() {
+        return tab == 0;
     }
 }

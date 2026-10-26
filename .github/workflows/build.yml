@@ -22,3 +22,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: build
+
+      - name: Probe API (temporary)
+        if: always()
+        run: |
+          JAVAP=$(find / -name javap -path "*bin*" 2>/dev/null | head -1)
+          J=build/moddev/artifacts/minecraft-patched-26.2.0.88.jar
+          $JAVAP -cp $J -p net.minecraft.client.renderer.GameRenderer | grep -i "pick\|hitresult" 
+          $JAVAP -cp $J -p net.minecraft.client.Minecraft | grep -i "hitResult\|crosshair"
+          $JAVAP -cp $J -p net.minecraft.world.phys.AABB | grep -i "clip"

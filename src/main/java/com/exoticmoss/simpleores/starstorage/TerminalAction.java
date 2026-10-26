@@ -50,7 +50,9 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
         if (!(context.player() instanceof ServerPlayer player)) return;
         BlockPos pos = message.pos();
         // Only while the screen of this terminal is open
-        if (!(player.containerMenu instanceof TerminalMenu menu) || !menu.pos.equals(pos) || !menu.stillValid(player)) return;
+        if (!(player.containerMenu instanceof NetworkMenu networkMenu) || !networkMenu.networkPos().equals(pos)
+                || !player.containerMenu.stillValid(player)) return;
+        var menu = player.containerMenu;
         StarNetwork network = StarNetwork.at(player.level(), pos);
         ItemStack carried = menu.getCarried();
 
@@ -83,7 +85,9 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
             case STORE_CARRIED_ONE -> {
                 if (!carried.isEmpty() && network.insert(carried.copyWithCount(1)).isEmpty()) carried.shrink(1);
             }
-            case CLEAR_GRID -> menu.clearGrid(player, network);
+            case CLEAR_GRID -> {
+                if (menu instanceof TerminalMenu terminal) terminal.clearGrid(player, network);
+            }
             default -> {
             }
         }

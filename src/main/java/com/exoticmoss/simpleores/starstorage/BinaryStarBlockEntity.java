@@ -135,13 +135,13 @@ public class BinaryStarBlockEntity extends BlockEntity {
         event.registerBlockEntity(Capabilities.Fluid.BLOCK, ModBlockEntities.BINARY_STAR_BE.get(), (binary, side) -> binary.fluids());
     }
 
-    private @Nullable NetworkHandler.Items items() {
+    private NetworkHandler.@Nullable Items items() {
         if (level == null || level.isClientSide()) return null;
         if (itemHandler == null) itemHandler = new NetworkHandler.Items(level, worldPosition);
         return itemHandler;
     }
 
-    private @Nullable NetworkHandler.Fluids fluids() {
+    private NetworkHandler.@Nullable Fluids fluids() {
         if (level == null || level.isClientSide()) return null;
         if (fluidHandler == null) fluidHandler = new NetworkHandler.Fluids(level, worldPosition);
         return fluidHandler;

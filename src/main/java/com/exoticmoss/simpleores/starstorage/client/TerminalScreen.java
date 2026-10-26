@@ -9,7 +9,6 @@ import com.exoticmoss.simpleores.starstorage.TerminalMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -137,7 +136,6 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         int gridRight = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT;
         Button clear = Button.builder(Component.literal("x"), b -> send(TerminalAction.CLEAR_GRID, Optional.empty()))
                 .bounds(gridRight - 11, topPos + layout.inventoryTop() - 12, 11, 11).build();
-        clear.setTooltip(Tooltip.create(Component.translatable("screen.simpleores.terminal.clear_grid")));
         addRenderableWidget(clear);
     }
 

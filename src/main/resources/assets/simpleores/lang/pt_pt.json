@@ -35,6 +35,5 @@
   "screen.simpleores.terminal.sort.least": "Menos primeiro",
   "screen.simpleores.terminal.sort.a_z": "Nome A-Z",
   "screen.simpleores.terminal.sort.z_a": "Nome Z-A",
-  "screen.simpleores.terminal.crafting": "Crafting",
-  "screen.simpleores.terminal.clear_grid": "Devolver os items da grid ao sistema"
+  "screen.simpleores.terminal.crafting": "Crafting"
 }

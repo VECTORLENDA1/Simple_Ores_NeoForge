@@ -1,8 +1,11 @@
 {
   "type": "simpleores:gravity_craft",
   "tier": 4,
-  "time": 400,
+  "time": 200,
   "ingredients": [
+    {
+      "item": "simpleores:preon_fluid_cell"
+    },
     {
       "item": "simpleores:obscuridium",
       "count": 4
@@ -20,7 +23,7 @@
     },
     {
       "item": "minecraft:bucket",
-      "count": 8
+      "count": 2
     }
   ],
   "result": {

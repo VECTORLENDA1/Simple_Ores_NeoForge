@@ -1,0 +1,24 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:neutron_cell"
+    },
+    {
+      "item": "simpleores:ignithra",
+      "count": 8
+    },
+    {
+      "item": "simpleores:nexalite",
+      "count": 8
+    },
+    {
+      "item": "minecraft:diamond_block"
+    }
+  ],
+  "result": {
+    "id": "simpleores:quark_cell"
+  }
+}

@@ -4,6 +4,9 @@
   "time": 200,
   "ingredients": [
     {
+      "item": "simpleores:pulsar_fluid_cell"
+    },
+    {
       "item": "simpleores:celestine",
       "count": 8
     },
@@ -16,12 +19,8 @@
       "count": 2
     },
     {
-      "item": "minecraft:diamond",
-      "count": 4
-    },
-    {
       "item": "minecraft:bucket",
-      "count": 4
+      "count": 2
     }
   ],
   "result": {

@@ -136,5 +136,15 @@
   "screen.simpleores.magnetar.field": "Field: %s blocks",
   "screen.simpleores.magnetar.drives": "%s drives, %s cells",
   "screen.simpleores.magnetar.items": "Items",
-  "screen.simpleores.magnetar.fluids": "Liquids"
+  "screen.simpleores.magnetar.fluids": "Liquids",
+  "item.simpleores.red_dwarf_cell": "Red Dwarf Cell",
+  "item.simpleores.red_dwarf_fluid_cell": "Red Dwarf Fluid Cell",
+  "item.simpleores.blue_dwarf_cell": "Blue Dwarf Cell",
+  "item.simpleores.blue_dwarf_fluid_cell": "Blue Dwarf Fluid Cell",
+  "item.simpleores.pulsar_cell": "Pulsar Cell",
+  "item.simpleores.pulsar_fluid_cell": "Pulsar Fluid Cell",
+  "item.simpleores.quark_cell": "Quark Cell",
+  "item.simpleores.quark_fluid_cell": "Quark Fluid Cell",
+  "item.simpleores.preon_cell": "Preon Cell",
+  "item.simpleores.preon_fluid_cell": "Preon Fluid Cell"
 }

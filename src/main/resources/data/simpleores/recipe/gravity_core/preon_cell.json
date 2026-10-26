@@ -1,0 +1,24 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 4,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:quark_cell"
+    },
+    {
+      "item": "simpleores:obscuridium",
+      "count": 2
+    },
+    {
+      "item": "simpleores:nexalite_block",
+      "count": 2
+    },
+    {
+      "item": "minecraft:nether_star"
+    }
+  ],
+  "result": {
+    "id": "simpleores:preon_cell"
+  }
+}

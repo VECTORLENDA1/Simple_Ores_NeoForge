@@ -505,6 +505,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
                 // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
                 // the enchantments, the used durability, the name and the settings of the old one
                 keepToolData(used, result);
+                keepCellContents(used, result);
 
                 if (recipe.get().value().getUpgradeTier() != null) {
                     finishUpgrade(result);
@@ -531,6 +532,20 @@ public class GravityCoreBlockEntity extends BlockEntity {
         if (items.isEmpty()) networkPos = null;
         // If there are still enough items for the same recipe, the next Craft starts right away
         onItemsChanged();
+    }
+
+    /// Making a bigger Star Cell (or Fluid Cell) from a smaller one: the items (or liquids) inside go to the new cell.
+    private static void keepCellContents(List<ItemStack> used, ItemStack result) {
+        for (ItemStack old : used) {
+            var items = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get());
+            if (items != null && result.getItem() instanceof com.exoticmoss.simpleores.starstorage.StarCellItem) {
+                result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get(), items);
+            }
+            var fluids = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get());
+            if (fluids != null && result.getItem() instanceof com.exoticmoss.simpleores.starstorage.FluidCellItem) {
+                result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get(), fluids);
+            }
+        }
     }
 
     /// When the result is a tool and one of the ingredients is a tool too, the result keeps the

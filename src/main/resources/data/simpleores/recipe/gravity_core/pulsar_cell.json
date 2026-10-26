@@ -1,0 +1,25 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:blue_dwarf_cell"
+    },
+    {
+      "item": "simpleores:zenithra",
+      "count": 4
+    },
+    {
+      "item": "minecraft:diamond",
+      "count": 4
+    },
+    {
+      "item": "minecraft:ender_pearl",
+      "count": 4
+    }
+  ],
+  "result": {
+    "id": "simpleores:pulsar_cell"
+  }
+}

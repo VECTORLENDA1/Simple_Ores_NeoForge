@@ -1,0 +1,24 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 1,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:red_dwarf_cell"
+    },
+    {
+      "item": "simpleores:astralite",
+      "count": 4
+    },
+    {
+      "item": "minecraft:quartz",
+      "count": 8
+    },
+    {
+      "item": "minecraft:diamond"
+    }
+  ],
+  "result": {
+    "id": "simpleores:white_dwarf_cell"
+  }
+}

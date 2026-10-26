@@ -1,0 +1,29 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:white_dwarf_fluid_cell"
+    },
+    {
+      "item": "simpleores:celestine",
+      "count": 4
+    },
+    {
+      "item": "minecraft:diamond",
+      "count": 2
+    },
+    {
+      "item": "minecraft:lapis_block",
+      "count": 2
+    },
+    {
+      "item": "minecraft:bucket",
+      "count": 2
+    }
+  ],
+  "result": {
+    "id": "simpleores:blue_dwarf_fluid_cell"
+  }
+}

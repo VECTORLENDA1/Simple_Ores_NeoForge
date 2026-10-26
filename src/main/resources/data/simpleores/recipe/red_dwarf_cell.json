@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": "minecraft:glass",
+    "R": "minecraft:redstone",
+    "I": "minecraft:iron_ingot",
+    "C": "minecraft:quartz"
+  },
+  "pattern": [
+    "GRG",
+    "CIC",
+    "GRG"
+  ],
+  "result": {
+    "id": "simpleores:red_dwarf_cell"
+  }
+}

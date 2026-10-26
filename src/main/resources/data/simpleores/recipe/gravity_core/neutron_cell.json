@@ -4,6 +4,9 @@
   "time": 200,
   "ingredients": [
     {
+      "item": "simpleores:pulsar_cell"
+    },
+    {
       "item": "simpleores:celestine",
       "count": 8
     },
@@ -14,14 +17,6 @@
     {
       "item": "simpleores:astralite_block",
       "count": 2
-    },
-    {
-      "item": "minecraft:diamond",
-      "count": 4
-    },
-    {
-      "item": "minecraft:glass",
-      "count": 4
     }
   ],
   "result": {

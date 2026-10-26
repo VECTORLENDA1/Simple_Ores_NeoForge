@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:ignithra",
+      "count": 4
+    },
+    {
+      "item": "minecraft:redstone_block",
+      "count": 2
+    },
+    {
+      "item": "minecraft:glowstone_dust",
+      "count": 8
+    },
+    {
+      "item": "minecraft:sugar",
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "simpleores:solar_wind_upgrade"
+  }
+}

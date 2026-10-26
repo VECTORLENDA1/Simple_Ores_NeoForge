@@ -1,5 +1,6 @@
 package com.exoticmoss.simpleores.starstorage;
 
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
@@ -18,6 +19,12 @@ public class ModDataComponents {
                     .persistent(CellContents.CODEC)
                     .networkSynchronized(CellContents.STREAM_CODEC)
                     .cacheEncoding());
+
+    /// The Magnetar a Wormhole Link points to (its dimension and position)
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> LINK =
+            DATA_COMPONENTS.registerComponentType("link", builder -> builder
+                    .persistent(GlobalPos.CODEC)
+                    .networkSynchronized(GlobalPos.STREAM_CODEC));
 
     public static void register(IEventBus eventBus) {
         DATA_COMPONENTS.register(eventBus);

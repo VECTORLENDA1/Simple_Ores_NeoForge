@@ -41,6 +41,11 @@ public class ModItems {
     public static final DeferredItem<Item> SINGULARITY_CELL = ITEMS.registerItem("singularity_cell",
             p -> new StarCellItem(CellTier.SINGULARITY, p), p -> p.stacksTo(1).fireResistant());
 
+    //Magnetar upgrades (they go in the screen of the Magnetar Core)//
+    public static final DeferredItem<Item> SOLAR_WIND_UPGRADE = ITEMS.registerItem("solar_wind_upgrade", Item::new, p -> p.stacksTo(16));
+    public static final DeferredItem<Item> MAGNETIC_FIELD_UPGRADE = ITEMS.registerItem("magnetic_field_upgrade", Item::new, p -> p.stacksTo(16));
+    public static final DeferredItem<Item> WORMHOLE_LINK = ITEMS.registerItem("wormhole_link", Item::new, p -> p.stacksTo(1));
+
 
     public static void Register(IEventBus eventBus) {
         ITEMS.register(eventBus);

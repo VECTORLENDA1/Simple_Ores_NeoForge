@@ -1,6 +1,8 @@
 package com.exoticmoss.simpleores.starstorage;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.Level;
@@ -9,6 +11,8 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -16,34 +20,36 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /// The Magnetar network: every Stellar Drive inside the magnetic field of a Magnetar Core.
-/// There are no cables: the field is a cube of FIELD_RADIUS blocks in every direction around the Magnetar.
+/// There are no cables: the field is a cube of FIELD_RADIUS blocks in every direction around the Magnetar
+/// (more with Magnetic Field Upgrades). Wormhole Links join the networks of other Magnetars.
 /// The network is found again every time it is used, so placing or breaking a drive works right away.
 public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars) {
-    /// Size of the magnetic field of a Magnetar (blocks in every direction).
+    /// Size of the magnetic field of a Magnetar without upgrades (blocks in every direction).
     public static final int FIELD_RADIUS = 16;
 
     // ---------------------------------------------------------------- finding the network
 
-    /// True if "pos" is inside the field of the Magnetar at "magnetarPos".
-    public static boolean inField(BlockPos magnetarPos, BlockPos pos) {
-        return Math.abs(pos.getX() - magnetarPos.getX()) <= FIELD_RADIUS && Math.abs(pos.getY() - magnetarPos.getY()) <= FIELD_RADIUS
-                && Math.abs(pos.getZ() - magnetarPos.getZ()) <= FIELD_RADIUS;
+    /// True if "pos" is inside the field of this Magnetar.
+    public static boolean inField(MagnetarBlockEntity magnetar, BlockPos pos) {
+        BlockPos magnetarPos = magnetar.getBlockPos();
+        int radius = magnetar.radius();
+        return Math.abs(pos.getX() - magnetarPos.getX()) <= radius && Math.abs(pos.getY() - magnetarPos.getY()) <= radius
+                && Math.abs(pos.getZ() - magnetarPos.getZ()) <= radius;
     }
 
     /// The Magnetar whose field reaches this position (the nearest one). null = none.
     public static @Nullable MagnetarBlockEntity findMagnetar(Level level, BlockPos pos) {
-        MagnetarBlockEntity[] best = {null};
-        double[] bestDistance = {Double.MAX_VALUE};
-        forEachBlockEntity(level, pos, FIELD_RADIUS, blockEntity -> {
-            if (blockEntity instanceof MagnetarBlockEntity magnetar && !magnetar.isRemoved()) {
-                double distance = magnetar.getBlockPos().distSqr(pos);
-                if (distance < bestDistance[0]) {
-                    best[0] = magnetar;
-                    bestDistance[0] = distance;
-                }
+        MagnetarBlockEntity best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (MagnetarBlockEntity magnetar : MagnetarBlockEntity.loaded()) {
+            if (magnetar.getLevel() != level || magnetar.isRemoved() || !inField(magnetar, pos)) continue;
+            double distance = magnetar.getBlockPos().distSqr(pos);
+            if (distance < bestDistance) {
+                best = magnetar;
+                bestDistance = distance;
             }
-        });
-        return best[0];
+        }
+        return best;
     }
 
     /// The network of the Magnetar whose field reaches this position (empty if there is no Magnetar).
@@ -52,16 +58,32 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         return magnetar == null ? new StarNetwork(List.of(), List.of()) : around(level, magnetar.getBlockPos());
     }
 
-    /// Every drive and Quasar inside the field of the Magnetar at this position.
+    /// Every drive and Quasar inside the field of the Magnetar at this position, and inside the fields of the
+    /// Magnetars its Wormhole Links point to (and theirs...), when their chunks are loaded.
     public static StarNetwork around(Level level, BlockPos magnetarPos) {
         List<StellarDriveBlockEntity> drives = new ArrayList<>();
         List<QuasarBlockEntity> quasars = new ArrayList<>();
-        forEachBlockEntity(level, magnetarPos, FIELD_RADIUS, blockEntity -> {
-            if (blockEntity.isRemoved()) return;
-            if (blockEntity instanceof StellarDriveBlockEntity drive) drives.add(drive);
-            else if (blockEntity instanceof QuasarBlockEntity quasar) quasars.add(quasar);
-        });
+        collect(level, magnetarPos, drives, quasars, new HashSet<>());
         return new StarNetwork(drives, quasars);
+    }
+
+    private static void collect(Level level, BlockPos magnetarPos, List<StellarDriveBlockEntity> drives,
+                                List<QuasarBlockEntity> quasars, Set<GlobalPos> visited) {
+        if (!visited.add(GlobalPos.of(level.dimension(), magnetarPos))) return;
+        MagnetarBlockEntity magnetar = level.getBlockEntity(magnetarPos) instanceof MagnetarBlockEntity found ? found : null;
+        int radius = magnetar == null ? FIELD_RADIUS : magnetar.radius();
+        forEachBlockEntity(level, magnetarPos, radius, blockEntity -> {
+            if (blockEntity.isRemoved()) return;
+            if (blockEntity instanceof StellarDriveBlockEntity drive && !drives.contains(drive)) drives.add(drive);
+            else if (blockEntity instanceof QuasarBlockEntity quasar && !quasars.contains(quasar)) quasars.add(quasar);
+        });
+        if (magnetar == null || !(level instanceof ServerLevel serverLevel)) return;
+        for (GlobalPos link : magnetar.links()) {
+            ServerLevel other = serverLevel.getServer().getLevel(link.dimension());
+            BlockPos otherPos = link.pos();
+            if (other == null || other.getChunkSource().getChunkNow(otherPos.getX() >> 4, otherPos.getZ() >> 4) == null) continue;
+            if (other.getBlockEntity(otherPos) instanceof MagnetarBlockEntity) collect(other, otherPos, drives, quasars, visited);
+        }
     }
 
     /// Every recipe of the Quasars of the network (one per item: the first Quasar wins).

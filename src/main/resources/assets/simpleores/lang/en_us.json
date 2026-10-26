@@ -116,5 +116,13 @@
   "screen.simpleores.quasar.job.working": "Working",
   "screen.simpleores.quasar.job.waiting_items": "Waiting for items",
   "screen.simpleores.quasar.job.waiting_cores": "Waiting for a free Gravity Core",
-  "screen.simpleores.quasar.job.waiting_furnaces": "Waiting for the furnaces"
+  "screen.simpleores.quasar.job.waiting_furnaces": "Waiting for the furnaces",
+  "item.simpleores.solar_wind_upgrade": "Solar Wind Upgrade",
+  "item.simpleores.magnetic_field_upgrade": "Magnetic Field Upgrade",
+  "item.simpleores.wormhole_link": "Wormhole Link",
+  "tooltip.simpleores.solar_wind_upgrade": "Magnetar: the auto-craft gives items to the Gravity Cores faster (up to 4)",
+  "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocks of field (up to 4)",
+  "tooltip.simpleores.wormhole_link": "Right-click a Magnetar, then put it in another one: their networks join (any dimension)",
+  "tooltip.simpleores.wormhole_link.target": "Magnetar at %s %s %s (%s)",
+  "message.simpleores.magnetar.linked": "Wormhole Link points to the Magnetar at %s %s %s"
 }

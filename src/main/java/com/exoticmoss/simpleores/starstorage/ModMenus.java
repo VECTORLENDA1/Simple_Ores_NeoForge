@@ -27,6 +27,10 @@ public class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<BinaryMenu>> BINARY = MENUS.register("binary_star",
             () -> IMenuTypeExtension.create((id, inventory, buf) -> new BinaryMenu(id, inventory, buf.readBlockPos(), BinaryClient.height())));
 
+    /// The Magnetar Core (its upgrades).
+    public static final DeferredHolder<MenuType<?>, MenuType<MagnetarMenu>> MAGNETAR = MENUS.register("magnetar_core",
+            () -> IMenuTypeExtension.create((id, inventory, buf) -> new MagnetarMenu(id, inventory, buf.readBlockPos())));
+
     public static void register(IEventBus eventBus) {
         MENUS.register(eventBus);
     }

@@ -297,6 +297,38 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return leftovers;
     }
 
+    /// Auto-craft: true if the core is making this recipe for the network of "networkPos" (more sets can be added).
+    public boolean isMaking(ResourceKey<Recipe<?>> recipe, BlockPos networkPos) {
+        return upgradeTarget == null && owner == null && recipe.equals(target) && networkPos.equals(this.networkPos);
+    }
+
+    /// Auto-craft: how many sets of these items (up to "limit") fit in the orbit now.
+    public int setsThatFit(List<ItemStack> set, int limit) {
+        // Tries one set more each time, with copies of the orbit (like addToOrbit)
+        List<ItemStack> orbit = new ArrayList<>();
+        for (ItemStack inOrbit : items) orbit.add(inOrbit.copy());
+        int sets = 0;
+        while (sets < limit) {
+            for (ItemStack one : set) {
+                ItemStack stack = one.copy();
+                for (ItemStack inOrbit : orbit) {
+                    if (stack.isEmpty()) break;
+                    if (ItemStack.isSameItemSameComponents(inOrbit, stack)) {
+                        int moved = Math.min(inOrbit.getMaxStackSize() - inOrbit.getCount(), stack.getCount());
+                        inOrbit.grow(moved);
+                        stack.shrink(moved);
+                    }
+                }
+                while (!stack.isEmpty() && orbit.size() < getTier().maxItems) {
+                    orbit.add(stack.split(stack.getMaxStackSize()));
+                }
+                if (!stack.isEmpty()) return sets;
+            }
+            sets++;
+        }
+        return sets;
+    }
+
     /// Called when a player clicks a recipe in the selection bar (see SelectCoreRecipe).
     /// recipe = null means "unpick" (clicking the recipe that is already picked).
     public void selectRecipe(Player player, @Nullable ResourceKey<Recipe<?>> recipe) {
@@ -482,6 +514,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
             flash();
         }
 
+        // The auto-craft is over when nothing is left in the orbit (all the results went to the network)
+        if (items.isEmpty()) networkPos = null;
         // If there are still enough items for the same recipe, the next Craft starts right away
         onItemsChanged();
     }
@@ -576,7 +610,6 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Auto-craft: to the network (what doesn't fit pops out of the core)
         if (networkPos != null) {
             result = com.exoticmoss.simpleores.starstorage.StarNetwork.at(level, networkPos).insert(result);
-            if (items.isEmpty()) networkPos = null;
             if (!result.isEmpty()) {
                 Vec3 c = center();
                 spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));

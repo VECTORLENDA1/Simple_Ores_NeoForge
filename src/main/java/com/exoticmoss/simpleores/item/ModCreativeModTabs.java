@@ -76,6 +76,9 @@ public class ModCreativeModTabs {
                     output.accept(ModItems.WHITE_DWARF_CELL.get());
                     output.accept(ModItems.NEUTRON_CELL.get());
                     output.accept(ModItems.SINGULARITY_CELL.get());
+                    output.accept(ModItems.SOLAR_WIND_UPGRADE.get());
+                    output.accept(ModItems.MAGNETIC_FIELD_UPGRADE.get());
+                    output.accept(ModItems.WORMHOLE_LINK.get());
 
 
             })

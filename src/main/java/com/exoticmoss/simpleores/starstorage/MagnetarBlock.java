@@ -2,7 +2,15 @@ package com.exoticmoss.simpleores.starstorage;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.ChatFormatting;
+import com.exoticmoss.simpleores.item.ModItems;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -19,8 +27,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /// The Magnetar Core: the "brain" of the star storage.
 /// Every Stellar Drive and Stellar Terminal inside its magnetic field (StarNetwork.FIELD_RADIUS blocks
 /// in every direction) is connected to it, without cables. It needs no energy: stars live for billions of years.
-/// Right-click opens its screen: there the player chooses, slot by slot, what the Magnetar takes from the blocks
-/// with an inventory of its field and what it keeps in them (see MagnetarBlockEntity).
+/// Right-click opens its screen, with its upgrades (see MagnetarBlockEntity).
 /// The star is not a block model: it is drawn by StarBlockRenderer (StarLook.MAGNETAR).
 public class MagnetarBlock extends BaseEntityBlock {
     public static final MapCodec<MagnetarBlock> CODEC = simpleCodec(MagnetarBlock::new);
@@ -51,15 +58,31 @@ public class MagnetarBlock extends BaseEntityBlock {
         return new MagnetarBlockEntity(pos, state);
     }
 
-    /// Right-click: tells how the network is (drives, cells, items).
+    /// Right-click with a Wormhole Link: the link points to this Magnetar (put it in another Magnetar to join them).
+    @Override
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
+                                          InteractionHand hand, BlockHitResult hit) {
+        if (!stack.is(ModItems.WORMHOLE_LINK.get())) return InteractionResult.TRY_WITH_EMPTY_HAND;
+        if (!level.isClientSide()) {
+            stack.set(ModDataComponents.LINK.get(), GlobalPos.of(level.dimension(), pos.immutable()));
+            player.sendOverlayMessage(Component.translatable("message.simpleores.magnetar.linked",
+                    pos.getX(), pos.getY(), pos.getZ()).withStyle(ChatFormatting.LIGHT_PURPLE));
+            level.playSound(null, pos, SoundEvents.ENDER_EYE_DEATH, SoundSource.BLOCKS, 1.0F, 1.4F);
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    /// Right-click: opens the screen of the upgrades and tells how the network is (drives, cells, items).
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (!level.isClientSide()) {
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar) {
+            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new MagnetarMenu(id, inventory, pos, magnetar.getUpgrades()),
+                    Component.translatable("block.simpleores.magnetar_core")), pos);
             StarNetwork network = StarNetwork.around(level, pos);
             player.sendOverlayMessage(Component.translatable("message.simpleores.magnetar.info",
                     network.drives().size(), network.cellCount(),
                     StarNetwork.format(network.usedItems()), StarNetwork.format(network.capacity()),
-                    StarNetwork.FIELD_RADIUS).withStyle(ChatFormatting.LIGHT_PURPLE));
+                    magnetar.radius()).withStyle(ChatFormatting.LIGHT_PURPLE));
         }
         return InteractionResult.SUCCESS;
     }

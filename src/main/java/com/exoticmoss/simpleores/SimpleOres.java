@@ -142,6 +142,7 @@ public class SimpleOres {
             event.register(ModMenus.TERMINAL.get(), (TerminalMenu menu, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.network.chat.Component title) -> new TerminalScreen<>(menu, inventory, title));
             event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
             event.register(ModMenus.BINARY.get(), BinaryScreen::new);
+            event.register(ModMenus.MAGNETAR.get(), com.exoticmoss.simpleores.starstorage.client.MagnetarScreen::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)

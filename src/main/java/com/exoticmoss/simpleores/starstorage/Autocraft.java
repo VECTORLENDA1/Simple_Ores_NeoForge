@@ -6,6 +6,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -27,7 +29,7 @@ import java.util.Optional;
 ///  2. run: crafts every step in order, taking the ingredients from the network and putting the results back.
 ///     Crafting table steps are done at once. Gravity Core steps take time: the ingredients go to the free
 ///     Gravity Cores of the field of the Magnetar, and their results come back to the network by themselves.
-///     So a plan with Gravity Core steps becomes a Job, worked on by a Quasar of the network every half second
+///     So a plan with Gravity Core steps becomes a Job, worked on by a Quasar of the network every few ticks (faster with Solar Wind Upgrades)
 ///     (each step waits until its ingredients are in the network).
 public final class Autocraft {
     /// Sub-recipes can go this deep at most (stops recipes that need themselves).
@@ -71,10 +73,13 @@ public final class Autocraft {
         if (!craft.missing.isEmpty()) return new Result(craft.missing, null);
         if (craft.steps.stream().anyMatch(step -> step.pattern().advanced())) {
             if (network.quasars().isEmpty()) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
-            network.quasars().get(0).startJob(new Job(craft.steps, pos, item, amount));
+            // A Quasar of this dimension if there is one (the network can reach others with Wormhole Links)
+            QuasarBlockEntity quasar = network.quasars().stream().filter(other -> other.getLevel() == level).findFirst()
+                    .orElse(network.quasars().get(0));
+            quasar.startJob(new Job(craft.steps, level, pos, item, amount));
             return new Result(Map.of(), null);
         }
-        Job job = new Job(craft.steps, pos, item, amount);
+        Job job = new Job(craft.steps, level, pos, item, amount);
         while (!job.done()) {
             if (!job.work(level, network)) return new Result(Map.of(), "screen.simpleores.terminal.craft.changed");
         }
@@ -147,16 +152,23 @@ public final class Autocraft {
 
     // ---------------------------------------------------------------- run
 
-    /// The steps of a plan being crafted. "pos" is a position inside the field of the Magnetar (the terminal).
+    /// The steps of a plan being crafted. "pos" is a position inside the field of the Magnetar (the terminal),
+    /// in the dimension "dimension".
     public static class Job {
         private static int nextId = 1;
+        /// Solar Wind Upgrades of the Magnetar (0 to 4): every how many ticks the job works,
+        private static final int[] INTERVAL = {10, 5, 2, 1, 1};
+        /// and how many sets of ingredients one Gravity Core gets at a time (as many as fit in its orbit).
+        private static final int[] SETS = {1, 4, 16, 64, Integer.MAX_VALUE};
 
         public final int id = nextId++;
         public final ItemStackTemplate output;
         public final long amount;
         private final List<Step> steps;
         private final BlockPos pos;
+        private final ResourceKey<Level> dimension;
         private int index;
+        private int ticks;
         private long done;
         private int idle;
         /// What the job waits for now (a message key, for the jobs tab of the Quasar).
@@ -167,9 +179,10 @@ public final class Autocraft {
         private record FurnaceWait(ItemStackTemplate output, long expected) {
         }
 
-        private Job(List<Step> steps, BlockPos pos, ItemStackTemplate output, long amount) {
+        private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
             this.steps = steps;
             this.pos = pos.immutable();
+            this.dimension = level.dimension();
             this.output = output;
             this.amount = amount;
         }
@@ -203,11 +216,17 @@ public final class Autocraft {
             return total == 0 ? 0 : amount * crafted / total;
         }
 
-        /// Quasar: works on the job (every half second). false = the job is cancelled (no progress for too long).
-        public boolean tick(ServerLevel level) {
+        /// Quasar: every tick (the job works every INTERVAL ticks). false = the job is cancelled (no progress for too long).
+        public boolean tick(ServerLevel quasarLevel) {
+            ServerLevel level = quasarLevel.getServer().getLevel(dimension);
+            if (level == null) return false;
+            MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
+            int interval = INTERVAL[magnetar == null ? 0 : magnetar.speed()];
+            if (++ticks < interval) return true;
+            ticks = 0;
             StarNetwork network = StarNetwork.at(level, pos);
             boolean progress = work(level, network);
-            idle = progress ? 0 : idle + GravityCoreTicks.HALF_SECOND;
+            idle = progress ? 0 : idle + interval;
             return idle < GIVE_UP_TICKS;
         }
 
@@ -266,7 +285,8 @@ public final class Autocraft {
             return progress;
         }
 
-        /// Gravity Core: gives one set of ingredients to each free core (of a high enough tier).
+        /// Gravity Core: gives sets of ingredients to the free cores (of a high enough tier). With Solar Wind Upgrades,
+        /// more sets at a time, and also to the cores already making this recipe for this network.
         /// The step is done when every set was given (the results come back to the network by themselves).
         @SuppressWarnings("unchecked")
         private boolean workCore(ServerLevel level, StarNetwork network, Step step) {
@@ -275,9 +295,11 @@ public final class Autocraft {
             RecipeHolder<GravityCoreRecipe> recipe = (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder.get();
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             if (magnetar == null) return false;
+            int speed = magnetar.speed();
             List<GravityCoreBlockEntity> cores = new ArrayList<>();
-            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), StarNetwork.FIELD_RADIUS, blockEntity -> {
-                if (blockEntity instanceof GravityCoreBlockEntity core && core.isFree() && core.getTier().level >= step.pattern().coreTier()) {
+            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
+                if (blockEntity instanceof GravityCoreBlockEntity core && core.getTier().level >= step.pattern().coreTier()
+                        && (core.isFree() || speed > 0 && core.isMaking(recipe.id(), pos))) {
                     cores.add(core);
                 }
             });
@@ -286,27 +308,42 @@ public final class Autocraft {
             List<GravityCoreRecipe.Part> parts = recipe.value().getParts();
             for (GravityCoreBlockEntity core : cores) {
                 if (done >= step.times()) break;
+                // One set, with the amounts of the tier of this core (bigger cores can need other amounts)
                 List<ItemStack> set = new ArrayList<>();
-                boolean complete = true;
                 for (int i = 0; i < step.items().size(); i++) {
                     ItemStackTemplate item = step.items().get(i);
                     if (item == null) continue;
-                    // The amounts of the tier of this core (bigger cores can need other amounts)
                     int amount = i < parts.size() ? parts.get(i).countFor(core.getTier().level) : step.pattern().amount(i);
-                    ItemStack got = network.extract(item.create(), amount);
-                    if (!got.isEmpty()) set.add(got);
-                    if (got.getCount() < amount) {
-                        complete = false;
-                        break;
-                    }
+                    set.add(item.create().copyWithCount(amount));
                 }
-                if (!complete) {
-                    giveBack(network, set);
+                int sets = core.setsThatFit(set, (int) Math.min(SETS[speed], step.times() - done));
+                if (sets <= 0) continue;
+                // Take them from the network (only whole sets go to the core)
+                List<ItemStack> got = new ArrayList<>();
+                for (ItemStack one : set) got.add(network.extract(one, one.getCount() * sets));
+                int whole = sets;
+                for (int i = 0; i < set.size(); i++) whole = Math.min(whole, got.get(i).getCount() / set.get(i).getCount());
+                List<ItemStack> give = new ArrayList<>();
+                for (int i = 0; i < set.size(); i++) {
+                    ItemStack stack = got.get(i);
+                    int keep = whole * set.get(i).getCount();
+                    if (stack.getCount() > keep) {
+                        network.insert(stack.copyWithCount(stack.getCount() - keep));
+                        stack.setCount(keep);
+                    }
+                    if (!stack.isEmpty()) give.add(stack);
+                }
+                if (whole <= 0) {
                     status = "screen.simpleores.quasar.job.waiting_items";
                     continue;
                 }
-                giveBack(network, core.insertFromNetwork(set, recipe, pos));
-                done++;
+                // In stacks of the normal size (like the orbits of the core)
+                List<ItemStack> stacks = new ArrayList<>();
+                for (ItemStack stack : give) {
+                    while (!stack.isEmpty()) stacks.add(stack.split(stack.getMaxStackSize()));
+                }
+                giveBack(network, core.insertFromNetwork(stacks, recipe, pos));
+                done += whole;
                 progress = true;
             }
             return progress;
@@ -319,7 +356,7 @@ public final class Autocraft {
             ItemStackTemplate input = step.items().isEmpty() ? null : step.items().get(0);
             if (magnetar == null || input == null) return false;
             List<FurnaceBlockEntity> list = new ArrayList<>();
-            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), StarNetwork.FIELD_RADIUS, blockEntity -> {
+            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
                 if (blockEntity instanceof FurnaceBlockEntity furnace) list.add(furnace);
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_furnaces" : "screen.simpleores.quasar.job.working";
@@ -390,14 +427,6 @@ public final class Autocraft {
     private static void giveBack(StarNetwork network, List<ItemStack> items) {
         for (ItemStack item : items) {
             if (!item.isEmpty()) network.insert(item);
-        }
-    }
-
-    /// How often a Quasar works on its jobs (ticks).
-    public static final class GravityCoreTicks {
-        public static final int HALF_SECOND = 10;
-
-        private GravityCoreTicks() {
         }
     }
 }

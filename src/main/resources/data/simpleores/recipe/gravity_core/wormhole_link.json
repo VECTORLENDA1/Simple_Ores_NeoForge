@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:obscuridium",
+      "count": 2
+    },
+    {
+      "item": "minecraft:ender_eye",
+      "count": 4
+    },
+    {
+      "item": "simpleores:nexalite",
+      "count": 4
+    },
+    {
+      "item": "minecraft:chorus_fruit",
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "simpleores:wormhole_link"
+  }
+}

@@ -12,11 +12,19 @@ import java.util.Optional;
 
 /// JEI on the screens of the star storage (Stellar Terminal, Quasar, Binary Star): the items they draw themselves
 /// (not in slots) are given to JEI, so R (recipes), U (uses) and the other keys of JEI work on them.
-public class StarScreenJeiHandler<T extends AbstractContainerScreen<?> & JeiTarget.Source> implements IGuiContainerHandler<T> {
+public class StarScreenJeiHandler implements IGuiContainerHandler<AbstractContainerScreen<?>> {
+    /// The class of a screen, for the registration (the screens of the star storage are generic).
+    @SuppressWarnings("unchecked")
+    public static Class<? extends AbstractContainerScreen<?>> screen(Class<?> screen) {
+        return (Class<? extends AbstractContainerScreen<?>>) screen;
+    }
+
     @Override
-    public Optional<? extends IClickableIngredient<?>> getClickableIngredientUnderMouse(IClickableIngredientFactory builder, T screen,
+    public Optional<? extends IClickableIngredient<?>> getClickableIngredientUnderMouse(IClickableIngredientFactory builder,
+                                                                                        AbstractContainerScreen<?> screen,
                                                                                         double mouseX, double mouseY) {
-        JeiTarget target = screen.jeiTargetAt(mouseX, mouseY);
+        if (!(screen instanceof JeiTarget.Source source)) return Optional.empty();
+        JeiTarget target = source.jeiTargetAt(mouseX, mouseY);
         if (target == null) return Optional.empty();
         if (target.fluid() != null) {
             return builder.createBuilder(NeoForgeTypes.FLUID_STACK, new FluidStack(target.fluid(), 1000))

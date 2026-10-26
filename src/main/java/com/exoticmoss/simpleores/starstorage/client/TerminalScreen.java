@@ -2,6 +2,8 @@ package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.starstorage.CellTier;
 import com.exoticmoss.simpleores.starstorage.CraftRequest;
+import com.exoticmoss.simpleores.starstorage.FluidContents;
+import com.exoticmoss.simpleores.starstorage.StarFluids;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
@@ -20,6 +22,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import java.util.ArrayList;
@@ -50,6 +53,9 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     private static final int CELL_COLOR = 0xFF2A2A38;
     protected static final int CELL_HOVER = 0xFF5A3A80;
     protected static final int SLOT_COLOR = 0xFF20202C;
+    private static final int FLUID_COLOR = 0xFF3FA0FF;
+    private static final int FLUID_TEXT = 0xFF8FD0FF;
+    private static final int XP_COLOR = 0xFF80FF20;
     private static final int RESULT_COLOR = 0xFF34344A;
     private static final int BAR_BACK = 0xFF15151E;
     private static final int SCROLL_BAR = 0xFF8060C0;
@@ -153,10 +159,16 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     private void filter() {
         String text = search.trim().toLowerCase(Locale.ROOT);
         List<TerminalContents.Item> all = new ArrayList<>(contents.items());
+        // The liquids: shown as their buckets (with the mB)
+        for (FluidContents.Entry fluid : contents.fluids()) {
+            ItemStack bucket = StarFluids.bucket(fluid.fluid());
+            if (bucket.isEmpty()) bucket = new ItemStack(Items.BUCKET);
+            all.add(new TerminalContents.Item(ItemStackTemplate.fromNonEmptyStack(bucket), fluid.amount(), fluid.fluid()));
+        }
         // The items that can be crafted and that the network doesn't have: shown with "Craft"
         for (ItemStackTemplate craftable : crafting() ? contents.craftables() : List.<ItemStackTemplate>of()) {
             ItemStack stack = craftable.create();
-            if (all.stream().noneMatch(item -> ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
+            if (all.stream().noneMatch(item -> item.fluid() == null && ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
                 all.add(new TerminalContents.Item(craftable, 0));
             }
         }
@@ -176,6 +188,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     }
 
     private static String name(TerminalContents.Item item) {
+        if (item.fluid() != null) return StarFluids.name(item.fluid()).getString();
         return item.item().create().getHoverName().getString();
     }
 
@@ -399,8 +412,19 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         }
         if (clickTopLeft(event)) return true;
         if (isOverNetwork(event.x(), event.y()) && !showNetwork()) return clickMiddle(event);
+        if (isOverExperience(event.x(), event.y())) {
+            send(TerminalAction.TAKE_XP, Optional.empty());
+            return true;
+        }
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
+            int fluidIndex = cellAt(event.x(), event.y());
+            if (fluidIndex >= 0 && shown.get(fluidIndex).fluid() != null
+                    && (menu.getCarried().isEmpty() || menu.getCarried().is(Items.BUCKET))) {
+                // A liquid: fills a bucket (from the cursor, the network or the inventory)
+                send(TerminalAction.TAKE_FLUID, Optional.of(shown.get(fluidIndex).item()));
+                return true;
+            }
             if (!menu.getCarried().isEmpty()) {
                 // An item in the mouse cursor: store it
                 send(right ? TerminalAction.STORE_CARRIED_ONE : TerminalAction.STORE_CARRIED, Optional.empty());
@@ -440,6 +464,19 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             return true;
         }
         return super.keyPressed(event);
+    }
+
+    private int experienceY() {
+        return networkTop() + layout.rows() * TerminalLayout.CELL_H + 6;
+    }
+
+    private String experienceText() {
+        return StarNetwork.format(contents.experience()) + " XP";
+    }
+
+    private boolean isOverExperience(double x, double y) {
+        return contents.experience() > 0 && x >= networkLeft() && x < networkLeft() + font.width(experienceText())
+                && y >= experienceY() - 1 && y < experienceY() + 9;
     }
 
     private int networkLeft() {
@@ -501,6 +538,12 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                         StarNetwork.format(contents.used()), StarNetwork.format(contents.capacity()), shown.size()),
                 leftPos + imageWidth / 2, networkTop() + layout.rows() * TerminalLayout.CELL_H + 6, TEXT_DIM);
 
+        // The experience of the auto-crafts (click: the player gets it)
+        if (contents.experience() > 0) {
+            boolean over = isOverExperience(mouseX, mouseY);
+            graphics.text(font, Component.literal(experienceText()), networkLeft(), experienceY(), over ? 0xFFFFFF80 : XP_COLOR);
+        }
+
         // Inventory and crafting: the frames of the slots (the items are drawn by the screen itself)
         int top = topPos + layout.inventoryTop();
         graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), leftPos + TerminalLayout.inventoryLeft(), top - 11, TEXT_DIM);
@@ -533,6 +576,13 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         if (hovered >= 0 && menu.getCarried().isEmpty()) {
             TerminalContents.Item item = shown.get(hovered);
             List<Component> lines = new ArrayList<>();
+            if (item.fluid() != null) {
+                lines.add(StarFluids.name(item.fluid()));
+                lines.add(Component.literal(String.format(Locale.ROOT, "%,d mB", item.count())).withColor(FLUID_TEXT));
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
+                drawMore(graphics, mouseX, mouseY);
+                return;
+            }
             lines.add(item.item().create().getHoverName());
             lines.add(Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count())));
             if (item.count() > 0 && isCraftable(item.item())) lines.add(Component.translatable("screen.simpleores.terminal.craft.ctrl").withColor(0xFF7FE0C0));
@@ -559,7 +609,13 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 TerminalContents.Item item = shown.get(index);
                 if (craftItem != null) continue;
                 graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
-                if (item.count() == 0) {
+                if (item.fluid() != null) {
+                    // A liquid: a small drop in the corner, and the buckets
+                    graphics.fill(x + 3, y + 3, x + 5, y + 7, FLUID_COLOR);
+                    graphics.fill(x + 2, y + 5, x + 6, y + 7, FLUID_COLOR);
+                    String amount = item.count() < StarFluids.BUCKET ? item.count() + "mB" : StarNetwork.format(item.count() / StarFluids.BUCKET) + "B";
+                    graphics.centeredText(font, Component.literal(amount), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, FLUID_TEXT);
+                } else if (item.count() == 0) {
                     TinyText.craft(graphics, x + (TerminalLayout.CELL_W - TinyText.CRAFT_WIDTH) / 2, y + TerminalLayout.CELL_H - 8, 0xFF7FE0C0);
                 } else {
                     graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, TEXT);
@@ -592,10 +648,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             TerminalContents.Cell cell = cells.get(cellScroll + row);
             CellTier tier = CellTier.values()[Mth.clamp(cell.tier(), 0, CellTier.values().length - 1)];
             int ry = y + 11 + row * 9;
-            double full = tier.capacity <= 0 ? 0 : Math.min(1, cell.used() / (double) tier.capacity);
+            double capacity = cell.fluid() ? tier.fluidCapacity : tier.capacity;
+            double full = capacity <= 0 ? 0 : Math.min(1, cell.used() / capacity);
             String percent = full > 0 && full < 0.01 ? "<1%" : Math.round(full * 100) + "%";
             int barLeft = x + 9, barRight = x + width - font.width("100%") - 4;
-            graphics.fill(x, ry + 1, x + 6, ry + 7, 0xFF000000 | tier.glowColor);
+            graphics.fill(x, ry + 1, x + 6, ry + 7, 0xFF000000 | (cell.fluid() ? tier.fluidGlowColor : tier.glowColor));
             graphics.fill(barLeft, ry + 2, barRight, ry + 6, BAR_BACK);
             int fill = barLeft + (int) Math.round((barRight - barLeft) * full);
             int barColor = full >= 0.9 ? 0xFFD04040 : full >= 0.7 ? 0xFFD0A040 : 0xFF40B070;

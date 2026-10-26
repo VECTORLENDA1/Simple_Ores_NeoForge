@@ -20,6 +20,13 @@ public class ModDataComponents {
                     .networkSynchronized(CellContents.STREAM_CODEC)
                     .cacheEncoding());
 
+    /// The liquids kept inside a Fluid Cell
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<FluidContents>> FLUID_CONTENTS =
+            DATA_COMPONENTS.registerComponentType("fluid_contents", builder -> builder
+                    .persistent(FluidContents.CODEC)
+                    .networkSynchronized(FluidContents.STREAM_CODEC)
+                    .cacheEncoding());
+
     /// The Magnetar a Wormhole Link points to (its dimension and position)
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> LINK =
             DATA_COMPONENTS.registerComponentType("link", builder -> builder

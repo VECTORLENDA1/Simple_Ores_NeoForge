@@ -28,9 +28,10 @@ public class QuasarBlockEntity extends BlockEntity {
         return patterns;
     }
 
-    /// Saves a recipe. A recipe for the same item replaces the old one. false = the Quasar is full.
+    /// Saves a recipe (the same recipe again replaces the old one). false = the Quasar is full.
     public boolean addPattern(Pattern pattern) {
-        patterns.removeIf(old -> old.makes(pattern.output().create()));
+        // Only the same recipe is replaced: other recipes for the same item stay (the auto-craft picks one that works)
+        patterns.removeIf(old -> old.equals(pattern));
         if (patterns.size() >= MAX_PATTERNS) return false;
         patterns.add(pattern);
         setChanged();

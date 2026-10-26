@@ -65,10 +65,9 @@ public final class Autocraft {
     /// "advanced" = the Gravity Core and furnace recipes can be used (Stellar Terminal II, Quasar).
     public static Result request(ServerLevel level, StarNetwork network, BlockPos pos, ItemStackTemplate item, long amount, boolean advanced) {
         Autocraft craft = new Autocraft(network, advanced);
-        Pattern pattern = craft.patternFor(item);
-        if (pattern == null) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
+        if (craft.patternsFor(item).isEmpty()) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
         // The items asked for are always crafted (even if the network already has some)
-        craft.craft(pattern, item, amount, 0);
+        craft.craftAny(item, amount, 0);
         if (craft.crafts > MAX_CRAFTS) return new Result(Map.of(), "screen.simpleores.terminal.craft.too_big");
         if (!craft.missing.isEmpty()) return new Result(craft.missing, null);
         if (craft.steps.stream().anyMatch(step -> step.pattern().advanced())) {
@@ -86,12 +85,10 @@ public final class Autocraft {
         return new Result(Map.of(), null);
     }
 
-    private Pattern patternFor(ItemStackTemplate item) {
+    /// The recipes for this item (in the order of the Quasars).
+    private List<Pattern> patternsFor(ItemStackTemplate item) {
         ItemStack stack = item.create();
-        for (Pattern pattern : patterns) {
-            if (pattern.makes(stack)) return pattern;
-        }
-        return null;
+        return patterns.stream().filter(pattern -> pattern.makes(stack)).toList();
     }
 
     // ---------------------------------------------------------------- plan
@@ -103,12 +100,34 @@ public final class Autocraft {
         if (used > 0) stock.put(item, have - used);
         amount -= used;
         if (amount <= 0) return true;
-        Pattern pattern = patternFor(item);
-        if (pattern == null || depth >= MAX_DEPTH) {
+        if (patternsFor(item).isEmpty() || depth >= MAX_DEPTH) {
             missing.merge(item, amount, Long::sum);
             return false;
         }
-        return craft(pattern, item, amount, depth);
+        return craftAny(item, amount, depth);
+    }
+
+    /// Plans crafting "amount" of "item" with the first of its recipes that has everything it needs
+    /// (if none has, the first one: it says what is missing).
+    private boolean craftAny(ItemStackTemplate item, long amount, int depth) {
+        List<Pattern> options = patternsFor(item);
+        if (options.size() > 1) {
+            for (Pattern option : options) {
+                // Try it; if something is missing, everything goes back to how it was
+                Map<ItemStackTemplate, Long> stockBefore = new HashMap<>(stock);
+                Map<ItemStackTemplate, Long> missingBefore = new LinkedHashMap<>(missing);
+                int stepsBefore = steps.size();
+                long craftsBefore = crafts;
+                if (craft(option, item, amount, depth) && crafts <= MAX_CRAFTS) return true;
+                stock.clear();
+                stock.putAll(stockBefore);
+                missing.clear();
+                missing.putAll(missingBefore);
+                while (steps.size() > stepsBefore) steps.remove(steps.size() - 1);
+                crafts = craftsBefore;
+            }
+        }
+        return craft(options.get(0), item, amount, depth);
     }
 
     /// Plans crafting at least "amount" of "item" with "pattern" (the extra goes to the stock).
@@ -145,7 +164,7 @@ public final class Autocraft {
             if (stock.getOrDefault(choice, 0L) > 0) return choice;
         }
         for (ItemStackTemplate choice : choices) {
-            if (patternFor(choice) != null) return choice;
+            if (!patternsFor(choice).isEmpty()) return choice;
         }
         return choices.get(0);
     }
@@ -169,6 +188,11 @@ public final class Autocraft {
         private final ResourceKey<Level> dimension;
         private int index;
         private int ticks;
+        /// Items of the output back in the network (see arrived).
+        private long made;
+        private boolean arrivedNow;
+        /// True while a Gravity Core of the field still works for this network (after every step was given out).
+        private boolean coresWorking;
         private long done;
         private int idle;
         /// What the job waits for now (a message key, for the jobs tab of the Quasar).
@@ -187,8 +211,10 @@ public final class Autocraft {
             this.amount = amount;
         }
 
+        /// Done when every step was given out and the results came back to the network
+        /// (or no Gravity Core is still working for it: a recipe can give fewer items than planned).
         public boolean done() {
-            return index >= steps.size() && furnaces.isEmpty();
+            return index >= steps.size() && furnaces.isEmpty() && (made >= amount || !coresWorking);
         }
 
         public int stepIndex() {
@@ -206,16 +232,31 @@ public final class Autocraft {
         /// How many of the items asked for are made: every craft of every step counts the same
         /// (with one step, it is just the items made).
         public long made() {
-            if (done()) return amount;
-            long total = 0, crafted = 0;
-            for (int i = 0; i < steps.size(); i++) {
-                total += steps.get(i).times();
-                if (i < index) crafted += steps.get(i).times();
-                else if (i == index) crafted += done;
-            }
-            return total == 0 ? 0 : amount * crafted / total;
+            return made;
         }
 
+        /// Items of the output that came back to the network (from the cores, the furnaces or the crafting
+        /// table). Returns how many this job took (the rest can count for another job).
+        long arrived(ItemStack stack) {
+            if (made >= amount || !ItemStack.isSameItemSameComponents(stack, output.create())) return 0;
+            long counted = Math.min(stack.getCount(), amount - made);
+            made += counted;
+            arrivedNow = true;
+            return counted;
+        }
+
+        /// A Gravity Core gave items to the network of "networkPos": they count for the jobs waiting for them.
+        public static void arrived(ServerLevel level, BlockPos networkPos, ItemStack stack) {
+            long left = stack.getCount();
+            for (QuasarBlockEntity quasar : StarNetwork.at(level, networkPos).quasars()) {
+                for (Job job : quasar.getJobs()) {
+                    if (left <= 0) return;
+                    if (job.dimension == level.dimension() && job.pos.equals(networkPos)) {
+                        left -= job.arrived(stack.copyWithCount((int) left));
+                    }
+                }
+            }
+        }
         /// Quasar: every tick (the job works every INTERVAL ticks). false = the job is cancelled (no progress for too long).
         public boolean tick(ServerLevel quasarLevel) {
             ServerLevel level = quasarLevel.getServer().getLevel(dimension);
@@ -232,9 +273,15 @@ public final class Autocraft {
 
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
-            boolean progress = collectFurnaces(level, network);
+            boolean progress = collectFurnaces(level, network) | arrivedNow;
+            arrivedNow = false;
             while (index < steps.size()) {
                 Step step = steps.get(index);
+                // The last step stops when enough came back (some recipes give more than planned)
+                if (index == steps.size() - 1 && made >= amount) {
+                    index++;
+                    break;
+                }
                 boolean stepProgress;
                 if (step.pattern().isCore()) stepProgress = workCore(level, network, step);
                 else if (step.pattern().furnace()) stepProgress = workFurnace(level, network, step);
@@ -244,8 +291,22 @@ public final class Autocraft {
                 index++;
                 done = 0;
             }
+            coresWorking = index >= steps.size() && made < amount && coresWorkingFor(level);
             if (!furnaces.isEmpty()) status = "screen.simpleores.quasar.job.waiting_furnaces";
-            return progress || furnaces.isEmpty();
+            else if (coresWorking) status = "screen.simpleores.quasar.job.waiting_results";
+            return progress || furnaces.isEmpty() && !coresWorking;
+        }
+
+        /// True if a Gravity Core of the field still has items for the network of this job.
+        private boolean coresWorkingFor(ServerLevel level) {
+            if (steps.stream().noneMatch(step -> step.pattern().isCore())) return false;
+            MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
+            if (magnetar == null) return false;
+            boolean[] working = {false};
+            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
+                if (blockEntity instanceof GravityCoreBlockEntity core && core.isWorkingFor(pos)) working[0] = true;
+            });
+            return working[0];
         }
 
         /// Crafting table: crafts as many times as possible now.
@@ -275,6 +336,7 @@ public final class Autocraft {
                 }
                 ItemStack result = recipe.get().value().assemble(input);
                 NonNullList<ItemStack> remaining = recipe.get().value().getRemainingItems(input);
+                arrived(result);
                 network.insert(result);
                 for (ItemStack rest : remaining) {
                     if (!rest.isEmpty()) network.insert(rest);
@@ -407,6 +469,7 @@ public final class Autocraft {
                     int take = (int) Math.min(out.getCount(), expected);
                     ItemStack left = network.insert(out.copyWithCount(take));
                     int taken = take - left.getCount();
+                    if (taken > 0) arrived(out.copyWithCount(taken));
                     if (taken > 0) {
                         ItemStack rest = out.copy();
                         rest.shrink(taken);

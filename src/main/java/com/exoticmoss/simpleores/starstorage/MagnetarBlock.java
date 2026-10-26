@@ -19,6 +19,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -56,6 +60,12 @@ public class MagnetarBlock extends BaseEntityBlock {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new MagnetarBlockEntity(pos, state);
+    }
+
+    /// Server: the Magnetar keeps the chunks of the Wormhole Links loaded.
+    @Override
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide() ? null : createTickerHelper(type, ModBlockEntities.MAGNETAR_BE.get(), (lvl, pos, st, magnetar) -> magnetar.serverTick());
     }
 
     /// Right-click with a Wormhole Link: the link points to this Magnetar (put it in another Magnetar to join them).

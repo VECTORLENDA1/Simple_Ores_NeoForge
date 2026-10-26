@@ -60,11 +60,11 @@ public class StellarDriveBlock extends BaseEntityBlock {
         return new StellarDriveBlockEntity(pos, state);
     }
 
-    /// Right-click with a Star Cell: puts it in.
+    /// Right-click with a Star Cell or a Fluid Cell: puts it in.
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
                                           InteractionHand hand, BlockHitResult hit) {
-        if (!(stack.getItem() instanceof StarCellItem)) return InteractionResult.TRY_WITH_EMPTY_HAND;
+        if (!(stack.getItem() instanceof StarCellItem) && !(stack.getItem() instanceof FluidCellItem)) return InteractionResult.TRY_WITH_EMPTY_HAND;
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof StellarDriveBlockEntity drive) {
             if (drive.addCell(stack.copyWithCount(1))) {
                 stack.shrink(1);

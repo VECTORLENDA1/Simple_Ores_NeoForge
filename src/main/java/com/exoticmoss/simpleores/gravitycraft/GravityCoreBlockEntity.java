@@ -58,6 +58,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
     /// How many times faster the items orbit at the end of a Craft (1 = no speed-up).
     private static final float CRAFT_SPEED_BOOST = 10;
+    /// Instant recipes: at most this many Crafts at once.
+    private static final int MAX_INSTANT_CRAFTS = 64;
     /// Maximum number of candidates sent to the client (the bar scrolls through them).
     public static final int MAX_CANDIDATES = 20;
     private static final Codec<ResourceKey<Recipe<?>>> RECIPE_KEY_CODEC = ResourceKey.codec(Registries.RECIPE);
@@ -302,6 +304,11 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return upgradeTarget == null && owner == null && recipe.equals(target) && networkPos.equals(this.networkPos);
     }
 
+    /// Auto-craft: true if the core still has items (or is crafting) for the network of "networkPos".
+    public boolean isWorkingFor(BlockPos networkPos) {
+        return networkPos.equals(this.networkPos) && (isBusy() || !items.isEmpty());
+    }
+
     /// Auto-craft: how many sets of these items (up to "limit") fit in the orbit now.
     public int setsThatFit(List<ItemStack> set, int limit) {
         // Tries one set more each time, with copies of the orbit (like addToOrbit)
@@ -488,29 +495,35 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Check the recipe again (items may have been taken out in the meantime)
         Optional<RecipeHolder<GravityCoreRecipe>> recipe = key == null ? Optional.empty() : findByKey(key).filter(this::canCraft);
         if (recipe.isPresent()) {
-            List<ItemStack> used = consume(recipe.get().value());
-            // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
-            ItemStack result = recipe.get().value().createResult(getTier().level);
-            // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
-            // the enchantments, the used durability, the name and the settings of the old one
-            keepToolData(used, result);
+            // Instant recipes (no time in this tier, like in the Black Hole) make every set in the orbit at once
+            boolean instant = recipe.get().value().getUpgradeTier() == null && recipe.get().value().timeFor(getTier().level) <= 0;
+            int times = 0;
+            do {
+                List<ItemStack> used = consume(recipe.get().value());
+                // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
+                ItemStack result = recipe.get().value().createResult(getTier().level);
+                // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
+                // the enchantments, the used durability, the name and the settings of the old one
+                keepToolData(used, result);
 
-            if (recipe.get().value().getUpgradeTier() != null) {
-                finishUpgrade(result);
-                return; // the block no longer exists
-            }
-            // Cooking (ores, raw ores, food...) gives the furnace's experience for every item made
-            if (level instanceof ServerLevel serverLevel) giveExperience(serverLevel, CookingExperience.of(serverLevel, used, result));
-            // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
-            while (!result.isEmpty()) {
-                deliver(result.split(result.getMaxStackSize()));
-            }
-            // Vanilla recipes give back what stays in the crafting table (e.g. empty buckets)
-            if (recipe.get().value() instanceof VanillaCoreRecipe vanilla) {
-                for (ItemStack remainder : vanilla.remainders(used)) {
-                    deliver(remainder);
+                if (recipe.get().value().getUpgradeTier() != null) {
+                    finishUpgrade(result);
+                    return; // the block no longer exists
                 }
-            }
+                // Cooking (ores, raw ores, food...) gives the furnace's experience for every item made
+                if (level instanceof ServerLevel serverLevel) giveExperience(serverLevel, CookingExperience.of(serverLevel, used, result));
+                // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
+                while (!result.isEmpty()) {
+                    deliver(result.split(result.getMaxStackSize()));
+                }
+                // Vanilla recipes give back what stays in the crafting table (e.g. empty buckets)
+                if (recipe.get().value() instanceof VanillaCoreRecipe vanilla) {
+                    for (ItemStack remainder : vanilla.remainders(used)) {
+                        deliver(remainder);
+                    }
+                }
+                times++;
+            } while (instant && times < MAX_INSTANT_CRAFTS && canCraft(recipe.get()));
             flash();
         }
 
@@ -609,6 +622,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void deliver(ItemStack result) {
         // Auto-craft: to the network (what doesn't fit pops out of the core)
         if (networkPos != null) {
+            if (level instanceof ServerLevel serverLevel) {
+                com.exoticmoss.simpleores.starstorage.Autocraft.Job.arrived(serverLevel, networkPos, result.copy());
+            }
             result = com.exoticmoss.simpleores.starstorage.StarNetwork.at(level, networkPos).insert(result);
             if (!result.isEmpty()) {
                 Vec3 c = center();
@@ -636,6 +652,14 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// it comes out of the core as experience orbs.
     private void giveExperience(ServerLevel serverLevel, int amount) {
         if (amount <= 0) return;
+        // Auto-craft: the experience is kept by the Magnetar of the network (taken in the Stellar Terminal)
+        if (networkPos != null) {
+            var magnetar = com.exoticmoss.simpleores.starstorage.StarNetwork.findMagnetar(level, networkPos);
+            if (magnetar != null) {
+                magnetar.addExperience(amount);
+                return;
+            }
+        }
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
             player.giveExperiencePoints(amount);

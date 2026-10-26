@@ -76,6 +76,9 @@ public class SimpleOres {
 
         modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::registerPayloads);
+        modEventBus.addListener(com.exoticmoss.simpleores.starstorage.StarChunks::register);
+        // Milk is a liquid too (it can be kept in the Fluid Cells)
+        net.neoforged.neoforge.common.NeoForgeMod.enableMilkFluid();
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 

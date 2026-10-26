@@ -1,0 +1,30 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:celestine",
+      "count": 8
+    },
+    {
+      "item": "simpleores:zenithra",
+      "count": 8
+    },
+    {
+      "item": "simpleores:astralite_block",
+      "count": 2
+    },
+    {
+      "item": "minecraft:diamond",
+      "count": 4
+    },
+    {
+      "item": "minecraft:bucket",
+      "count": 4
+    }
+  ],
+  "result": {
+    "id": "simpleores:neutron_fluid_cell"
+  }
+}

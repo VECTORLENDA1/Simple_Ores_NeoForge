@@ -8,7 +8,10 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -29,6 +32,11 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
     public static final int STORE_CARRIED_ONE = 5;
     /// Puts every item of the crafting grid back in the network (the small X button).
     public static final int CLEAR_GRID = 6;
+    /// Gives the experience kept by the Magnetar to the player.
+    public static final int TAKE_XP = 7;
+    /// Fills a bucket with the liquid of "item" (a full bucket of that liquid): the empty bucket comes from the
+    /// mouse cursor, else from the network, else from the inventory.
+    public static final int TAKE_FLUID = 8;
 
     /// How far (in blocks) the player can be from the terminal.
     public static final double RANGE = 8;
@@ -44,6 +52,45 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
     @Override
     public Type<TerminalAction> type() {
         return TYPE;
+    }
+
+    /// A full bucket in the mouse cursor: its liquid goes to the Fluid Cells (the empty bucket stays in the cursor).
+    /// false = not a full bucket, or no room for it (then it is stored as an item).
+    private static boolean storeBucket(AbstractContainerMenu menu, StarNetwork network, ItemStack carried) {
+        Fluid fluid = StarFluids.fromBucket(carried);
+        if (fluid == null || carried.getCount() != 1) return false;
+        long put = network.insertFluid(fluid, StarFluids.BUCKET);
+        if (put < StarFluids.BUCKET) {
+            network.extractFluid(fluid, put);
+            return false;
+        }
+        menu.setCarried(new ItemStack(Items.BUCKET));
+        return true;
+    }
+
+    private static void takeFluid(ServerPlayer player, AbstractContainerMenu menu, StarNetwork network, ItemStack full) {
+        Fluid fluid = StarFluids.fromBucket(full);
+        ItemStack carried = menu.getCarried();
+        if (fluid == null || network.fluidAmount(fluid) < StarFluids.BUCKET) return;
+        if (!carried.isEmpty() && !carried.is(Items.BUCKET)) return;
+        if (carried.isEmpty()) {
+            // An empty bucket from the network, else from the inventory
+            boolean found = !network.extract(new ItemStack(Items.BUCKET), 1).isEmpty();
+            if (!found) {
+                int slot = player.getInventory().findSlotMatchingItem(new ItemStack(Items.BUCKET));
+                if (slot < 0) return;
+                player.getInventory().removeItem(slot, 1);
+            }
+        } else {
+            carried.shrink(1);
+        }
+        network.extractFluid(fluid, StarFluids.BUCKET);
+        ItemStack filled = StarFluids.bucket(fluid);
+        if (menu.getCarried().isEmpty()) {
+            menu.setCarried(filled);
+        } else if (!player.getInventory().add(filled)) {
+            player.drop(filled, false);
+        }
     }
 
     public static void handle(TerminalAction message, IPayloadContext context) {
@@ -80,7 +127,7 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
                 }
             });
             case STORE_CARRIED -> {
-                if (!carried.isEmpty()) menu.setCarried(network.insert(carried));
+                if (!carried.isEmpty() && !storeBucket(menu, network, carried)) menu.setCarried(network.insert(carried));
             }
             case STORE_CARRIED_ONE -> {
                 if (!carried.isEmpty() && network.insert(carried.copyWithCount(1)).isEmpty()) carried.shrink(1);
@@ -88,6 +135,18 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
             case CLEAR_GRID -> {
                 if (menu instanceof TerminalMenu terminal) terminal.clearGrid(player, network);
             }
+            case TAKE_XP -> {
+                MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(player.level(), pos);
+                if (magnetar != null) {
+                    long experience = magnetar.takeExperience();
+                    while (experience > 0) {
+                        int part = (int) Math.min(experience, Integer.MAX_VALUE);
+                        player.giveExperiencePoints(part);
+                        experience -= part;
+                    }
+                }
+            }
+            case TAKE_FLUID -> message.item().ifPresent(template -> takeFluid(player, menu, network, template.create()));
             default -> {
             }
         }

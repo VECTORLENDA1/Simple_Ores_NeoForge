@@ -84,15 +84,23 @@ public class StellarDriveRenderer implements BlockEntityRenderer<StellarDriveBlo
         pose.translate(0.5, 0.5, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(state.time * TURN_SPEED));
         for (int i = 0; i < count; i++) {
-            CellTier tier = CellTier.values()[Mth.clamp(state.tiers[i], 0, CellTier.values().length - 1)];
+            boolean fluid = state.tiers[i] >= StellarDriveBlockEntity.FLUID;
+            int ordinal = fluid ? state.tiers[i] - StellarDriveBlockEntity.FLUID : state.tiers[i];
+            CellTier tier = CellTier.values()[Mth.clamp(ordinal, 0, CellTier.values().length - 1)];
             // One star: alone in the middle; more: spread around the middle, slowly going up and down
             float angle = Mth.TWO_PI * i / count;
             float orbit = count == 1 ? 0 : ORBIT;
             float bob = 0.04f * Mth.sin(state.time * 0.05f + i * 1.7f);
             pose.pushPose();
             pose.translate(Mth.cos(angle) * orbit, bob, Mth.sin(angle) * orbit);
-            CoreDrawing.drawStar(pose, collector, STAR_RADIUS, state.time + i * 37, tier.coreColor, tier.spotColor,
-                    tier.glowColor, tier.diskColor, 0x00000000, 0, shading);
+            if (fluid) {
+                // Fluid Cells: blue stars
+                CoreDrawing.drawStar(pose, collector, STAR_RADIUS, state.time + i * 37, tier.fluidCoreColor, tier.fluidSpotColor,
+                        tier.fluidGlowColor, tier.fluidDiskColor, 0x00000000, 0, shading);
+            } else {
+                CoreDrawing.drawStar(pose, collector, STAR_RADIUS, state.time + i * 37, tier.coreColor, tier.spotColor,
+                        tier.glowColor, tier.diskColor, 0x00000000, 0, shading);
+            }
             pose.popPose();
         }
         pose.popPose();

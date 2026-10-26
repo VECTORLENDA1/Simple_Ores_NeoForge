@@ -124,5 +124,10 @@
   "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocks of field (up to 4)",
   "tooltip.simpleores.wormhole_link": "Right-click a Magnetar, then put it in another one: their networks join (any dimension)",
   "tooltip.simpleores.wormhole_link.target": "Magnetar at %s %s %s (%s)",
-  "message.simpleores.magnetar.linked": "Wormhole Link points to the Magnetar at %s %s %s"
+  "message.simpleores.magnetar.linked": "Wormhole Link points to the Magnetar at %s %s %s",
+  "item.simpleores.white_dwarf_fluid_cell": "White Dwarf Fluid Cell",
+  "item.simpleores.neutron_fluid_cell": "Neutron Fluid Cell",
+  "item.simpleores.singularity_fluid_cell": "Singularity Fluid Cell",
+  "item.simpleores.fluid_cell.amount": "Liquids: %s / %s",
+  "screen.simpleores.quasar.job.waiting_results": "Waiting for the results"
 }

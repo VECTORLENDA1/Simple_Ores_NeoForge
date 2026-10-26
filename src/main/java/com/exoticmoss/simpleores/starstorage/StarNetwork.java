@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.material.Fluid;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -86,12 +87,12 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         }
     }
 
-    /// Every recipe of the Quasars of the network (one per item: the first Quasar wins).
+    /// Every recipe of the Quasars of the network (an item can have more than one recipe).
     public List<Pattern> patterns() {
         List<Pattern> list = new ArrayList<>();
         for (QuasarBlockEntity quasar : quasars) {
             for (Pattern pattern : quasar.getPatterns()) {
-                if (list.stream().noneMatch(other -> other.makes(pattern.output().create()))) list.add(pattern);
+                if (!list.contains(pattern)) list.add(pattern);
             }
         }
         return list;
@@ -158,7 +159,8 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// Puts the stack in the network. Returns what did not fit (EMPTY = everything fit).
     /// First the cells that already have this item (so the same item stays together), then any cell with room.
     public ItemStack insert(ItemStack stack) {
-        if (stack.isEmpty() || stack.getItem() instanceof StarCellItem && !StarCellItem.isEmptyCell(stack)) return stack;
+        if (stack.isEmpty() || stack.getItem() instanceof StarCellItem && !StarCellItem.isEmptyCell(stack)
+                || stack.getItem() instanceof FluidCellItem && !FluidCellItem.getContents(stack).isEmpty()) return stack;
         ItemStack left = stack.copy();
         for (int pass = 0; pass < 2 && !left.isEmpty(); pass++) {
             final boolean onlyWithItem = pass == 0;
@@ -196,7 +198,8 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// Every cell of the network: its kind and how many items it has (for the bars of the terminal).
     public java.util.List<TerminalContents.Cell> cells() {
         java.util.List<TerminalContents.Cell> list = new ArrayList<>();
-        forEachCell((drive, cell, item) -> list.add(new TerminalContents.Cell(item.tier.ordinal(), StarCellItem.getContents(cell).totalCount())));
+        forEachCell((drive, cell, item) -> list.add(new TerminalContents.Cell(item.tier.ordinal(), StarCellItem.getContents(cell).totalCount(), false)));
+        forEachFluidCell((drive, cell, item) -> list.add(new TerminalContents.Cell(item.tier.ordinal(), FluidCellItem.getContents(cell).total(), true)));
         return list;
     }
 
@@ -206,6 +209,85 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 if (cell.getItem() instanceof StarCellItem item) action.accept(drive, cell, item);
             }
         }
+    }
+
+    // ---------------------------------------------------------------- liquids (Fluid Cells)
+
+    private interface FluidCellAction {
+        void accept(StellarDriveBlockEntity drive, ItemStack cell, FluidCellItem item);
+    }
+
+    private void forEachFluidCell(FluidCellAction action) {
+        for (StellarDriveBlockEntity drive : drives) {
+            for (ItemStack cell : drive.getCells()) {
+                if (cell.getItem() instanceof FluidCellItem item) action.accept(drive, cell, item);
+            }
+        }
+    }
+
+    /// Every liquid of the network with its total amount (mB), most first.
+    public List<FluidContents.Entry> fluids() {
+        Map<Fluid, Long> totals = new LinkedHashMap<>();
+        forEachFluidCell((drive, cell, item) -> {
+            for (FluidContents.Entry entry : FluidCellItem.getContents(cell).entries()) totals.merge(entry.fluid(), entry.amount(), Long::sum);
+        });
+        List<FluidContents.Entry> list = new ArrayList<>();
+        totals.forEach((fluid, amount) -> list.add(new FluidContents.Entry(fluid, amount)));
+        list.sort((a, b) -> Long.compare(b.amount(), a.amount()));
+        return list;
+    }
+
+    /// mB of liquids kept / that fit in all the Fluid Cells.
+    public long fluidUsed() {
+        long[] used = {0};
+        forEachFluidCell((drive, cell, item) -> used[0] += FluidCellItem.getContents(cell).total());
+        return used[0];
+    }
+
+    public long fluidCapacity() {
+        long[] capacity = {0};
+        forEachFluidCell((drive, cell, item) -> capacity[0] = Math.min(Long.MAX_VALUE / 2, capacity[0] + item.tier.fluidCapacity));
+        return capacity[0];
+    }
+
+    /// How many mB of this liquid the network has.
+    public long fluidAmount(Fluid fluid) {
+        long[] amount = {0};
+        forEachFluidCell((drive, cell, item) -> amount[0] += FluidCellItem.getContents(cell).amountOf(fluid));
+        return amount[0];
+    }
+
+    /// Puts up to "amount" mB of this liquid in the network (first the cells that already have it).
+    /// Returns how many mB went in.
+    public long insertFluid(Fluid fluid, long amount) {
+        long[] left = {amount};
+        for (int pass = 0; pass < 2 && left[0] > 0; pass++) {
+            final boolean onlyWithFluid = pass == 0;
+            forEachFluidCell((drive, cell, item) -> {
+                if (left[0] <= 0) return;
+                if (onlyWithFluid && FluidCellItem.getContents(cell).amountOf(fluid) <= 0) return;
+                long put = item.insert(cell, fluid, left[0]);
+                if (put > 0) {
+                    left[0] -= put;
+                    drive.cellsChanged();
+                }
+            });
+        }
+        return amount - left[0];
+    }
+
+    /// Takes up to "amount" mB of this liquid out of the network. Returns how many mB were taken.
+    public long extractFluid(Fluid fluid, long amount) {
+        long[] taken = {0};
+        forEachFluidCell((drive, cell, item) -> {
+            if (taken[0] >= amount) return;
+            long got = item.extract(cell, fluid, amount - taken[0]);
+            if (got > 0) {
+                taken[0] += got;
+                drive.cellsChanged();
+            }
+        });
+        return taken[0];
     }
 
     // ---------------------------------------------------------------- text

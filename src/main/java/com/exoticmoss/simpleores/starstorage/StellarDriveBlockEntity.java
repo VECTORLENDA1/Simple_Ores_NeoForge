@@ -56,9 +56,13 @@ public class StellarDriveBlockEntity extends BlockEntity {
         return clientTiers;
     }
 
-    /// The kinds of the cells inside (CellTier ordinals), in order.
+    /// Added to the CellTier ordinal of the Fluid Cells (in "tiers").
+    public static final int FLUID = 100;
+
+    /// The kinds of the cells inside (CellTier ordinals, + FLUID for the Fluid Cells), in order.
     private int[] tiers() {
-        return cells.stream().mapToInt(cell -> cell.getItem() instanceof StarCellItem item ? item.tier.ordinal() : 0).toArray();
+        return cells.stream().mapToInt(cell -> cell.getItem() instanceof StarCellItem item ? item.tier.ordinal()
+                : cell.getItem() instanceof FluidCellItem fluid ? FLUID + fluid.tier.ordinal() : 0).toArray();
     }
 
     /// Saves the changes. When cells are put in or taken out, the clients are told (to draw the stars).

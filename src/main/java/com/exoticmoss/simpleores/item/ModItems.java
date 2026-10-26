@@ -7,6 +7,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import com.exoticmoss.simpleores.item.custom.*;
 import com.exoticmoss.simpleores.starstorage.CellTier;
 import com.exoticmoss.simpleores.starstorage.StarCellItem;
+import com.exoticmoss.simpleores.starstorage.FluidCellItem;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
 
@@ -40,6 +41,14 @@ public class ModItems {
             p -> new StarCellItem(CellTier.NEUTRON, p), p -> p.stacksTo(1));
     public static final DeferredItem<Item> SINGULARITY_CELL = ITEMS.registerItem("singularity_cell",
             p -> new StarCellItem(CellTier.SINGULARITY, p), p -> p.stacksTo(1).fireResistant());
+
+    //Fluid Cells (they keep the liquids of the Magnetar network)//
+    public static final DeferredItem<Item> WHITE_DWARF_FLUID_CELL = ITEMS.registerItem("white_dwarf_fluid_cell",
+            p -> new FluidCellItem(CellTier.WHITE_DWARF, p), p -> p.stacksTo(1));
+    public static final DeferredItem<Item> NEUTRON_FLUID_CELL = ITEMS.registerItem("neutron_fluid_cell",
+            p -> new FluidCellItem(CellTier.NEUTRON, p), p -> p.stacksTo(1));
+    public static final DeferredItem<Item> SINGULARITY_FLUID_CELL = ITEMS.registerItem("singularity_fluid_cell",
+            p -> new FluidCellItem(CellTier.SINGULARITY, p), p -> p.stacksTo(1).fireResistant());
 
     //Magnetar upgrades (they go in the screen of the Magnetar Core)//
     public static final DeferredItem<Item> SOLAR_WIND_UPGRADE = ITEMS.registerItem("solar_wind_upgrade", Item::new, p -> p.stacksTo(16));

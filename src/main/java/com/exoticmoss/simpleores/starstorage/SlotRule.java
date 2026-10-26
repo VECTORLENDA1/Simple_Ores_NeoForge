@@ -9,12 +9,24 @@ import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.Optional;
 
-/// What the Magnetar does with one slot of a block (chest, furnace...) inside its field:
+/// What the Magnetar does with one slot of a block (chest, furnace...) inside its field.
+/// "mode" has two switches (they can be on together):
 ///  - TAKE: whatever is in the slot goes to the network (e.g. the output of a furnace);
 ///  - KEEP: the slot is kept full of the "item" from the network (e.g. ore in the input, coal in the fuel).
+///  - BOTH (TAKE + KEEP): for slots that are input and output at the same time (some machines of other mods):
+///    the slot is kept full of the item, and anything else that appears in it goes to the network.
 public record SlotRule(int slot, int mode, Optional<ItemStackTemplate> item) {
     public static final int TAKE = 1;
     public static final int KEEP = 2;
+    public static final int BOTH = TAKE | KEEP;
+
+    public boolean takes() {
+        return (mode & TAKE) != 0;
+    }
+
+    public boolean keeps() {
+        return (mode & KEEP) != 0 && item.isPresent();
+    }
 
     public static final Codec<SlotRule> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.INT.fieldOf("slot").forGetter(SlotRule::slot),

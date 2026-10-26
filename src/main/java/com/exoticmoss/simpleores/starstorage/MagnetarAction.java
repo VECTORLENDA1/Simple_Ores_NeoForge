@@ -21,9 +21,10 @@ import java.util.Optional;
 public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int slot) implements CustomPacketPayload {
     /// Only asks for the view again (the screen does it every second).
     public static final int REFRESH = 0;
-    /// Left-click on a slot: TAKE (or nothing, if it was already TAKE).
+    /// Left-click on a slot: turns TAKE on or off.
     public static final int TOGGLE_TAKE = 1;
-    /// Right-click on a slot: KEEP the item in the slot, or in the player's hand (or nothing, if it was already KEEP).
+    /// Right-click on a slot: turns KEEP on (with the item in the slot, or in the player's hand) or off.
+    /// With TAKE and KEEP on together, the slot is BOTH (input and output).
     public static final int TOGGLE_KEEP = 2;
     /// Every slot of the block: TAKE.
     public static final int TAKE_ALL = 3;
@@ -61,20 +62,22 @@ public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int 
             switch (message.action()) {
                 case TOGGLE_TAKE -> {
                     if (slot >= 0 && slot < container.getContainerSize()) {
-                        boolean wasTake = old != null && old.mode() == SlotRule.TAKE;
-                        magnetar.setRule(block, slot, wasTake ? null : new SlotRule(slot, SlotRule.TAKE, Optional.empty()));
+                        int mode = (old == null ? 0 : old.mode()) ^ SlotRule.TAKE;
+                        magnetar.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, old == null ? Optional.empty() : old.item()));
                     }
                 }
                 case TOGGLE_KEEP -> {
                     if (slot >= 0 && slot < container.getContainerSize()) {
-                        if (old != null && old.mode() == SlotRule.KEEP) {
-                            magnetar.setRule(block, slot, null);
+                        int oldMode = old == null ? 0 : old.mode();
+                        if ((oldMode & SlotRule.KEEP) != 0) {
+                            int mode = oldMode & ~SlotRule.KEEP;
+                            magnetar.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, Optional.empty()));
                         } else {
                             // The item to keep: the one in the slot, or else the one in the player's hand
                             ItemStack item = container.getItem(slot);
                             if (item.isEmpty()) item = player.getMainHandItem();
                             if (!item.isEmpty()) {
-                                magnetar.setRule(block, slot, new SlotRule(slot, SlotRule.KEEP,
+                                magnetar.setRule(block, slot, new SlotRule(slot, oldMode | SlotRule.KEEP,
                                         Optional.of(ItemStackTemplate.fromNonEmptyStack(item.copyWithCount(1)))));
                             }
                         }
@@ -82,7 +85,9 @@ public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int 
                 }
                 case TAKE_ALL -> {
                     for (int i = 0; i < container.getContainerSize(); i++) {
-                        magnetar.setRule(block, i, new SlotRule(i, SlotRule.TAKE, Optional.empty()));
+                        SlotRule rule = magnetar.rulesOf(block).get(i);
+                        magnetar.setRule(block, i, new SlotRule(i, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
+                                rule == null ? Optional.empty() : rule.item()));
                     }
                 }
                 case CLEAR -> magnetar.clearRules(block);

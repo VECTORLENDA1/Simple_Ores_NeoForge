@@ -12,7 +12,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public enum StarLook implements StringRepresentable {
     //         id            core color   spot color   glow color   beam color   radius  beam length  item radius
     /// The Magnetar: a small, very bright violet star with two magnetic beams spinning around it.
-    MAGNETAR(  "magnetar",   0xFFEAF2FF,  0xFF8A6CFF,  0xFFA070FF,  0xFFC9A6FF,  0.35f,  3.0f,        0.5f),
+    MAGNETAR(  "magnetar",   0xFFEAF2FF,  0xFF8A6CFF,  0xFFA070FF,  0xFFC9A6FF,  0.35f,  1.2f,        0.5f),
     /// The Stellar Terminal: a calm teal star, without beams.
     TERMINAL(  "terminal",   0xFFDAFFF6,  0xFF2FC79E,  0xFF46E8C4,  0x00000000,  0.35f,  0f,          0.5f);
 

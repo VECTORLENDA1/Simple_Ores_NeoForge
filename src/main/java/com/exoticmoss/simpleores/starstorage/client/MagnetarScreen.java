@@ -22,8 +22,9 @@ import java.util.Optional;
 
 /// The screen of the Magnetar Core: the network and every block with an inventory inside its field
 /// (chests, furnaces...), one card per block with all its slots. Mouse wheel scrolls the cards.
-///  - Left-click on a slot: TAKE (its items go to the network). Again: nothing.
-///  - Right-click on a slot: KEEP it full of the item that is in it (or, if it is empty, the item in your hand).
+///  - Left-click on a slot: TAKE on/off (its items go to the network) - orange.
+///  - Right-click on a slot: KEEP on/off (kept full of the item in it, or, if empty, the item in your hand) - green.
+///  - Both on: input and output in the same slot - light purple.
 ///  - "Take all": every slot of the block is TAKE. "Clear": no rules for the block.
 /// The screen only asks the server (MagnetarAction); the server changes the rules and sends back the view.
 public class MagnetarScreen extends Screen {
@@ -42,6 +43,7 @@ public class MagnetarScreen extends Screen {
     private static final int SLOT_HOVER = 0xFF5A3A80;
     private static final int TAKE_COLOR = 0xFFE08A30;
     private static final int KEEP_COLOR = 0xFF40C070;
+    private static final int BOTH_COLOR = 0xFFC9A6FF;
     private static final int FADE = 0xA0101018;
     private static final int BUTTON = 0xFF3A3A4E;
     private static final int BUTTON_HOVER = 0xFF55557A;
@@ -97,7 +99,7 @@ public class MagnetarScreen extends Screen {
     // ---------------------------------------------------------------- where things are
 
     private int areaTop() {
-        return top + 44;
+        return top + 22;
     }
 
     private int areaBottom() {
@@ -180,9 +182,6 @@ public class MagnetarScreen extends Screen {
         graphics.fill(left, top, left + WIDTH, top + height2, PANEL);
         graphics.outline(left, top, WIDTH, height2, PANEL_BORDER);
         graphics.centeredText(font, title, left + WIDTH / 2, top + 7, TEXT);
-        graphics.centeredText(font, Component.translatable("screen.simpleores.magnetar.info", view.drives(), view.cells(),
-                StarNetwork.format(view.used()), StarNetwork.format(view.capacity())), left + WIDTH / 2, top + 19, TEXT_DIM);
-        graphics.centeredText(font, Component.translatable("screen.simpleores.magnetar.hint"), left + WIDTH / 2, top + 30, TEXT_DIM);
 
         if (view.blocks().isEmpty()) {
             graphics.centeredText(font, Component.translatable("screen.simpleores.magnetar.no_blocks", StarNetwork.FIELD_RADIUS),
@@ -216,20 +215,22 @@ public class MagnetarScreen extends Screen {
                         String count = String.valueOf(stack.getCount());
                         graphics.text(font, Component.literal(count), x + SLOT - 1 - font.width(count), y + SLOT - 9, TEXT);
                     }
-                } else if (rule != null && rule.item().isPresent()) {
+                } else if (rule != null && rule.keeps()) {
                     // Empty KEEP slot: its item, faded
                     graphics.item(rule.item().get().create(), x + 1, y + 1);
                     graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, FADE);
                 }
-                if (rule != null) graphics.outline(x, y, SLOT, SLOT, rule.mode() == SlotRule.TAKE ? TAKE_COLOR : KEEP_COLOR);
+                if (rule != null) graphics.outline(x, y, SLOT, SLOT, color(rule));
 
                 if (hovered) {
                     tooltip = new ArrayList<>();
                     tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.magnetar.empty") : stack.getHoverName());
-                    if (rule != null && rule.mode() == SlotRule.TAKE) {
-                        tooltip.add(Component.translatable("screen.simpleores.magnetar.taking").withColor(TAKE_COLOR));
-                    } else if (rule != null && rule.item().isPresent()) {
+                    if (rule != null && rule.takes() && rule.keeps()) {
+                        tooltip.add(Component.translatable("screen.simpleores.magnetar.both", rule.item().get().create().getHoverName()).withColor(BOTH_COLOR));
+                    } else if (rule != null && rule.keeps()) {
                         tooltip.add(Component.translatable("screen.simpleores.magnetar.keeping", rule.item().get().create().getHoverName()).withColor(KEEP_COLOR));
+                    } else if (rule != null && rule.takes()) {
+                        tooltip.add(Component.translatable("screen.simpleores.magnetar.taking").withColor(TAKE_COLOR));
                     }
                 }
             }
@@ -241,6 +242,11 @@ public class MagnetarScreen extends Screen {
 
         super.extractRenderState(graphics, mouseX, mouseY, a);
         if (tooltip != null) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
+    }
+
+    private static int color(SlotRule rule) {
+        if (rule.takes() && rule.keeps()) return BOTH_COLOR;
+        return rule.keeps() ? KEEP_COLOR : TAKE_COLOR;
     }
 
     private void drawButton(GuiGraphicsExtractor graphics, int[] box, Component text, int mouseX, int mouseY) {

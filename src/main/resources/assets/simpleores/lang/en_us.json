@@ -73,12 +73,11 @@
   "screen.simpleores.terminal.sort.z_a": "Name Z-A",
   "screen.simpleores.terminal.crafting": "Crafting",
   "screen.simpleores.magnetar.title": "Magnetar Core",
-  "screen.simpleores.magnetar.info": "%s drives - %s cells - %s / %s items",
-  "screen.simpleores.magnetar.hint": "Left-click a slot: take out - Right-click: keep full",
   "screen.simpleores.magnetar.no_blocks": "No blocks with an inventory within %s blocks",
   "screen.simpleores.magnetar.take_all": "Take all",
   "screen.simpleores.magnetar.clear": "Clear",
   "screen.simpleores.magnetar.empty": "Empty",
   "screen.simpleores.magnetar.taking": "Taking out to the network",
-  "screen.simpleores.magnetar.keeping": "Keeping full of: %s"
+  "screen.simpleores.magnetar.keeping": "Keeping full of: %s",
+  "screen.simpleores.magnetar.both": "Input and output: %s (anything else goes to the network)"
 }

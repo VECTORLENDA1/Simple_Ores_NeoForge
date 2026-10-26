@@ -20,7 +20,8 @@ import java.util.TreeMap;
 /// The Magnetar Core block entity: the rules of the slots of the blocks inside its field (see SlotRule),
 /// set in the Magnetar screen. Every WORK_TICKS ticks it does the work:
 ///  - TAKE slots: their items go to the network;
-///  - KEEP slots: they are filled from the network up to a full stack of their item.
+///  - KEEP slots: they are filled from the network up to a full stack of their item;
+///  - BOTH: anything that is not the item of the slot goes to the network, and the slot is kept full of its item.
 /// Works with every block that has an inventory (chests, barrels, furnaces, hoppers, brewing stands...).
 public class MagnetarBlockEntity extends BlockEntity {
     /// Every how many ticks the Magnetar moves the items (10 ticks = half a second).
@@ -67,8 +68,16 @@ public class MagnetarBlockEntity extends BlockEntity {
             if (!(level.getBlockEntity(pos) instanceof Container container)) continue;
             for (SlotRule rule : entry.getValue().values()) {
                 if (rule.slot() >= container.getContainerSize()) continue;
-                if (rule.mode() == SlotRule.TAKE) take(network, container, rule.slot());
-                else if (rule.mode() == SlotRule.KEEP) rule.item().ifPresent(item -> keep(network, container, rule.slot(), item.create()));
+                if (rule.keeps()) {
+                    ItemStack item = rule.item().get().create();
+                    // BOTH: what is not the item of the slot goes out first
+                    if (rule.takes() && !ItemStack.isSameItemSameComponents(container.getItem(rule.slot()), item)) {
+                        take(network, container, rule.slot());
+                    }
+                    keep(network, container, rule.slot(), item);
+                } else if (rule.takes()) {
+                    take(network, container, rule.slot());
+                }
             }
         }
     }

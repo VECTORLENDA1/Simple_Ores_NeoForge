@@ -36,12 +36,11 @@
   "screen.simpleores.terminal.sort.z_a": "Nome Z-A",
   "screen.simpleores.terminal.crafting": "Crafting",
   "screen.simpleores.magnetar.title": "Núcleo Magnetar",
-  "screen.simpleores.magnetar.info": "%s drives - %s células - %s / %s items",
-  "screen.simpleores.magnetar.hint": "Clique esquerdo num slot: tirar - Clique direito: manter cheio",
   "screen.simpleores.magnetar.no_blocks": "Nenhum bloco com inventário a menos de %s blocos",
   "screen.simpleores.magnetar.take_all": "Tirar tudo",
   "screen.simpleores.magnetar.clear": "Limpar",
   "screen.simpleores.magnetar.empty": "Vazio",
   "screen.simpleores.magnetar.taking": "A tirar para a rede",
-  "screen.simpleores.magnetar.keeping": "A manter cheio de: %s"
+  "screen.simpleores.magnetar.keeping": "A manter cheio de: %s",
+  "screen.simpleores.magnetar.both": "Entrada e saída: %s (o resto vai para a rede)"
 }

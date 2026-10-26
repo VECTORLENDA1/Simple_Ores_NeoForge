@@ -1,6 +1,6 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 3,
+  "tier": 1,
   "time": 100,
   "ingredients": [
     {

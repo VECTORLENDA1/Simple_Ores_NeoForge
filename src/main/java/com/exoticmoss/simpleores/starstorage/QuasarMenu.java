@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -27,19 +28,26 @@ import java.util.Optional;
 /// The menu of the Quasar: like the Stellar Terminal (the items of the network can be taken and stored,
 /// see TerminalScreen), but at the bottom right it makes the recipes that the Quasar keeps (one tab each):
 ///  - TAB_CRAFTING: a crafting table grid (3x3);
-///  - TAB_CORE: the ingredients of a Gravity Core recipe (one slot more appears for each item, up to CORE_SLOTS);
+///  - TAB_CORE: the ingredients of a Gravity Core recipe (one slot more appears for each item, up to CORE_SLOTS).
+///    Only 3x3 of them are shown (CORE_VIEW): the mouse wheel moves them up and down. A core slot keeps an amount
+///    too (up to a stack): the amounts of a tier of the recipe save the recipe with that tier;
 ///  - TAB_FURNACE: the input of a furnace recipe;
 ///  - TAB_JOBS: (only the screen) the auto-crafts being made.
 /// The slots of the recipes only show items (they don't keep them): clicking one with an item in the mouse cursor
 /// puts a picture of it there; clicking with an empty cursor (or right-clicking) empties it. JEI fills them too.
-/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, REMOVE + n, CANCEL_JOB + job id.
+/// The core slots: left-click with items adds them (the same item) or puts them; right-click with items adds one;
+/// right-click with an empty cursor takes one away, left-click empties it.
+/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int GRID_SLOTS = Pattern.SIZE;
     public static final int RESULT_SLOT = GRID_SLOTS;
     public static final int CORE_START = RESULT_SLOT + 1;
     /// The most ingredients a Gravity Core recipe can have (the Black Hole).
     public static final int CORE_SLOTS = 20;
-    public static final int FURNACE_SLOT = CORE_START + CORE_SLOTS;
+    /// The core slots shown at once (3 rows of 3; the wheel scrolls one row).
+    public static final int CORE_VIEW = 9;
+    public static final int CORE_COLUMNS = 3;
+    public static final int FURNACE_SLOT = CORE_START + CORE_VIEW;
     public static final int INVENTORY_START = FURNACE_SLOT + 1;
 
     public static final int TAB_CRAFTING = 0;
@@ -50,6 +58,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int SAVE = 0;
     public static final int CLEAR = 1;
     public static final int TAB = 10;
+    public static final int CORE_SCROLL = 20;
     public static final int REMOVE = 100;
     public static final int CANCEL_JOB = 10_000;
 
@@ -61,6 +70,12 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     private final List<List<ItemStackTemplate>> choices = new ArrayList<>();
     /// Server: the Gravity Core recipe the core slots make (null = none).
     private RecipeHolder<GravityCoreRecipe> coreRecipe;
+    /// Server: the items of all the core slots (the shown ones are copied to the pictures).
+    private final List<ItemStack> cores = new ArrayList<>();
+    /// The first row of core slots shown.
+    public int coreScroll;
+    /// Client: how many core slots have an item (sent by the server).
+    private int syncedCoreCount;
     /// The tab shown (the client tells the server with TAB + n).
     public int tab = TAB_CRAFTING;
 
@@ -76,9 +91,21 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             addSlot(new PictureSlot(i, left + (i % 3) * 18 + 1, top + (i / 3) * 18 + 1, TAB_CRAFTING));
         }
         addSlot(new PictureSlot(RESULT_SLOT, layout.resultX() + 1, layout.resultY() + 1, -1));
-        for (int i = 0; i < CORE_SLOTS; i++) {
-            addSlot(new PictureSlot(CORE_START + i, left + (i % 4) * 18 + 1, top + (i / 4) * 18 + 1, TAB_CORE));
+        for (int i = 0; i < CORE_VIEW; i++) {
+            addSlot(new PictureSlot(CORE_START + i, left + (i % CORE_COLUMNS) * 18 + 1, top + (i / CORE_COLUMNS) * 18 + 1, TAB_CORE));
         }
+        for (int i = 0; i < CORE_SLOTS; i++) cores.add(ItemStack.EMPTY);
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return player.level().isClientSide() ? syncedCoreCount : coreCount();
+            }
+
+            @Override
+            public void set(int value) {
+                syncedCoreCount = value;
+            }
+        });
         addSlot(new PictureSlot(FURNACE_SLOT, left + 18 + 1, top + 18 + 1, TAB_FURNACE));
         addStandardInventorySlots(inventory, TerminalLayout.inventoryLeft() + 1, top + 1);
     }
@@ -100,9 +127,31 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
 
     /// How many core slots have an item (they are always the first ones).
     public int coreCount() {
+        if (player.level().isClientSide()) return syncedCoreCount;
         int count = 0;
-        while (count < CORE_SLOTS && !pictures.getItem(CORE_START + count).isEmpty()) count++;
+        while (count < CORE_SLOTS && !cores.get(count).isEmpty()) count++;
         return count;
+    }
+
+    /// The most the core slots can be scrolled (rows).
+    public int maxCoreScroll() {
+        int shown = Math.min(CORE_SLOTS, coreCount() + 1);
+        int rows = (shown + CORE_COLUMNS - 1) / CORE_COLUMNS;
+        return Math.max(0, rows - CORE_VIEW / CORE_COLUMNS);
+    }
+
+    /// The core slot (0 to CORE_SLOTS - 1) shown in the slot "slot" of the menu.
+    private int coreIndex(int slot) {
+        return coreScroll * CORE_COLUMNS + slot - CORE_START;
+    }
+
+    /// Server: copies the core slots shown to the pictures.
+    private void showCores() {
+        coreScroll = Math.max(0, Math.min(coreScroll, maxCoreScroll()));
+        for (int i = 0; i < CORE_VIEW; i++) {
+            int index = coreIndex(CORE_START + i);
+            pictures.setItem(CORE_START + i, index < CORE_SLOTS ? cores.get(index) : ItemStack.EMPTY);
+        }
     }
 
     /// A slot of the recipes: it shows a picture of an item, it never gives or takes real items.
@@ -129,7 +178,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         public boolean isActive() {
             if (slotTab == -1) return tab != TAB_JOBS;
             if (slotTab != tab) return false;
-            return slotTab != TAB_CORE || index - CORE_START <= coreCount();
+            if (slotTab != TAB_CORE) return true;
+            int core = coreIndex(index);
+            return core < CORE_SLOTS && core <= coreCount();
         }
     }
 
@@ -140,34 +191,57 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         if (slotId >= 0 && slotId < INVENTORY_START) {
             if (slotId != RESULT_SLOT && slots.get(slotId).isActive()) {
                 ItemStack carried = getCarried();
-                setPicture(slotId, carried.isEmpty() || button == 1 ? ItemStack.EMPTY : carried);
+                if (slotId >= CORE_START && slotId < CORE_START + CORE_VIEW) clickCore(slotId, button, carried);
+                else setPicture(slotId, carried.isEmpty() || button == 1 ? ItemStack.EMPTY : carried);
             }
             return;
         }
         super.clicked(slotId, button, input, player);
     }
 
+    /// A click on a core slot: changes its item and amount (see the top of this class).
+    private void clickCore(int slot, int button, ItemStack carried) {
+        int index = coreIndex(slot);
+        if (index >= CORE_SLOTS) return;
+        ItemStack current = cores.get(index);
+        boolean same = !current.isEmpty() && ItemStack.isSameItemSameComponents(current, carried);
+        int count;
+        if (carried.isEmpty()) count = button == 1 ? current.getCount() - 1 : 0;
+        else if (button == 1) count = same ? current.getCount() + 1 : 1;
+        else count = same ? current.getCount() + carried.getCount() : carried.getCount();
+        ItemStack item = carried.isEmpty() ? current : carried;
+        setCore(index, count <= 0 || item.isEmpty() ? ItemStack.EMPTY : item.copyWithCount(Math.min(count, item.getMaxStackSize())));
+    }
+
+    /// Changes a core slot. They stay together: a new item goes after the last one, an emptied slot closes the gap.
+    private void setCore(int index, ItemStack stack) {
+        List<ItemStack> items = new ArrayList<>(cores);
+        if (stack.isEmpty()) items.set(index, ItemStack.EMPTY);
+        else items.set(Math.min(index, coreCount()), stack);
+        items.removeIf(ItemStack::isEmpty);
+        for (int i = 0; i < CORE_SLOTS; i++) cores.set(i, i < items.size() ? items.get(i) : ItemStack.EMPTY);
+        showCores();
+        updateResult();
+    }
+
+    /// Server: the client scrolled the core slots.
+    private void scrollCores(int row) {
+        coreScroll = row;
+        showCores();
+        broadcastChanges();
+    }
+
     /// Puts a picture of the item in a slot of the recipes (EMPTY = empties it).
+    /// On a core slot, an item already there gets one more.
     public void setPicture(int slot, ItemStack stack) {
         if (slot < 0 || slot >= INVENTORY_START || slot == RESULT_SLOT) return;
         ItemStack picture = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
         if (slot < GRID_SLOTS) {
             pictures.setItem(slot, picture);
             choices.set(slot, picture.isEmpty() ? List.of() : List.of(ItemStackTemplate.fromNonEmptyStack(picture)));
-        } else if (slot >= CORE_START && slot < CORE_START + CORE_SLOTS) {
-            // The core slots stay together: a new item goes after the last one, an emptied slot closes the gap
-            List<ItemStack> items = new ArrayList<>();
-            for (int i = 0; i < CORE_SLOTS; i++) items.add(pictures.getItem(CORE_START + i));
-            int index = slot - CORE_START;
-            if (picture.isEmpty()) {
-                if (index < items.size()) items.set(index, ItemStack.EMPTY);
-            } else if (index < coreCount()) {
-                items.set(index, picture);
-            } else {
-                items.set(coreCount(), picture);
-            }
-            items.removeIf(ItemStack::isEmpty);
-            for (int i = 0; i < CORE_SLOTS; i++) pictures.setItem(CORE_START + i, i < items.size() ? items.get(i) : ItemStack.EMPTY);
+        } else if (slot >= CORE_START && slot < CORE_START + CORE_VIEW) {
+            if (coreIndex(slot) < CORE_SLOTS) clickCore(slot, picture.isEmpty() ? 0 : 1, picture);
+            return;
         } else {
             pictures.setItem(slot, picture);
         }
@@ -221,7 +295,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     @SuppressWarnings("unchecked")
     private RecipeHolder<GravityCoreRecipe> findCoreRecipe(ServerLevel level) {
         List<ItemStack> items = new ArrayList<>();
-        for (int i = 0; i < coreCount(); i++) items.add(pictures.getItem(CORE_START + i));
+        for (int i = 0; i < coreCount(); i++) items.add(cores.get(i));
         if (items.isEmpty()) return null;
         for (RecipeHolder<?> holder : level.recipeAccess().getRecipes()) {
             if (!(holder.value() instanceof GravityCoreRecipe recipe) || recipe.getUpgradeTier() != null) continue;
@@ -235,11 +309,28 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         return null;
     }
 
+    /// The tier whose amounts are the amounts of the core slots (the lowest tier of the recipe if none is).
+    private int coreTier(GravityCoreRecipe recipe) {
+        for (int tier = recipe.getTier(); tier <= 4; tier++) {
+            boolean every = true;
+            for (GravityCoreRecipe.Part part : recipe.getParts()) {
+                ItemStack item = cores.stream().filter(stack -> !stack.isEmpty() && part.item().test(stack)).findFirst().orElse(ItemStack.EMPTY);
+                if (item.getCount() != part.countFor(tier)) every = false;
+            }
+            if (every) return tier;
+        }
+        return recipe.getTier();
+    }
+
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id >= TAB && id < TAB + 4) {
             tab = id - TAB;
             updateResult();
+            return true;
+        }
+        if (id >= CORE_SCROLL && id < CORE_SCROLL + CORE_SLOTS) {
+            scrollCores(id - CORE_SCROLL);
             return true;
         }
         if (!(player instanceof ServerPlayer serverPlayer) || !(player.level().getBlockEntity(pos) instanceof QuasarBlockEntity quasar)) return false;
@@ -262,7 +353,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
                 }
                 quasar.addPattern(Pattern.crafting(output, result.getCount(), inputs));
             } else if (tab == TAB_CORE && coreRecipe != null) {
-                quasar.addPattern(QuasarCore.pattern(coreRecipe));
+                quasar.addPattern(QuasarCore.pattern(coreRecipe, coreTier(coreRecipe.value())));
             } else if (tab == TAB_FURNACE) {
                 quasar.addPattern(Pattern.furnace(output, result.getCount(),
                         ItemStackTemplate.fromNonEmptyStack(pictures.getItem(FURNACE_SLOT).copyWithCount(1))));
@@ -273,6 +364,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
                 pictures.setItem(i, ItemStack.EMPTY);
                 if (i < GRID_SLOTS) choices.set(i, List.of());
             }
+            for (int i = 0; i < CORE_SLOTS; i++) cores.set(i, ItemStack.EMPTY);
+            coreScroll = 0;
             updateResult();
         } else if (id >= REMOVE) {
             quasar.removePattern(id - REMOVE);

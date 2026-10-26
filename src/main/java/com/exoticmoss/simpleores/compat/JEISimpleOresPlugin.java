@@ -71,6 +71,16 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
     }
 
+    // The Quasar screen shows recipes in JEI (left-click on a saved recipe or on an item of the JEI list)
+    @Override
+    public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
+        com.exoticmoss.simpleores.starstorage.client.QuasarScreen.showRecipes = stack -> {
+            if (!stack.isEmpty()) runtime.getRecipesGui().show(runtime.getJeiHelpers().getFocusFactory()
+                    .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack));
+        };
+        com.exoticmoss.simpleores.starstorage.client.QuasarScreen.jeiTick = () -> QuasarGhostHandler.tick(runtime);
+    }
+
     // Drag and drop from the JEI list onto the recipe grid of the Quasar
     @Override
     public void registerGuiHandlers(mezz.jei.api.registration.IGuiHandlerRegistration registration) {

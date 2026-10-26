@@ -36,8 +36,12 @@ public record QuasarCore(ResourceKey<Recipe<?>> recipe) implements CustomPacketP
 
     /// The recipe of a Gravity Core recipe (its ingredients with the amounts of the smallest tier that makes it).
     public static Pattern pattern(RecipeHolder<GravityCoreRecipe> holder) {
+        return pattern(holder, holder.value().getTier());
+    }
+
+    /// The same, with the amounts of a tier (cores of that tier or higher make it).
+    public static Pattern pattern(RecipeHolder<GravityCoreRecipe> holder, int tier) {
         GravityCoreRecipe recipe = holder.value();
-        int tier = recipe.getTier();
         List<List<ItemStackTemplate>> inputs = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         for (GravityCoreRecipe.Part part : recipe.getParts()) {

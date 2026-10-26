@@ -19,15 +19,18 @@ import net.minecraft.world.item.Items;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /// The screen of the Quasar: like the Stellar Terminal (the items of the network, the search, the sort, the
 /// inventory, and crafting the items it has recipes for), and four tabs above the panel:
 ///  - crafting table / Gravity Core / furnace: the recipe at the bottom right. Put items in its slots with the
 ///    mouse (only a picture goes there), drag them from the JEI list, or use JEI's "+". "Save" keeps the recipe.
 ///    The Gravity Core tab starts with one slot; one more appears for each item (up to 20, the Black Hole).
-///  - auto-crafts: the middle shows the auto-crafts being made (what, how many, the step and what it waits for),
+///    3x3 of them are shown: the mouse wheel over them moves them up and down. Their slots keep amounts.
+///  - auto-crafts: the middle shows the auto-crafts being made (what, how many, how far it is and what it does),
 ///    with an X to cancel each one.
-///  - Top left: the recipes kept in the Quasar. Right-click one to remove it. Mouse wheel scrolls.
+///  - Top left: the recipes kept in the Quasar. Left-click one shows it in JEI, right-click removes it.
+///    Mouse wheel scrolls.
 public class QuasarScreen extends TerminalScreen<QuasarMenu> {
     private static final int PATTERN_COLUMNS = 8;
     private static final int PATTERN_ROWS = 2;
@@ -36,6 +39,13 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
     private static final int TAB_ON = 0xFF2A2A3E;
     private static final int TAB_OFF = 0xE0101018;
     private static final int JOB_H = 26;
+
+    /// JEI (set by its plugin when JEI is installed): shows the recipes of an item.
+    public static Consumer<ItemStack> showRecipes = stack -> {
+    };
+    /// JEI: runs every tick while the screen is open (see QuasarGhostHandler).
+    public static Runnable jeiTick = () -> {
+    };
 
     private int patternScroll;
     private int jobScroll;
@@ -128,11 +138,33 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         int index = patternAt(event.x(), event.y());
         if (index < 0) return false;
         if (event.button() == 1) button(QuasarMenu.REMOVE + index);
+        else if (event.button() == 0) showRecipes.accept(patterns().get(index).outputStack());
         return true;
     }
 
     @Override
+    protected void containerTick() {
+        super.containerTick();
+        jeiTick.run();
+    }
+
+    /// True if the mouse is over the core slots (or the bar next to them).
+    private boolean isOverCores(double x, double y) {
+        int left = leftPos + TerminalLayout.craftLeft(), top = topPos + menu.layout.inventoryTop();
+        return menu.tab == QuasarMenu.TAB_CORE && x >= left && x < left + 3 * TerminalLayout.SLOT + 6
+                && y >= top && y < top + 3 * TerminalLayout.SLOT;
+    }
+
+    @Override
     protected boolean scrollTopLeft(double x, double y, int step) {
+        if (isOverCores(x, y)) {
+            int row = Mth.clamp(menu.coreScroll + step, 0, menu.maxCoreScroll());
+            if (row != menu.coreScroll) {
+                menu.coreScroll = row;
+                button(QuasarMenu.CORE_SCROLL + row);
+            }
+            return true;
+        }
         if (!isOverCells(x, y)) {
             if (menu.tab == QuasarMenu.TAB_JOBS && y >= networkTopY()) {
                 jobScroll = Mth.clamp(jobScroll + step, 0, Math.max(0, jobs().size() - jobRows()));
@@ -166,6 +198,11 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 button(QuasarMenu.CANCEL_JOB + jobs.get(jobScroll + row).id());
                 return true;
             }
+            int y = networkTopY() + row * JOB_H;
+            if (event.button() == 0 && event.x() >= leftPos + 14 && event.x() < leftPos + 30 && event.y() >= y + 5 && event.y() < y + 21) {
+                showRecipes.accept(jobs.get(jobScroll + row).output());
+                return true;
+            }
         }
         return true;
     }
@@ -182,14 +219,22 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
             QuasarJobs.View job = jobs.get(jobScroll + row);
             int y = networkTopY() + row * JOB_H;
             graphics.fill(left, y + 1, left + width, y + JOB_H - 1, 0xFF1C1C28);
+            // Left: the item, how many and what it does now
             graphics.item(job.output(), left + 4, y + 5);
-            graphics.text(font, Component.literal(StarNetwork.format(job.amount()) + " x ").append(job.output().getHoverName()), left + 24, y + 4, TEXT);
-            graphics.text(font, Component.translatable(job.status()).append("  " + (job.step() + 1) + "/" + Math.max(1, job.steps())), left + 24, y + 14, TEXT_DIM);
-            // Progress bar
-            int barLeft = left + width - 80, barRight = left + width - 20;
-            graphics.fill(barLeft, y + 10, barRight, y + 14, 0xFF15151E);
-            int fill = barLeft + (barRight - barLeft) * job.step() / Math.max(1, job.steps());
-            if (fill > barLeft) graphics.fill(barLeft, y + 10, fill, y + 14, 0xFF40B070);
+            int textWidth = 104;
+            String name = StarNetwork.format(job.amount()) + " x " + job.output().getHoverName().getString();
+            graphics.text(font, Component.literal(font.plainSubstrByWidth(name, textWidth)), left + 24, y + 4, TEXT);
+            graphics.text(font, Component.translatable(job.status()), left + 24, y + 14, TEXT_DIM);
+            // Middle: the bar (items made / items asked for)
+            int barLeft = left + 24 + textWidth + 6, barRight = left + width - 24;
+            graphics.fill(barLeft - 1, y + 4, barRight + 1, y + 12, 0xFF0C0C12);
+            graphics.fill(barLeft, y + 5, barRight, y + 11, 0xFF15151E);
+            int fill = barLeft + (int) ((barRight - barLeft) * Math.min(job.made(), job.amount()) / Math.max(1, job.amount()));
+            if (fill > barLeft) {
+                graphics.fill(barLeft, y + 5, fill, y + 11, 0xFF3FB86A);
+                graphics.fill(barLeft, y + 5, fill, y + 6, 0xFF7FE8A0);
+            }
+            graphics.centeredText(font, Component.literal(job.made() + "/" + job.amount()), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
             // Cancel X
             int[] box = cancelBox(row);
             graphics.fill(box[0], box[1], box[0] + box[2], box[1] + box[2], 0xFFC02030);
@@ -231,6 +276,17 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
 
     @Override
     protected void drawMore(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        // The bar next to the core slots (only when there are more than fit)
+        int maxCoreScroll = menu.maxCoreScroll();
+        if (menu.tab == QuasarMenu.TAB_CORE && maxCoreScroll > 0) {
+            int barX = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT + 2, barTop = topPos + menu.layout.inventoryTop();
+            int barHeight = 3 * TerminalLayout.SLOT;
+            int rows = 3 + maxCoreScroll;
+            int thumb = Math.max(6, barHeight * 3 / rows);
+            int thumbY = barTop + (barHeight - thumb) * Math.min(menu.coreScroll, maxCoreScroll) / maxCoreScroll;
+            graphics.fill(barX, barTop, barX + 3, barTop + barHeight, SLOT_COLOR);
+            graphics.fill(barX, thumbY, barX + 3, thumbY + thumb, PANEL_BORDER);
+        }
         int hovered = patternAt(mouseX, mouseY);
         if (hovered >= 0) {
             Pattern pattern = patterns().get(hovered);

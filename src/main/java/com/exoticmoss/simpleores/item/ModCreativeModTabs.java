@@ -56,6 +56,9 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.NETHER_ANTRACITE_ORE.get());
                     output.accept(ModBlocks.ANTRACITE_BLOCK.get());
                     output.accept(ModBlocks.BEDROCK_OBSCURIDIUM_ORE.get());
+                    output.accept(ModBlocks.RAW_OBSCURIDIUM_BLOCK.get());
+                    output.accept(ModBlocks.OBSCURIDIUM_BLOCK.get());
+                    output.accept(ModBlocks.OBSCURITE_BLOCK.get());
 
                     //GRAVITY CORES//
                     output.accept(ModBlocks.GRAVITY_CORE_SUN.get());

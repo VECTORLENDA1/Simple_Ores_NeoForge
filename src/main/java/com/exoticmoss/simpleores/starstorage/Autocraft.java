@@ -190,6 +190,19 @@ public final class Autocraft {
             return status;
         }
 
+        /// How many of the items asked for are made: every craft of every step counts the same
+        /// (with one step, it is just the items made).
+        public long made() {
+            if (done()) return amount;
+            long total = 0, crafted = 0;
+            for (int i = 0; i < steps.size(); i++) {
+                total += steps.get(i).times();
+                if (i < index) crafted += steps.get(i).times();
+                else if (i == index) crafted += done;
+            }
+            return total == 0 ? 0 : amount * crafted / total;
+        }
+
         /// Quasar: works on the job (every half second). false = the job is cancelled (no progress for too long).
         public boolean tick(ServerLevel level) {
             StarNetwork network = StarNetwork.at(level, pos);

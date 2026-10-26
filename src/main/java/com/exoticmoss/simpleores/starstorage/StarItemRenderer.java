@@ -28,8 +28,7 @@ public class StarItemRenderer implements NoDataSpecialModelRenderer {
         float time = (Util.getMillis() % 1_000_000L) / 50f;
         CoreDrawing.Shading shading = (p, x, y, z) -> p.normal().transform(new Vector3f(x, y, z)).z();
         // No beams on the item (they would be much bigger than the slot)
-        CoreDrawing.drawStar(pose, collector, look.itemRadius, time * 1.5f, look.coreColor, look.spotColor,
-                look.glowColor, 0x00000000, look.beamColor, 0, shading);
+        StarDrawing.draw(look, pose, collector, look.itemRadius, time * 1.5f, 0, shading);
     }
 
     @Override

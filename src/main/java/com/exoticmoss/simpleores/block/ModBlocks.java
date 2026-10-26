@@ -8,7 +8,9 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.item.component.DamageResistant;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
+import com.exoticmoss.simpleores.starstorage.BinaryStarBlock;
 import com.exoticmoss.simpleores.starstorage.MagnetarBlock;
+import com.exoticmoss.simpleores.starstorage.QuasarBlock;
 import com.exoticmoss.simpleores.starstorage.StellarDriveBlock;
 import com.exoticmoss.simpleores.starstorage.StellarTerminalBlock;
 import net.minecraft.util.valueproviders.UniformInt;
@@ -111,6 +113,12 @@ public class ModBlocks {
     public static final DeferredBlock<Block> STELLAR_TERMINAL = registerBlockItem("stellar_terminal", StellarTerminalBlock::new,
             () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
                     .noOcclusion().lightLevel(state -> 11));
+    public static final DeferredBlock<Block> BINARY_STAR = registerBlockItem("binary_star", BinaryStarBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 11));
+    public static final DeferredBlock<Block> QUASAR = registerBlockItem("quasar", QuasarBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(6f, 3600000f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 15));
 
     static {
         // The Magnetar item can't be destroyed by fire, lava or explosions (like the Gravity Cores)

@@ -16,9 +16,9 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Optional;
 
-/// Sent by the client when the player changes the rules in the Magnetar screen.
+/// Sent by the client when the player changes the rules in the Binary Star screen.
 /// The server checks everything again, changes the rules and sends back the new view.
-public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int slot) implements CustomPacketPayload {
+public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot) implements CustomPacketPayload {
     /// Only asks for the view again (the screen does it every second).
     public static final int REFRESH = 0;
     /// Left-click on a slot: turns TAKE on or off.
@@ -31,39 +31,39 @@ public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int 
     /// No rules for the block.
     public static final int CLEAR = 4;
 
-    /// How far (in blocks) the player can be from the Magnetar.
+    /// How far (in blocks) the player can be from the Binary Star.
     public static final double RANGE = 8;
 
-    public static final Type<MagnetarAction> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "magnetar_action"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, MagnetarAction> STREAM_CODEC = StreamCodec.composite(
-            BlockPos.STREAM_CODEC, MagnetarAction::magnetar,
-            BlockPos.STREAM_CODEC, MagnetarAction::block,
-            ByteBufCodecs.VAR_INT, MagnetarAction::action,
-            ByteBufCodecs.VAR_INT, MagnetarAction::slot,
-            MagnetarAction::new);
+    public static final Type<BinaryAction> TYPE =
+            new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "binary_action"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, BinaryAction> STREAM_CODEC = StreamCodec.composite(
+            BlockPos.STREAM_CODEC, BinaryAction::binary,
+            BlockPos.STREAM_CODEC, BinaryAction::block,
+            ByteBufCodecs.VAR_INT, BinaryAction::action,
+            ByteBufCodecs.VAR_INT, BinaryAction::slot,
+            BinaryAction::new);
 
     @Override
-    public Type<MagnetarAction> type() {
+    public Type<BinaryAction> type() {
         return TYPE;
     }
 
-    public static void handle(MagnetarAction message, IPayloadContext context) {
+    public static void handle(BinaryAction message, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
-        BlockPos pos = message.magnetar();
+        BlockPos pos = message.binary();
         if (player.position().distanceToSqr(Vec3.atCenterOf(pos)) > RANGE * RANGE) return;
-        if (!(player.level().getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar)) return;
+        if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
 
         BlockPos block = message.block();
-        if (message.action() != REFRESH && StarNetwork.inField(pos, block)
+        if (message.action() != REFRESH && binary.inReach(block)
                 && player.level().getBlockEntity(block) instanceof Container container) {
             int slot = message.slot();
-            SlotRule old = magnetar.rulesOf(block).get(slot);
+            SlotRule old = binary.rulesOf(block).get(slot);
             switch (message.action()) {
                 case TOGGLE_TAKE -> {
                     if (slot >= 0 && slot < container.getContainerSize()) {
                         int mode = (old == null ? 0 : old.mode()) ^ SlotRule.TAKE;
-                        magnetar.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, old == null ? Optional.empty() : old.item()));
+                        binary.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, old == null ? Optional.empty() : old.item()));
                     }
                 }
                 case TOGGLE_KEEP -> {
@@ -71,13 +71,13 @@ public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int 
                         int oldMode = old == null ? 0 : old.mode();
                         if ((oldMode & SlotRule.KEEP) != 0) {
                             int mode = oldMode & ~SlotRule.KEEP;
-                            magnetar.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, Optional.empty()));
+                            binary.setRule(block, slot, mode == 0 ? null : new SlotRule(slot, mode, Optional.empty()));
                         } else {
                             // The item to keep: the one in the slot, or else the one in the player's hand
                             ItemStack item = container.getItem(slot);
                             if (item.isEmpty()) item = player.getMainHandItem();
                             if (!item.isEmpty()) {
-                                magnetar.setRule(block, slot, new SlotRule(slot, oldMode | SlotRule.KEEP,
+                                binary.setRule(block, slot, new SlotRule(slot, oldMode | SlotRule.KEEP,
                                         Optional.of(ItemStackTemplate.fromNonEmptyStack(item.copyWithCount(1)))));
                             }
                         }
@@ -85,16 +85,16 @@ public record MagnetarAction(BlockPos magnetar, BlockPos block, int action, int 
                 }
                 case TAKE_ALL -> {
                     for (int i = 0; i < container.getContainerSize(); i++) {
-                        SlotRule rule = magnetar.rulesOf(block).get(i);
-                        magnetar.setRule(block, i, new SlotRule(i, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
+                        SlotRule rule = binary.rulesOf(block).get(i);
+                        binary.setRule(block, i, new SlotRule(i, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
                                 rule == null ? Optional.empty() : rule.item()));
                     }
                 }
-                case CLEAR -> magnetar.clearRules(block);
+                case CLEAR -> binary.clearRules(block);
                 default -> {
                 }
             }
         }
-        MagnetarView.send(player, pos, false);
+        BinaryView.send(player, pos, false);
     }
 }

@@ -63,6 +63,8 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 new GravityCoreTransferHandler<>(InventoryMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
         registration.addRecipeTransferHandler(
                 new GravityCoreTransferHandler<>(CreativeModeInventoryScreen.ItemPickerMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
+        // "+" on crafting table recipes with the Quasar screen open: puts the recipe in its grid
+        registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
     }
 
     // Shows the recipes when the block is clicked inside JEI

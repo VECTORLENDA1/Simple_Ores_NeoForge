@@ -18,6 +18,10 @@ public class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<TerminalMenu>> TERMINAL = MENUS.register("stellar_terminal",
             () -> IMenuTypeExtension.create((id, inventory, buf) -> new TerminalMenu(id, inventory, buf.readBlockPos(), TerminalClient.rows())));
 
+    /// The Quasar (the client reads its position).
+    public static final DeferredHolder<MenuType<?>, MenuType<QuasarMenu>> QUASAR = MENUS.register("quasar",
+            () -> IMenuTypeExtension.create((id, inventory, buf) -> new QuasarMenu(id, inventory, buf.readBlockPos())));
+
     public static void register(IEventBus eventBus) {
         MENUS.register(eventBus);
     }

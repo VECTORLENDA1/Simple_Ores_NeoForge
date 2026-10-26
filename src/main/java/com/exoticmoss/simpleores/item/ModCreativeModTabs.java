@@ -67,6 +67,8 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.MAGNETAR_CORE.get());
                     output.accept(ModBlocks.STELLAR_DRIVE.get());
                     output.accept(ModBlocks.STELLAR_TERMINAL.get());
+                    output.accept(ModBlocks.BINARY_STAR.get());
+                    output.accept(ModBlocks.QUASAR.get());
                     output.accept(ModItems.WHITE_DWARF_CELL.get());
                     output.accept(ModItems.NEUTRON_CELL.get());
                     output.accept(ModItems.SINGULARITY_CELL.get());

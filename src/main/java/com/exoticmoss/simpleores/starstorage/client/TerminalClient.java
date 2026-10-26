@@ -1,5 +1,6 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
+import com.exoticmoss.simpleores.starstorage.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
 import com.exoticmoss.simpleores.starstorage.TerminalLayout;
 import net.minecraft.client.Minecraft;
@@ -20,6 +21,11 @@ public final class TerminalClient {
         if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen screen && screen.getMenu().pos.equals(message.pos())) {
             screen.update(message);
         }
+    }
+
+    /// The answer of the server to a craft request.
+    public static void receiveReply(CraftRequest.Reply reply) {
+        if (Minecraft.getInstance().gui.screen() instanceof TerminalScreen screen) screen.onCraftReply(reply);
     }
 
     /// The last contents of the terminal at "pos" (empty if none came yet).

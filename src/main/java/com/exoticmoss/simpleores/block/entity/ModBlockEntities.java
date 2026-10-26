@@ -2,7 +2,9 @@ package com.exoticmoss.simpleores.block.entity;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
+import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.QuasarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.StellarDriveBlockEntity;
 import com.exoticmoss.simpleores.starstorage.StellarTerminalBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -31,6 +33,12 @@ public class ModBlockEntities {
 
     public static final Supplier<BlockEntityType<StellarTerminalBlockEntity>> STELLAR_TERMINAL_BE =
             BLOCK_ENTITIES.register("stellar_terminal_be", () -> new BlockEntityType<>(StellarTerminalBlockEntity::new, ModBlocks.STELLAR_TERMINAL.get()));
+
+    public static final Supplier<BlockEntityType<BinaryStarBlockEntity>> BINARY_STAR_BE =
+            BLOCK_ENTITIES.register("binary_star_be", () -> new BlockEntityType<>(BinaryStarBlockEntity::new, ModBlocks.BINARY_STAR.get()));
+
+    public static final Supplier<BlockEntityType<QuasarBlockEntity>> QUASAR_BE =
+            BLOCK_ENTITIES.register("quasar_be", () -> new BlockEntityType<>(QuasarBlockEntity::new, ModBlocks.QUASAR.get()));
 
 
     public static void register(IEventBus eventBus) {

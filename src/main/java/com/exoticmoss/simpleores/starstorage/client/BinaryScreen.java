@@ -1,9 +1,9 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
-import com.exoticmoss.simpleores.starstorage.MagnetarAction;
-import com.exoticmoss.simpleores.starstorage.MagnetarView;
+import com.exoticmoss.simpleores.starstorage.BinaryAction;
+import com.exoticmoss.simpleores.starstorage.BinaryView;
 import com.exoticmoss.simpleores.starstorage.SlotRule;
-import com.exoticmoss.simpleores.starstorage.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -20,14 +20,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/// The screen of the Magnetar Core: the network and every block with an inventory inside its field
-/// (chests, furnaces...), one card per block with all its slots. Mouse wheel scrolls the cards.
+/// The screen of the Binary Star: every block with an inventory around it (chests, furnaces...),
+/// one card per block with all its slots. Mouse wheel scrolls the cards.
 ///  - Left-click on a slot: TAKE on/off (its items go to the network) - orange.
 ///  - Right-click on a slot: KEEP on/off (kept full of the item in it, or, if empty, the item in your hand) - green.
 ///  - Both on: input and output in the same slot - light purple.
 ///  - "Take all": every slot of the block is TAKE. "Clear": no rules for the block.
-/// The screen only asks the server (MagnetarAction); the server changes the rules and sends back the view.
-public class MagnetarScreen extends Screen {
+/// The screen only asks the server (BinaryAction); the server changes the rules and sends back the view.
+public class BinaryScreen extends Screen {
     private static final int WIDTH = 220;
     private static final int SLOT = 18;
     private static final int COLUMNS = 9;
@@ -52,7 +52,7 @@ public class MagnetarScreen extends Screen {
     private static final int TEXT_DIM = 0xFFA0A0B0;
 
     private final BlockPos pos;
-    private MagnetarView view;
+    private BinaryView view;
     /// First card shown.
     private int scroll;
     private int ticks;
@@ -62,8 +62,8 @@ public class MagnetarScreen extends Screen {
     private record Card(int index, int x, int y, int height) {
     }
 
-    public MagnetarScreen(MagnetarView view) {
-        super(Component.translatable("screen.simpleores.magnetar.title"));
+    public BinaryScreen(BinaryView view) {
+        super(Component.translatable("screen.simpleores.binary.title"));
         this.pos = view.pos();
         this.view = view;
     }
@@ -72,13 +72,13 @@ public class MagnetarScreen extends Screen {
         return pos;
     }
 
-    public void update(MagnetarView view) {
+    public void update(BinaryView view) {
         this.view = view;
         scroll = Mth.clamp(scroll, 0, Math.max(0, view.blocks().size() - 1));
     }
 
     private void send(BlockPos block, int action, int slot) {
-        ClientPacketDistributor.sendToServer(new MagnetarAction(pos, block, action, slot));
+        ClientPacketDistributor.sendToServer(new BinaryAction(pos, block, action, slot));
     }
 
     @Override
@@ -90,8 +90,8 @@ public class MagnetarScreen extends Screen {
 
     @Override
     public void tick() {
-        if (++ticks % REFRESH_TICKS == 0) send(pos, MagnetarAction.REFRESH, 0);
-        if (minecraft.player == null || minecraft.player.position().distanceToSqr(Vec3.atCenterOf(pos)) > MagnetarAction.RANGE * MagnetarAction.RANGE) {
+        if (++ticks % REFRESH_TICKS == 0) send(pos, BinaryAction.REFRESH, 0);
+        if (minecraft.player == null || minecraft.player.position().distanceToSqr(Vec3.atCenterOf(pos)) > BinaryAction.RANGE * BinaryAction.RANGE) {
             onClose();
         }
     }
@@ -106,7 +106,7 @@ public class MagnetarScreen extends Screen {
         return top + height2 - 8;
     }
 
-    private static int rows(MagnetarView.Block block) {
+    private static int rows(BinaryView.Block block) {
         return Math.max(1, (block.slots().size() + COLUMNS - 1) / COLUMNS);
     }
 
@@ -155,19 +155,19 @@ public class MagnetarScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         boolean right = event.button() == 1;
         for (Card card : cards()) {
-            MagnetarView.Block block = view.blocks().get(card.index());
+            BinaryView.Block block = view.blocks().get(card.index());
             if (inside(button(card, 0), event.x(), event.y())) {
-                send(block.pos(), MagnetarAction.TAKE_ALL, 0);
+                send(block.pos(), BinaryAction.TAKE_ALL, 0);
                 return true;
             }
             if (inside(button(card, 1), event.x(), event.y())) {
-                send(block.pos(), MagnetarAction.CLEAR, 0);
+                send(block.pos(), BinaryAction.CLEAR, 0);
                 return true;
             }
             for (int slot = 0; slot < block.slots().size(); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
                 if (event.x() >= x && event.x() < x + SLOT && event.y() >= y && event.y() < y + SLOT) {
-                    send(block.pos(), right ? MagnetarAction.TOGGLE_KEEP : MagnetarAction.TOGGLE_TAKE, slot);
+                    send(block.pos(), right ? BinaryAction.TOGGLE_KEEP : BinaryAction.TOGGLE_TAKE, slot);
                     return true;
                 }
             }
@@ -184,14 +184,14 @@ public class MagnetarScreen extends Screen {
         graphics.centeredText(font, title, left + WIDTH / 2, top + 7, TEXT);
 
         if (view.blocks().isEmpty()) {
-            graphics.centeredText(font, Component.translatable("screen.simpleores.magnetar.no_blocks", StarNetwork.FIELD_RADIUS),
+            graphics.centeredText(font, Component.translatable("screen.simpleores.binary.no_blocks", BinaryStarBlockEntity.RADIUS),
                     left + WIDTH / 2, areaTop() + 10, TEXT_DIM);
         }
 
         List<Component> tooltip = null;
         List<Card> cards = cards();
         for (Card card : cards) {
-            MagnetarView.Block block = view.blocks().get(card.index());
+            BinaryView.Block block = view.blocks().get(card.index());
             Map<Integer, SlotRule> rules = new HashMap<>();
             for (SlotRule rule : block.rules()) rules.put(rule.slot(), rule);
 
@@ -200,8 +200,8 @@ public class MagnetarScreen extends Screen {
             int nameRight = button(card, 0)[0] - 4;
             graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - card.x() - 22)),
                     card.x() + 22, card.y() + 6, TEXT);
-            drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.magnetar.take_all"), mouseX, mouseY);
-            drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.magnetar.clear"), mouseX, mouseY);
+            drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, mouseY);
+            drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, mouseY);
 
             for (int slot = 0; slot < block.slots().size(); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
@@ -224,13 +224,13 @@ public class MagnetarScreen extends Screen {
 
                 if (hovered) {
                     tooltip = new ArrayList<>();
-                    tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.magnetar.empty") : stack.getHoverName());
+                    tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.binary.empty") : stack.getHoverName());
                     if (rule != null && rule.takes() && rule.keeps()) {
-                        tooltip.add(Component.translatable("screen.simpleores.magnetar.both", rule.item().get().create().getHoverName()).withColor(BOTH_COLOR));
+                        tooltip.add(Component.translatable("screen.simpleores.binary.both", rule.item().get().create().getHoverName()).withColor(BOTH_COLOR));
                     } else if (rule != null && rule.keeps()) {
-                        tooltip.add(Component.translatable("screen.simpleores.magnetar.keeping", rule.item().get().create().getHoverName()).withColor(KEEP_COLOR));
+                        tooltip.add(Component.translatable("screen.simpleores.binary.keeping", rule.item().get().create().getHoverName()).withColor(KEEP_COLOR));
                     } else if (rule != null && rule.takes()) {
-                        tooltip.add(Component.translatable("screen.simpleores.magnetar.taking").withColor(TAKE_COLOR));
+                        tooltip.add(Component.translatable("screen.simpleores.binary.taking").withColor(TAKE_COLOR));
                     }
                 }
             }

@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 /// The Magnetar network: every Stellar Drive inside the magnetic field of a Magnetar Core.
 /// There are no cables: the field is a cube of FIELD_RADIUS blocks in every direction around the Magnetar.
 /// The network is found again every time it is used, so placing or breaking a drive works right away.
-public record StarNetwork(List<StellarDriveBlockEntity> drives) {
+public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars) {
     /// Size of the magnetic field of a Magnetar (blocks in every direction).
     public static final int FIELD_RADIUS = 16;
 
@@ -49,16 +49,30 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives) {
     /// The network of the Magnetar whose field reaches this position (empty if there is no Magnetar).
     public static StarNetwork at(Level level, BlockPos pos) {
         MagnetarBlockEntity magnetar = findMagnetar(level, pos);
-        return magnetar == null ? new StarNetwork(List.of()) : around(level, magnetar.getBlockPos());
+        return magnetar == null ? new StarNetwork(List.of(), List.of()) : around(level, magnetar.getBlockPos());
     }
 
-    /// Every drive inside the field of the Magnetar at this position.
+    /// Every drive and Quasar inside the field of the Magnetar at this position.
     public static StarNetwork around(Level level, BlockPos magnetarPos) {
         List<StellarDriveBlockEntity> drives = new ArrayList<>();
+        List<QuasarBlockEntity> quasars = new ArrayList<>();
         forEachBlockEntity(level, magnetarPos, FIELD_RADIUS, blockEntity -> {
-            if (blockEntity instanceof StellarDriveBlockEntity drive && !drive.isRemoved()) drives.add(drive);
+            if (blockEntity.isRemoved()) return;
+            if (blockEntity instanceof StellarDriveBlockEntity drive) drives.add(drive);
+            else if (blockEntity instanceof QuasarBlockEntity quasar) quasars.add(quasar);
         });
-        return new StarNetwork(drives);
+        return new StarNetwork(drives, quasars);
+    }
+
+    /// Every recipe of the Quasars of the network (one per item: the first Quasar wins).
+    public List<Pattern> patterns() {
+        List<Pattern> list = new ArrayList<>();
+        for (QuasarBlockEntity quasar : quasars) {
+            for (Pattern pattern : quasar.getPatterns()) {
+                if (list.stream().noneMatch(other -> other.makes(pattern.output().create()))) list.add(pattern);
+            }
+        }
+        return list;
     }
 
     /// Goes through the block entities of the loaded chunks inside the cube around "center".

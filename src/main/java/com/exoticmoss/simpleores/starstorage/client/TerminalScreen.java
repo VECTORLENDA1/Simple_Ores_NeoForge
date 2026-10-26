@@ -1,6 +1,7 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.starstorage.CellTier;
+import com.exoticmoss.simpleores.starstorage.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
@@ -33,6 +34,8 @@ import java.util.Optional;
 ///    Shift + click takes a stack into the inventory. Clicking with an item in the mouse cursor stores it
 ///    (right-click: only one). Mouse wheel scrolls.
 ///  - Bottom: the inventory and a normal crafting grid. Shift + click on an item of the inventory stores it.
+///  - Items the Quasars can craft: shown with "Craft" when the network has none. Clicking it (or Ctrl + click
+///    on any craftable item) opens a small panel to choose how many to craft.
 /// The screen only asks the server (TerminalAction); the server changes the network and sends back the new
 /// contents (TerminalContents). The game is not paused, so the server keeps answering.
 public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
@@ -65,6 +68,13 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     private int cellScroll;
     private int ticks;
     private EditBox searchBox;
+    private Button sortButton;
+    /// Craft panel: the item (null = closed), the amount box, its buttons and its message.
+    private ItemStackTemplate craftItem;
+    private EditBox amountBox;
+    private Button startButton;
+    private Button cancelButton;
+    private final List<Component> craftMessage = new ArrayList<>();
     private Button clearButton;
 
     public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
@@ -83,8 +93,16 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     /// Search and sort.
     private void filter() {
         String text = search.trim().toLowerCase(Locale.ROOT);
+        List<TerminalContents.Item> all = new ArrayList<>(contents.items());
+        // The items that can be crafted and that the network doesn't have: shown with "Craft"
+        for (ItemStackTemplate craftable : contents.craftables()) {
+            ItemStack stack = craftable.create();
+            if (all.stream().noneMatch(item -> ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
+                all.add(new TerminalContents.Item(craftable, 0));
+            }
+        }
         List<TerminalContents.Item> list = new ArrayList<>();
-        for (TerminalContents.Item item : contents.items()) {
+        for (TerminalContents.Item item : all) {
             if (text.isEmpty() || name(item).toLowerCase(Locale.ROOT).contains(text)) list.add(item);
         }
         Comparator<TerminalContents.Item> byName = Comparator.comparing(item -> name(item).toLowerCase(Locale.ROOT));
@@ -127,7 +145,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         });
         addRenderableWidget(searchBox);
 
-        addRenderableWidget(Button.builder(sortLabel(), b -> {
+        sortButton = addRenderableWidget(Button.builder(sortLabel(), b -> {
             sort = (sort + 1) % SORT_KEYS.length;
             b.setMessage(sortLabel());
             filter();
@@ -138,6 +156,101 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         // (the X is drawn in extractRenderState, so it is exactly in the middle of the button)
         clearButton = addRenderableWidget(Button.builder(Component.empty(), b -> send(TerminalAction.CLEAR_GRID, Optional.empty()))
                 .bounds(gridRight - 11, topPos + layout.inventoryTop() - 12, 11, 11).build());
+    }
+
+    private boolean isCraftable(ItemStackTemplate item) {
+        ItemStack stack = item.create();
+        return contents.craftables().stream().anyMatch(craftable -> ItemStack.isSameItemSameComponents(craftable.create(), stack));
+    }
+
+    // ---------------------------------------------------------------- craft panel
+
+    private static final int CRAFT_W = 180;
+    private static final int CRAFT_H = 96;
+
+    private int craftLeft() {
+        return leftPos + (imageWidth - CRAFT_W) / 2;
+    }
+
+    private int craftTop() {
+        return topPos + 18;
+    }
+
+    private void openCraft(ItemStackTemplate item) {
+        closeCraft();
+        craftItem = item;
+        craftMessage.clear();
+        int x = craftLeft(), y = craftTop();
+        amountBox = addRenderableWidget(new EditBox(font, x + 10, y + 34, 70, 16, Component.empty()));
+        amountBox.setFilter(value -> value.matches("\\d{0,6}"));
+        amountBox.setValue("1");
+        startButton = addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.terminal.craft.start"), b -> startCraft())
+                .bounds(x + 86, y + 33, 40, 18).build());
+        cancelButton = addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.terminal.craft.cancel"), b -> closeCraft())
+                .bounds(x + 130, y + 33, 40, 18).build());
+        setFocused(amountBox);
+        amountBox.setFocused(true);
+        searchBox.visible = false;
+        sortButton.visible = false;
+    }
+
+    private void closeCraft() {
+        if (amountBox != null) removeWidget(amountBox);
+        if (startButton != null) removeWidget(startButton);
+        if (cancelButton != null) removeWidget(cancelButton);
+        amountBox = null;
+        startButton = null;
+        cancelButton = null;
+        craftItem = null;
+        if (searchBox != null) searchBox.visible = true;
+        if (sortButton != null) sortButton.visible = true;
+        setFocused(null);
+    }
+
+    private void startCraft() {
+        if (craftItem == null) return;
+        int amount;
+        try {
+            amount = Integer.parseInt(amountBox.getValue());
+        } catch (NumberFormatException e) {
+            amount = 0;
+        }
+        if (amount <= 0) return;
+        craftMessage.clear();
+        craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.working"));
+        ClientPacketDistributor.sendToServer(new CraftRequest(menu.pos, craftItem, amount));
+    }
+
+    /// The server answered the craft request.
+    public void onCraftReply(CraftRequest.Reply reply) {
+        if (craftItem == null) return;
+        if (reply.ok()) {
+            closeCraft();
+            return;
+        }
+        craftMessage.clear();
+        if (!reply.error().isEmpty()) {
+            craftMessage.add(Component.translatable(reply.error()).withColor(0xFFE05050));
+            return;
+        }
+        craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.missing").withColor(0xFFE05050));
+        for (int i = 0; i < Math.min(3, reply.missing().size()); i++) {
+            CraftRequest.Missing missing = reply.missing().get(i);
+            craftMessage.add(Component.literal(StarNetwork.format(missing.count()) + " x ").append(missing.item().getHoverName()));
+        }
+        if (reply.missing().size() > 3) craftMessage.add(Component.literal("..."));
+    }
+
+    private void drawCraftPanel(GuiGraphicsExtractor graphics) {
+        int x = craftLeft(), y = craftTop();
+        graphics.fill(x, y, x + CRAFT_W, y + CRAFT_H, 0xF0161622);
+        graphics.outline(x, y, CRAFT_W, CRAFT_H, PANEL_BORDER);
+        ItemStack stack = craftItem.create();
+        graphics.item(stack, x + 10, y + 9);
+        graphics.text(font, Component.translatable("screen.simpleores.terminal.craft.title", stack.getHoverName()), x + 32, y + 13, TEXT);
+        for (int i = 0; i < craftMessage.size(); i++) {
+            graphics.text(font, craftMessage.get(i), x + 10, y + 56 + i * 10, TEXT_DIM);
+        }
     }
 
     private static Component sortLabel() {
@@ -172,6 +285,13 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
             return true;
         }
         boolean handled = handleClick(event, doubleClick);
+        if (craftItem != null) {
+            if (amountBox != null) {
+                setFocused(amountBox);
+                amountBox.setFocused(true);
+            }
+            return handled;
+        }
         // Nothing stays selected (white outline) after a click: only the search box, while clicking on it
         if (searchBox == null || !searchBox.isMouseOver(event.x(), event.y())) {
             if (searchBox != null) searchBox.setFocused(false);
@@ -181,6 +301,14 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     }
 
     private boolean handleClick(MouseButtonEvent event, boolean doubleClick) {
+        if (craftItem != null) {
+            // The craft panel is open: only its box and buttons work
+            int x = craftLeft(), y = craftTop();
+            if (event.x() >= x && event.x() < x + CRAFT_W && event.y() >= y && event.y() < y + CRAFT_H) {
+                return super.mouseClicked(event, doubleClick);
+            }
+            return true;
+        }
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
             if (!menu.getCarried().isEmpty()) {
@@ -188,7 +316,10 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
                 send(right ? TerminalAction.STORE_CARRIED_ONE : TerminalAction.STORE_CARRIED, Optional.empty());
             } else {
                 int index = cellAt(event.x(), event.y());
-                if (index >= 0) {
+                if (index >= 0 && isCraftable(shown.get(index).item())
+                        && (shown.get(index).count() == 0 || event.hasControlDown())) {
+                    openCraft(shown.get(index).item());
+                } else if (index >= 0) {
                     int action = event.hasShiftDown() ? TerminalAction.TAKE_TO_INVENTORY : right ? TerminalAction.TAKE_ONE : TerminalAction.TAKE_STACK;
                     send(action, Optional.of(shown.get(index).item()));
                 }
@@ -201,6 +332,13 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     /// While writing in the search box, the keys write (the inventory key doesn't close the screen).
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (craftItem != null) {
+            // Craft panel: Esc closes it, Enter starts, the rest writes the amount
+            if (event.isEscape()) closeCraft();
+            else if (event.isConfirmation()) startCraft();
+            else if (amountBox != null) amountBox.keyPressed(event);
+            return true;
+        }
         if (searchBox != null && searchBox.isFocused() && !event.isEscape()) {
             // Enter: stop writing in the search box
             if (event.isConfirmation()) {
@@ -259,8 +397,12 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
         graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
 
-        drawCells(graphics);
+        if (craftItem == null) drawCells(graphics);
         int hovered = drawNetwork(graphics, mouseX, mouseY);
+        if (craftItem != null) {
+            hovered = -1;
+            drawCraftPanel(graphics);
+        }
 
         // Used / capacity
         graphics.centeredText(font, Component.translatable("screen.simpleores.terminal.usage",
@@ -297,9 +439,11 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         // Tooltip of the items of the network
         if (hovered >= 0 && menu.getCarried().isEmpty()) {
             TerminalContents.Item item = shown.get(hovered);
-            graphics.setTooltipForNextFrame(font, List.of(item.item().create().getHoverName(),
-                            Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count()))),
-                    Optional.empty(), mouseX, mouseY);
+            List<Component> lines = new ArrayList<>();
+            lines.add(item.item().create().getHoverName());
+            lines.add(Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count())));
+            if (item.count() > 0 && isCraftable(item.item())) lines.add(Component.translatable("screen.simpleores.terminal.craft.ctrl").withColor(0xFF7FE0C0));
+            graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
         }
     }
 
@@ -319,8 +463,10 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
                 graphics.fill(x + 1, y + 1, x + TerminalLayout.CELL_W - 1, y + TerminalLayout.CELL_H - 1, index == hovered ? CELL_HOVER : CELL_COLOR);
                 if (index >= shown.size()) continue;
                 TerminalContents.Item item = shown.get(index);
+                if (craftItem != null) continue;
                 graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
-                graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, TEXT);
+                Component count = item.count() == 0 ? Component.translatable("screen.simpleores.terminal.craft") : Component.literal(StarNetwork.format(item.count()));
+                graphics.centeredText(font, count, x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, item.count() == 0 ? 0xFF7FE0C0 : TEXT);
             }
         }
         // Scroll bar (only when there are more rows than fit)

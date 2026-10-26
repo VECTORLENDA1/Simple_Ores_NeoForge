@@ -1,7 +1,7 @@
 package com.exoticmoss.simpleores.starstorage;
 
 import com.exoticmoss.simpleores.SimpleOres;
-import com.exoticmoss.simpleores.starstorage.client.MagnetarClient;
+import com.exoticmoss.simpleores.starstorage.client.BinaryClient;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -18,17 +18,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-/// Sent by the server to the player using a Magnetar Core: the network and every block with an inventory
-/// inside its field (its slots and the rules of each slot). "open" = open the Magnetar screen.
-public record MagnetarView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks)
+/// Sent by the server to the player using a Binary Star: every block with an inventory around it
+/// (its slots and the rules of each slot). "open" = open the Binary Star screen.
+public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks)
         implements CustomPacketPayload {
     /// One block with an inventory: where it is, its item (icon and name), its slots and the rules.
     public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<SlotRule> rules) {
     }
 
-    public static final Type<MagnetarView> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "magnetar_view"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, MagnetarView> STREAM_CODEC = StreamCodec.of(
+    public static final Type<BinaryView> TYPE =
+            new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "binary_view"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, BinaryView> STREAM_CODEC = StreamCodec.of(
             (buf, message) -> {
                 BlockPos.STREAM_CODEC.encode(buf, message.pos());
                 buf.writeBoolean(message.open());
@@ -66,36 +66,36 @@ public record MagnetarView(BlockPos pos, boolean open, int drives, int cells, lo
                     for (int r = 0; r < ruleCount; r++) rules.add(SlotRule.STREAM_CODEC.decode(buf));
                     blocks.add(new Block(blockPos, icon, slots, rules));
                 }
-                return new MagnetarView(pos, open, drives, cells, used, capacity, blocks);
+                return new BinaryView(pos, open, drives, cells, used, capacity, blocks);
             });
 
     @Override
-    public Type<MagnetarView> type() {
+    public Type<BinaryView> type() {
         return TYPE;
     }
 
-    /// Sends what the Magnetar at "pos" sees to the player.
+    /// Sends what the Binary Star at "pos" sees to the player.
     public static void send(ServerPlayer player, BlockPos pos, boolean open) {
-        if (!(player.level().getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar)) return;
-        StarNetwork network = StarNetwork.around(player.level(), pos);
+        if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
+        StarNetwork network = StarNetwork.at(player.level(), pos);
         List<Block> blocks = new ArrayList<>();
-        StarNetwork.forEachBlockEntity(player.level(), pos, StarNetwork.FIELD_RADIUS, blockEntity -> {
+        StarNetwork.forEachBlockEntity(player.level(), pos, BinaryStarBlockEntity.RADIUS, blockEntity -> {
             if (!(blockEntity instanceof Container container) || blockEntity.isRemoved()) return;
             ItemStack icon = new ItemStack(blockEntity.getBlockState().getBlock().asItem());
             if (icon.isEmpty()) return;
             List<ItemStack> slots = new ArrayList<>();
             for (int i = 0; i < container.getContainerSize(); i++) slots.add(container.getItem(i).copy());
-            Map<Integer, SlotRule> rules = magnetar.rulesOf(blockEntity.getBlockPos());
+            Map<Integer, SlotRule> rules = binary.rulesOf(blockEntity.getBlockPos());
             blocks.add(new Block(blockEntity.getBlockPos(), icon, slots, new ArrayList<>(rules.values())));
         });
         // The closest blocks first
         blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));
-        PacketDistributor.sendToPlayer(player, new MagnetarView(pos, open, network.drives().size(), network.cellCount(),
+        PacketDistributor.sendToPlayer(player, new BinaryView(pos, open, network.drives().size(), network.cellCount(),
                 network.usedItems(), network.capacity(), blocks));
     }
 
-    /// Runs on the client: opens or updates the Magnetar screen.
-    public static void handle(MagnetarView message, IPayloadContext context) {
-        MagnetarClient.receive(message);
+    /// Runs on the client: opens or updates the Binary Star screen.
+    public static void handle(BinaryView message, IPayloadContext context) {
+        BinaryClient.receive(message);
     }
 }

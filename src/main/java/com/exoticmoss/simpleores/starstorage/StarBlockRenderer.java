@@ -57,8 +57,7 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
 
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);
-        CoreDrawing.drawStar(pose, collector, radius, time * 1.5f, look.coreColor, look.spotColor, look.glowColor,
-                0x00000000, look.beamColor, look.beamLength, shading);
+        StarDrawing.draw(look, pose, collector, radius, time * 1.5f, look.beamLength, shading);
         // Looked at: a light shell around the star (instead of the box outline)
         if (state.looked) CoreDrawing.drawShell(pose, collector, radius * 1.18f, StarLook.HIGHLIGHT_COLOR);
         pose.popPose();

@@ -26,6 +26,8 @@
     "simpleores:magnetar_core",
     "simpleores:stellar_drive",
     "simpleores:stellar_terminal",
-    "simpleores:bedrock_obscuridium_ore"
+    "simpleores:bedrock_obscuridium_ore",
+    "simpleores:binary_star",
+    "simpleores:quasar"
   ]
 }

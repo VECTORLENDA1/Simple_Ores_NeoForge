@@ -17,7 +17,11 @@ import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
 import com.exoticmoss.simpleores.starstorage.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.BinaryView;
+import com.exoticmoss.simpleores.starstorage.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
+import com.exoticmoss.simpleores.starstorage.QuasarFill;
+import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
+import com.exoticmoss.simpleores.starstorage.client.QuasarScreen;
 import com.exoticmoss.simpleores.starstorage.client.TerminalScreen;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import com.exoticmoss.simpleores.worldgen.ModFeatures;
@@ -80,10 +84,16 @@ public class SimpleOres {
                 .playToServer(TerminalAction.TYPE, TerminalAction.STREAM_CODEC, TerminalAction::handle)
         // Stellar Terminal: the items of the Magnetar network (server -> client)
                 .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle)
-        // Magnetar screen: the player changed the rules of the slots (client -> server)
+        // Binary Star screen: the player changed the rules of the slots (client -> server)
                 .playToServer(BinaryAction.TYPE, BinaryAction.STREAM_CODEC, BinaryAction::handle)
-        // Magnetar screen: the network and the blocks of the field (server -> client)
-                .playToClient(BinaryView.TYPE, BinaryView.STREAM_CODEC, BinaryView::handle);
+        // Binary Star screen: the blocks around it (server -> client)
+                .playToClient(BinaryView.TYPE, BinaryView.STREAM_CODEC, BinaryView::handle)
+        // Quasar: the recipes saved in it (server -> client), JEI filled its grid (client -> server)
+                .playToClient(QuasarPatterns.TYPE, QuasarPatterns.STREAM_CODEC, QuasarPatterns::handle)
+                .playToServer(QuasarFill.TYPE, QuasarFill.STREAM_CODEC, QuasarFill::handle)
+        // Auto-craft: the player asked to craft (client -> server) and the answer (server -> client)
+                .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
+                .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -113,12 +123,15 @@ public class SimpleOres {
             event.registerBlockEntityRenderer(ModBlockEntities.MAGNETAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.MAGNETAR));
             event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL));
             event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_DRIVE_BE.get(), StellarDriveRenderer::new);
+            event.registerBlockEntityRenderer(ModBlockEntities.BINARY_STAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.BINARY));
+            event.registerBlockEntityRenderer(ModBlockEntities.QUASAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.QUASAR));
         }
 
         // Screen of the Stellar Terminal
         @SubscribeEvent
         public static void registerScreens(RegisterMenuScreensEvent event) {
             event.register(ModMenus.TERMINAL.get(), TerminalScreen::new);
+            event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)

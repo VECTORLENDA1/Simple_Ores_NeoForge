@@ -19,6 +19,7 @@ import com.exoticmoss.simpleores.starstorage.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.BinaryView;
 import com.exoticmoss.simpleores.starstorage.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
+import com.exoticmoss.simpleores.starstorage.TerminalMenu;
 import com.exoticmoss.simpleores.starstorage.QuasarFill;
 import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
 import com.exoticmoss.simpleores.starstorage.QuasarSlot;
@@ -133,7 +134,7 @@ public class SimpleOres {
         // Screen of the Stellar Terminal
         @SubscribeEvent
         public static void registerScreens(RegisterMenuScreensEvent event) {
-            event.register(ModMenus.TERMINAL.get(), TerminalScreen::new);
+            event.register(ModMenus.TERMINAL.get(), (TerminalMenu menu, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.network.chat.Component title) -> new TerminalScreen<>(menu, inventory, title));
             event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
             event.register(ModMenus.BINARY.get(), BinaryScreen::new);
         }

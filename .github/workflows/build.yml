@@ -28,6 +28,5 @@ jobs:
         run: |
           JAVAP=$(find / -name javap -path "*bin*" 2>/dev/null | head -1)
           J=build/moddev/artifacts/minecraft-patched-26.2.0.88.jar
-          $JAVAP -cp $J -p net.minecraft.client.renderer.GameRenderer | grep -i "pick\|hitresult" 
-          $JAVAP -cp $J -p net.minecraft.client.Minecraft | grep -i "hitResult\|crosshair"
-          $JAVAP -cp $J -p net.minecraft.world.phys.AABB | grep -i "clip"
+          unzip -l $J | grep -i "pick" | head -20 || true
+          for c in net.minecraft.client.renderer.GameRenderer net.minecraft.client.Minecraft net.minecraft.client.player.LocalPlayer net.minecraft.world.entity.Entity; do echo "=== $c"; $JAVAP -cp $J -p $c | grep -i "HitResult\|pick" || true; done

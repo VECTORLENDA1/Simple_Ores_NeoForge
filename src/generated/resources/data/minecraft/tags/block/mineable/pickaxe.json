@@ -28,7 +28,6 @@
     "simpleores:stellar_terminal",
     "simpleores:bedrock_obscuridium_ore",
     "simpleores:binary_star",
-    "simpleores:quasar",
-    "simpleores:advanced_stellar_terminal"
+    "simpleores:quasar"
   ]
 }

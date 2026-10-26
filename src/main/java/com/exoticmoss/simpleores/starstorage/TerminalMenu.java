@@ -82,8 +82,9 @@ public class TerminalMenu extends AbstractContainerMenu {
         broadcastChanges();
     }
 
-    /// The result slot. After crafting, the items used are put back in the crafting grid from the network
-    /// (like in Refined Storage), so the same recipe can be crafted again and again.
+    /// The result slot. After crafting, the items of the grid are used first; only when a slot of the grid
+    /// becomes empty, the network puts one of that item back in it (like in Refined Storage),
+    /// so the same recipe can be crafted again and again.
     private class RefillResultSlot extends ResultSlot {
         RefillResultSlot(int x, int y) {
             super(player, craftSlots, resultSlots, 0, x, y);
@@ -98,26 +99,17 @@ public class TerminalMenu extends AbstractContainerMenu {
         }
     }
 
-    /// Puts back in the crafting grid, from the network, the items used by the last craft.
+    /// The slots of the crafting grid that the last craft left empty get one of the same item from the network.
     private void refill(ServerPlayer player, List<ItemStack> before) {
         StarNetwork network = StarNetwork.at(player.level(), pos);
         boolean changed = false;
         for (int i = 0; i < before.size(); i++) {
             ItemStack was = before.get(i);
-            if (was.isEmpty()) continue;
-            ItemStack now = craftSlots.getItem(i);
-            if (now.isEmpty()) {
-                ItemStack got = network.extract(was.copyWithCount(1), was.getCount());
-                if (got.isEmpty()) continue;
-                craftSlots.setItem(i, got);
-                changed = true;
-            } else if (ItemStack.isSameItemSameComponents(now, was) && now.getCount() < was.getCount()) {
-                ItemStack got = network.extract(was.copyWithCount(1), was.getCount() - now.getCount());
-                if (got.isEmpty()) continue;
-                now.grow(got.getCount());
-                craftSlots.setItem(i, now);
-                changed = true;
-            }
+            if (was.isEmpty() || !craftSlots.getItem(i).isEmpty()) continue;
+            ItemStack got = network.extract(was.copyWithCount(1), 1);
+            if (got.isEmpty()) continue;
+            craftSlots.setItem(i, got);
+            changed = true;
         }
         if (changed) TerminalContents.send(player, pos);
     }

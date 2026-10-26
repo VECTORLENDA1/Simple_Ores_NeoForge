@@ -65,6 +65,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     private int cellScroll;
     private int ticks;
     private EditBox searchBox;
+    private Button clearButton;
 
     public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, TerminalLayout.WIDTH, menu.layout.height());
@@ -134,9 +135,9 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
 
         // Small X at the top right of the crafting grid: puts the items of the grid back in the network
         int gridRight = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT;
-        Button clear = Button.builder(Component.literal("x"), b -> send(TerminalAction.CLEAR_GRID, Optional.empty()))
-                .bounds(gridRight - 11, topPos + layout.inventoryTop() - 12, 11, 11).build();
-        addRenderableWidget(clear);
+        // (the X is drawn in extractRenderState, so it is exactly in the middle of the button)
+        clearButton = addRenderableWidget(Button.builder(Component.empty(), b -> send(TerminalAction.CLEAR_GRID, Optional.empty()))
+                .bounds(gridRight - 11, topPos + layout.inventoryTop() - 12, 11, 11).build());
     }
 
     private static Component sortLabel() {
@@ -262,6 +263,15 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         for (int i = 0; i < 4; i++) graphics.fill(ax + 8 + i, ay - 3 + i, ax + 9 + i, ay + 5 - i, TEXT_DIM);
 
         super.extractRenderState(graphics, mouseX, mouseY, a);
+
+        // The X of the button that empties the crafting grid (5x5 pixels, in the middle of the button)
+        if (clearButton != null) {
+            int cx = clearButton.getX() + 3, cy = clearButton.getY() + 3;
+            for (int i = 0; i < 5; i++) {
+                graphics.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, TEXT);
+                graphics.fill(cx + 4 - i, cy + i, cx + 5 - i, cy + i + 1, TEXT);
+            }
+        }
 
         // Tooltip of the items of the network
         if (hovered >= 0 && menu.getCarried().isEmpty()) {

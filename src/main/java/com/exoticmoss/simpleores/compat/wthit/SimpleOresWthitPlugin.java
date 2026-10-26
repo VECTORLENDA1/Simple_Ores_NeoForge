@@ -9,7 +9,6 @@ import mcp.mobius.waila.api.IServerAccessor;
 import mcp.mobius.waila.api.IWailaCommonPlugin;
 import mcp.mobius.waila.api.data.ItemData;
 import mcp.mobius.waila.api.data.ProgressData;
-import com.exoticmoss.simpleores.starstorage.CellContents;
 import com.exoticmoss.simpleores.starstorage.FluidCellItem;
 import com.exoticmoss.simpleores.starstorage.FluidContents;
 import com.exoticmoss.simpleores.starstorage.StarCellItem;
@@ -18,11 +17,9 @@ import mcp.mobius.waila.api.data.EnergyData;
 import mcp.mobius.waila.api.data.FluidData;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.material.Fluid;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,26 +36,23 @@ public class SimpleOresWthitPlugin implements IWailaCommonPlugin {
         registrar.blockData(DriveDataProvider.INSTANCE, StellarDriveBlockEntity.class);
     }
 
-    /// Stellar Drive: the items of its Star Cells (a bar with how full they are, and the items) and the liquids of its
-    /// Fluid Cells (one bar per liquid). The bar of the items is named in SimpleOresWthitClientPlugin.
+    /// Stellar Drive: a bar with how full its Star Cells are (not the items: they can be thousands of kinds) and the
+    /// liquids of its Fluid Cells (one bar per liquid, the MAX_FLUIDS with the most). The bar of the items is named in
+    /// SimpleOresWthitClientPlugin.
     public enum DriveDataProvider implements IDataProvider<StellarDriveBlockEntity> {
         INSTANCE;
 
-        /// At most this many kinds of items are shown (the most first).
-        private static final int MAX_ITEMS = 36;
+        /// At most this many liquids are shown (the most first).
+        private static final int MAX_FLUIDS = 3;
 
         @Override
         public void appendData(IDataWriter data, IServerAccessor<StellarDriveBlockEntity> accessor, IPluginConfig config) {
             long used = 0, capacity = 0, fluidCapacity = 0;
-            Map<ItemStackTemplate, Long> items = new HashMap<>();
             Map<Fluid, Long> fluids = new LinkedHashMap<>();
             for (ItemStack cell : accessor.getTarget().getCells()) {
                 if (cell.getItem() instanceof StarCellItem item) {
                     capacity += item.tier.capacity;
-                    for (CellContents.Entry entry : StarCellItem.getContents(cell).entries()) {
-                        used += entry.count();
-                        items.merge(entry.item(), (long) entry.count(), Long::sum);
-                    }
+                    used += StarCellItem.getContents(cell).totalCount();
                 } else if (cell.getItem() instanceof FluidCellItem item) {
                     fluidCapacity = Math.min(Long.MAX_VALUE / 2, fluidCapacity + item.tier.fluidCapacity);
                     for (FluidContents.Entry entry : FluidCellItem.getContents(cell).entries()) fluids.merge(entry.fluid(), entry.amount(), Long::sum);
@@ -72,21 +66,13 @@ public class SimpleOresWthitPlugin implements IWailaCommonPlugin {
             // The liquids
             data.add(FluidData.TYPE, result -> {
                 if (fluids.isEmpty()) return;
-                FluidData fluidData = FluidData.of(FluidData.Unit.MILLIBUCKETS, fluids.size());
-                fluids.forEach((fluid, amount) -> fluidData.add(fluid, DataComponentPatch.EMPTY, amount, liquidsCapacity));
+                List<Map.Entry<Fluid, Long>> sorted = new ArrayList<>(fluids.entrySet());
+                sorted.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+                FluidData fluidData = FluidData.of(FluidData.Unit.MILLIBUCKETS, Math.min(MAX_FLUIDS, sorted.size()));
+                for (int i = 0; i < Math.min(MAX_FLUIDS, sorted.size()); i++) {
+                    fluidData.add(sorted.get(i).getKey(), DataComponentPatch.EMPTY, sorted.get(i).getValue(), liquidsCapacity);
+                }
                 result.add(fluidData);
-            });
-            // The items (the most first)
-            List<Map.Entry<ItemStackTemplate, Long>> sorted = new ArrayList<>(items.entrySet());
-            sorted.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
-            List<ItemStack> stacks = new ArrayList<>();
-            for (int i = 0; i < Math.min(MAX_ITEMS, sorted.size()); i++) {
-                ItemStack stack = sorted.get(i).getKey().create();
-                stack.setCount((int) Math.min(Integer.MAX_VALUE, sorted.get(i).getValue()));
-                stacks.add(stack);
-            }
-            data.add(ItemData.TYPE, result -> {
-                if (!stacks.isEmpty()) result.add(ItemData.of(config).add(stacks));
             });
         }
     }

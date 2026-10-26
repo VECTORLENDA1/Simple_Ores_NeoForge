@@ -84,9 +84,9 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
             items.add(new Item(entry.getKey(), entry.getValue()));
         }
         List<ItemStackTemplate> craftables = new ArrayList<>();
-        boolean cores = AdvancedTerminalBlock.usesCores(player.level(), pos);
+        boolean advanced = AdvancedTerminalBlock.usesCores(player.level(), pos) || player.level().getBlockState(pos).getBlock() instanceof QuasarBlock;
         for (Pattern pattern : network.patterns()) {
-            if (cores || !pattern.isCore()) craftables.add(pattern.output());
+            if (advanced || !pattern.advanced()) craftables.add(pattern.output());
         }
         PacketDistributor.sendToPlayer(player, new TerminalContents(pos, items, network.usedItems(), network.capacity(), network.cells(), craftables));
     }

@@ -60,6 +60,8 @@ public final class Autocraft {
     private final List<Step> steps = new ArrayList<>();
     private final Map<ItemStackTemplate, Long> missing = new LinkedHashMap<>();
     private long crafts;
+    /// The items being planned now (this one and the ones above it), so a recipe never needs its own result.
+    private final java.util.Set<ItemStackTemplate> making = new java.util.HashSet<>();
 
     private Autocraft(StarNetwork network, boolean advanced) {
         for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) stock.put(entry.getKey(), entry.getValue());
@@ -68,11 +70,17 @@ public final class Autocraft {
 
     /// Plans and, if nothing is missing, crafts "amount" of "item" into the network.
     /// "advanced" = the Gravity Core and furnace recipes can be used (Stellar Terminal II, Quasar).
-    public static Result request(ServerLevel level, StarNetwork network, BlockPos pos, ItemStackTemplate item, long amount, boolean advanced) {
+    /// "chosen" = the recipe chosen by the player (empty = the first one that has everything).
+    public static Result request(ServerLevel level, StarNetwork network, BlockPos pos, ItemStackTemplate item, long amount,
+                                 boolean advanced, Optional<Pattern> chosen) {
         Autocraft craft = new Autocraft(network, advanced);
         if (craft.patternsFor(item).isEmpty()) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
         // The items asked for are always crafted (even if the network already has some)
-        craft.craftAny(item, amount, 0);
+        if (chosen.isPresent() && craft.patterns.contains(chosen.get()) && chosen.get().makes(item.create())) {
+            craft.craft(chosen.get(), item, amount, 0);
+        } else {
+            craft.craftAny(item, amount, 0);
+        }
         if (craft.crafts > MAX_CRAFTS) return new Result(Map.of(), "screen.simpleores.terminal.craft.too_big");
         if (!craft.missing.isEmpty()) return new Result(craft.missing, null);
         if (craft.steps.stream().anyMatch(step -> step.pattern().advanced()) || craft.crafts > CRAFTS_AT_ONCE) {
@@ -105,7 +113,9 @@ public final class Autocraft {
         if (used > 0) stock.put(item, have - used);
         amount -= used;
         if (amount <= 0) return true;
-        if (patternsFor(item).isEmpty() || depth >= MAX_DEPTH) {
+        // An item that is being crafted further up is not crafted again to make itself
+        // (e.g. ingot -> block -> ingot): what the network doesn't have of it is missing
+        if (patternsFor(item).isEmpty() || depth >= MAX_DEPTH || making.contains(item)) {
             missing.merge(item, amount, Long::sum);
             return false;
         }
@@ -137,6 +147,15 @@ public final class Autocraft {
 
     /// Plans crafting at least "amount" of "item" with "pattern" (the extra goes to the stock).
     private boolean craft(Pattern pattern, ItemStackTemplate item, long amount, int depth) {
+        making.add(item);
+        try {
+            return craftSteps(pattern, item, amount, depth);
+        } finally {
+            making.remove(item);
+        }
+    }
+
+    private boolean craftSteps(Pattern pattern, ItemStackTemplate item, long amount, int depth) {
         long times = (amount + pattern.count() - 1) / pattern.count();
         crafts += times;
         if (crafts > MAX_CRAFTS) return false;

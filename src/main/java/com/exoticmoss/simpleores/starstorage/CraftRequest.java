@@ -18,16 +18,19 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /// Sent by the client: craft "amount" of "item" with the Quasars of the network of the terminal at "pos".
+/// "recipe" = the recipe chosen in the craft panel (empty = the first one that has everything).
 /// The server answers with Reply (what is missing, or that it was crafted).
-public record CraftRequest(BlockPos pos, ItemStackTemplate item, long amount) implements CustomPacketPayload {
+public record CraftRequest(BlockPos pos, ItemStackTemplate item, long amount, Optional<Pattern> recipe) implements CustomPacketPayload {
     public static final Type<CraftRequest> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "craft_request"));
     public static final StreamCodec<RegistryFriendlyByteBuf, CraftRequest> STREAM_CODEC = StreamCodec.composite(
             BlockPos.STREAM_CODEC, CraftRequest::pos,
             ItemStackTemplate.STREAM_CODEC, CraftRequest::item,
             ByteBufCodecs.VAR_LONG, CraftRequest::amount,
+            ByteBufCodecs.optional(Pattern.STREAM_CODEC), CraftRequest::recipe,
             CraftRequest::new);
 
     @Override
@@ -42,7 +45,7 @@ public record CraftRequest(BlockPos pos, ItemStackTemplate item, long amount) im
         if (message.amount() <= 0) return;
         StarNetwork network = StarNetwork.at(level, message.pos());
         Autocraft.Result result = Autocraft.request(level, network, message.pos(), message.item(), message.amount(),
-                AdvancedTerminalBlock.usesCores(level, message.pos()) || player.containerMenu instanceof QuasarMenu);
+                AdvancedTerminalBlock.usesCores(level, message.pos()) || player.containerMenu instanceof QuasarMenu, message.recipe());
         List<Missing> missing = new ArrayList<>();
         for (Map.Entry<ItemStackTemplate, Long> entry : result.missing().entrySet()) {
             missing.add(new Missing(entry.getKey().create(), entry.getValue()));

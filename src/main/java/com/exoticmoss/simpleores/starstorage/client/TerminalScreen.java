@@ -9,6 +9,7 @@ import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
 import com.exoticmoss.simpleores.starstorage.TerminalLayout;
 import com.exoticmoss.simpleores.starstorage.NetworkMenu;
+import com.exoticmoss.simpleores.starstorage.Pattern;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -82,6 +83,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     private Button startButton;
     private Button cancelButton;
     private final List<Component> craftMessage = new ArrayList<>();
+    /// Craft panel: the recipe chosen (null = automatic: the first one that has everything).
+    private Pattern craftChoice;
+    private static final int OPTION = 20;
+    private static final int AUTO_W = 30;
+    private static final int MAX_OPTIONS = 7;
     private Button clearButton;
 
     public TerminalScreen(M menu, Inventory inventory, Component title) {
@@ -255,7 +261,48 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     /// Height of the craft panel: grows with the missing items.
     private int craftHeight() {
         int rows = missingRows();
-        return 72 + (rows > 0 ? 12 + rows * (MISSING_CELL + 4) : 0);
+        return 72 + optionsHeight() + (rows > 0 ? 12 + rows * (MISSING_CELL + 4) : 0);
+    }
+
+    /// The recipes for the item of the craft panel (more than one: the player chooses).
+    private List<Pattern> craftOptions() {
+        if (craftItem == null) return List.of();
+        ItemStack stack = craftItem.create();
+        List<Pattern> list = contents.recipes().stream().filter(recipe -> recipe.makes(stack)).toList();
+        return list.size() > MAX_OPTIONS ? list.subList(0, MAX_OPTIONS) : list;
+    }
+
+    /// The row of recipes (only when there is more than one).
+    private int optionsHeight() {
+        return craftOptions().size() > 1 ? OPTION + 6 : 0;
+    }
+
+    /// The box of option "i" of the recipe row (-1 = "Auto"): {x, y, width}.
+    private int[] optionBox(int i) {
+        int x = craftLeft() + 10, y = craftTop() + 56;
+        return i < 0 ? new int[]{x, y, AUTO_W} : new int[]{x + AUTO_W + 4 + i * (OPTION + 2), y, OPTION};
+    }
+
+    /// The ingredient shown for a recipe: the one with the most items.
+    private static ItemStack mainInput(Pattern recipe) {
+        ItemStack best = ItemStack.EMPTY;
+        int bestAmount = 0;
+        for (int i = 0; i < recipe.inputs().size(); i++) {
+            if (recipe.inputs().get(i).isEmpty()) continue;
+            int amount = recipe.amount(i);
+            // the same item in many slots of the crafting grid counts together
+            ItemStack item = recipe.inputs().get(i).get(0).create();
+            for (int j = 0; j < recipe.inputs().size(); j++) {
+                if (j != i && !recipe.inputs().get(j).isEmpty() && ItemStack.isSameItemSameComponents(recipe.inputs().get(j).get(0).create(), item)) {
+                    amount += recipe.amount(j);
+                }
+            }
+            if (amount > bestAmount) {
+                best = item;
+                bestAmount = amount;
+            }
+        }
+        return best;
     }
 
     private int craftLeft() {
@@ -269,6 +316,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     private void openCraft(ItemStackTemplate item) {
         closeCraft();
         craftItem = item;
+        craftChoice = null;
         craftMessage.clear();
         missingItems = List.of();
         int x = craftLeft(), y = craftTop();
@@ -310,7 +358,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         craftMessage.clear();
         missingItems = List.of();
         craftMessage.add(Component.translatable("screen.simpleores.terminal.craft.working"));
-        ClientPacketDistributor.sendToServer(new CraftRequest(menu.networkPos(), craftItem, amount));
+        ClientPacketDistributor.sendToServer(new CraftRequest(menu.networkPos(), craftItem, amount, Optional.ofNullable(craftChoice)));
     }
 
     /// The server answered the craft request.
@@ -336,18 +384,19 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         ItemStack stack = craftItem.create();
         graphics.item(stack, x + 10, y + 9);
         graphics.text(font, Component.translatable("screen.simpleores.terminal.craft.title", stack.getHoverName()), x + 32, y + 13, TEXT);
+        drawCraftOptions(graphics, mouseX, mouseY);
         for (int i = 0; i < craftMessage.size(); i++) {
-            graphics.text(font, craftMessage.get(i), x + 10, y + 58 + i * 10, TEXT_DIM);
+            graphics.text(font, craftMessage.get(i), x + 10, y + 58 + optionsHeight() + i * 10, TEXT_DIM);
         }
         // The missing items, drawn as items with the amount under each one
         int shownMissing = Math.min(missingItems.size(), missingRows() * MISSING_COLUMNS);
         if (shownMissing < missingItems.size()) {
-            graphics.text(font, Component.literal("+" + (missingItems.size() - shownMissing + 1)), x + CRAFT_W - 30, y + 58, 0xFFFF9090);
+            graphics.text(font, Component.literal("+" + (missingItems.size() - shownMissing + 1)), x + CRAFT_W - 30, y + 58 + optionsHeight(), 0xFFFF9090);
             shownMissing--;
         }
         for (int i = 0; i < shownMissing; i++) {
             CraftRequest.Missing missing = missingItems.get(i);
-            int mx = x + 4 + (i % MISSING_COLUMNS) * MISSING_CELL, my = y + 70 + (i / MISSING_COLUMNS) * (MISSING_CELL + 4);
+            int mx = x + 4 + (i % MISSING_COLUMNS) * MISSING_CELL, my = y + 70 + optionsHeight() + (i / MISSING_COLUMNS) * (MISSING_CELL + 4);
             graphics.fill(mx + 1, my + 1, mx + MISSING_CELL - 1, my + MISSING_CELL + 3, 0xFF3A1E24);
             graphics.item(missing.item(), mx + (MISSING_CELL - 16) / 2, my + 2);
             graphics.centeredText(font, Component.literal(StarNetwork.format(missing.count())), mx + MISSING_CELL / 2, my + 18, 0xFFFF9090);
@@ -356,6 +405,59 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                         Component.literal(String.format(Locale.ROOT, "%,d", missing.count()))), Optional.empty(), mouseX, mouseY);
             }
         }
+    }
+
+    /// The recipes to choose from: "Auto", then one box per recipe (its main ingredient, and a dot with the kind:
+    /// brown = crafting table, orange = Gravity Core, gray = furnace).
+    private void drawCraftOptions(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        List<Pattern> options = craftOptions();
+        if (options.size() <= 1) return;
+        for (int i = -1; i < options.size(); i++) {
+            int[] box = optionBox(i);
+            boolean over = mouseX >= box[0] && mouseX < box[0] + box[2] && mouseY >= box[1] && mouseY < box[1] + OPTION;
+            boolean chosen = i < 0 ? craftChoice == null : options.get(i).equals(craftChoice);
+            graphics.fill(box[0], box[1], box[0] + box[2], box[1] + OPTION, over ? CELL_HOVER : SLOT_COLOR);
+            graphics.outline(box[0], box[1], box[2], OPTION, chosen ? 0xFF40C070 : PANEL_BORDER);
+            if (i < 0) {
+                graphics.centeredText(font, Component.translatable("screen.simpleores.terminal.craft.auto"), box[0] + box[2] / 2, box[1] + 6, TEXT);
+                if (over) {
+                    graphics.setTooltipForNextFrame(font, List.of(Component.translatable("screen.simpleores.terminal.craft.auto_info")),
+                            Optional.empty(), mouseX, mouseY);
+                }
+                continue;
+            }
+            Pattern recipe = options.get(i);
+            graphics.item(mainInput(recipe), box[0] + 2, box[1] + 2);
+            int dot = recipe.isCore() ? 0xFFFF9A2A : recipe.furnace() ? 0xFFA0A0A0 : 0xFFA0703A;
+            graphics.fill(box[0] + box[2] - 5, box[1] + 2, box[0] + box[2] - 2, box[1] + 5, dot);
+            if (over) {
+                List<Component> lines = new ArrayList<>();
+                String kind = recipe.isCore() ? "core" : recipe.furnace() ? "furnace" : "crafting";
+                lines.add(Component.translatable("screen.simpleores.quasar.tab." + kind).append(" -> " + recipe.count() + " x ")
+                        .append(recipe.output().create().getHoverName()));
+                for (int input = 0; input < recipe.inputs().size(); input++) {
+                    List<ItemStackTemplate> slot = recipe.inputs().get(input);
+                    if (slot.isEmpty()) continue;
+                    String amount = recipe.amount(input) > 1 ? recipe.amount(input) + " x " : "";
+                    lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
+                }
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
+            }
+        }
+    }
+
+    /// A click on the row of recipes: chooses one. false = not on a box.
+    private boolean clickCraftOption(double x, double y) {
+        List<Pattern> options = craftOptions();
+        if (options.size() <= 1) return false;
+        for (int i = -1; i < options.size(); i++) {
+            int[] box = optionBox(i);
+            if (x >= box[0] && x < box[0] + box[2] && y >= box[1] && y < box[1] + OPTION) {
+                craftChoice = i < 0 ? null : options.get(i);
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Component sortLabel() {
@@ -406,6 +508,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             // The craft panel is open: only its box and buttons work
             int x = craftLeft(), y = craftTop();
             if (event.x() >= x && event.x() < x + CRAFT_W && event.y() >= y && event.y() < y + craftHeight()) {
+                if (clickCraftOption(event.x(), event.y())) return true;
                 return super.mouseClicked(event, doubleClick);
             }
             return true;

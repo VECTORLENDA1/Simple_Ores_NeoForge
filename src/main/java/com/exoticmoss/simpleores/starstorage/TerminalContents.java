@@ -24,7 +24,7 @@ import java.util.Map;
 /// experience kept by the Magnetar.
 public record TerminalContents(BlockPos pos, List<Item> items, long used, long capacity, List<Cell> cells,
                                List<ItemStackTemplate> craftables, List<FluidContents.Entry> fluids,
-                               long fluidUsed, long fluidCapacity, long experience) implements CustomPacketPayload {
+                               long fluidUsed, long fluidCapacity, long experience, List<Pattern> recipes) implements CustomPacketPayload {
     /// One kind of item and how many of it the whole network has.
     /// On the screen, a liquid is shown as an Item too: its bucket, the mB, and the liquid ("fluid", else null).
     public record Item(ItemStackTemplate item, long count, @Nullable Fluid fluid) {
@@ -62,6 +62,8 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
                 buf.writeVarLong(message.fluidUsed());
                 buf.writeVarLong(message.fluidCapacity());
                 buf.writeVarLong(message.experience());
+                buf.writeVarInt(message.recipes().size());
+                for (Pattern recipe : message.recipes()) Pattern.STREAM_CODEC.encode(buf, recipe);
             },
             buf -> {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
@@ -81,8 +83,14 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
                 int fluidCount = buf.readVarInt();
                 List<FluidContents.Entry> fluids = new ArrayList<>(fluidCount);
                 for (int i = 0; i < fluidCount; i++) fluids.add(FluidContents.Entry.STREAM_CODEC.decode(buf));
+                long fluidUsed = buf.readVarLong();
+                long fluidCapacity = buf.readVarLong();
+                long experience = buf.readVarLong();
+                int recipeCount = buf.readVarInt();
+                List<Pattern> recipes = new ArrayList<>(recipeCount);
+                for (int i = 0; i < recipeCount; i++) recipes.add(Pattern.STREAM_CODEC.decode(buf));
                 return new TerminalContents(pos, items, used, capacity, cells, craftables, fluids,
-                        buf.readVarLong(), buf.readVarLong(), buf.readVarLong());
+                        fluidUsed, fluidCapacity, experience, recipes);
             });
 
     @Override
@@ -92,7 +100,7 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
 
     /// Nothing (before the server answers).
     public static TerminalContents empty(BlockPos pos) {
-        return new TerminalContents(pos, List.of(), 0, 0, List.of(), List.of(), List.of(), 0, 0, 0);
+        return new TerminalContents(pos, List.of(), 0, 0, List.of(), List.of(), List.of(), 0, 0, 0, List.of());
     }
 
     /// Sends the network seen by the terminal at "pos" to the player.
@@ -103,13 +111,17 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
             items.add(new Item(entry.getKey(), entry.getValue()));
         }
         List<ItemStackTemplate> craftables = new ArrayList<>();
+        // The recipes the terminal can use (to choose one when an item has more than one)
+        List<Pattern> recipes = new ArrayList<>();
         boolean advanced = AdvancedTerminalBlock.usesCores(player.level(), pos) || player.level().getBlockState(pos).getBlock() instanceof QuasarBlock;
         for (Pattern pattern : network.patterns()) {
-            if ((advanced || !pattern.advanced()) && !craftables.contains(pattern.output())) craftables.add(pattern.output());
+            if (!advanced && pattern.advanced()) continue;
+            recipes.add(pattern);
+            if (!craftables.contains(pattern.output())) craftables.add(pattern.output());
         }
         MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(player.level(), pos);
         PacketDistributor.sendToPlayer(player, new TerminalContents(pos, items, network.usedItems(), network.capacity(), network.cells(), craftables,
-                network.fluids(), network.fluidUsed(), network.fluidCapacity(), magnetar == null ? 0 : magnetar.getExperience()));
+                network.fluids(), network.fluidUsed(), network.fluidCapacity(), magnetar == null ? 0 : magnetar.getExperience(), recipes));
     }
 
     /// Runs on the client: updates the terminal screen.

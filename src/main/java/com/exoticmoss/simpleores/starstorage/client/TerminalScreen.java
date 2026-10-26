@@ -166,6 +166,16 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        boolean handled = handleClick(event, doubleClick);
+        // Nothing stays selected (white outline) after a click: only the search box, while clicking on it
+        if (searchBox == null || !searchBox.isMouseOver(event.x(), event.y())) {
+            if (searchBox != null) searchBox.setFocused(false);
+            setFocused(null);
+        }
+        return handled;
+    }
+
+    private boolean handleClick(MouseButtonEvent event, boolean doubleClick) {
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
             if (!menu.getCarried().isEmpty()) {
@@ -187,6 +197,12 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (searchBox != null && searchBox.isFocused() && !event.isEscape()) {
+            // Enter: stop writing in the search box
+            if (event.isConfirmation()) {
+                searchBox.setFocused(false);
+                setFocused(null);
+                return true;
+            }
             searchBox.keyPressed(event);
             return true;
         }

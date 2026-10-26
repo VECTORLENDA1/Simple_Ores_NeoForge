@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -47,7 +48,9 @@ public class StellarTerminalBlock extends BaseEntityBlock {
                 player.sendOverlayMessage(Component.translatable("message.simpleores.terminal.no_magnetar", StarNetwork.FIELD_RADIUS)
                         .withStyle(ChatFormatting.RED));
             } else {
-                TerminalContents.send(serverPlayer, pos, true);
+                serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new TerminalMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
+                        Component.translatable("screen.simpleores.terminal.title")), pos);
+                TerminalContents.send(serverPlayer, pos);
             }
         }
         return InteractionResult.SUCCESS;

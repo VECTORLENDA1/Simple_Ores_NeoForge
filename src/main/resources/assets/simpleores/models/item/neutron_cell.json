@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:block/block",
   "textures": {
-    "layer0": "simpleores:item/neutron_cell"
+    "particle": "simpleores:item/neutron_cell"
   }
 }

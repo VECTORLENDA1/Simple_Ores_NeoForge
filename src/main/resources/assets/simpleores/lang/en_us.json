@@ -65,17 +65,12 @@
   "screen.simpleores.terminal.cells": "Cells: %s",
   "screen.simpleores.terminal.usage": "%s / %s items  -  %s kinds",
   "screen.simpleores.terminal.inventory": "Inventory",
-  "screen.simpleores.terminal.store_all": "Store all",
   "screen.simpleores.terminal.stored": "Stored: %s",
-  "screen.simpleores.terminal.take_hint": "Left-click: take a stack  -  Right-click: take one",
-  "screen.simpleores.terminal.store_hint": "Click to store",
-  "screen.simpleores.terminal.clear": "Clear",
+  "screen.simpleores.terminal.take_hint": "Left-click: take a stack - Right-click: take one - Shift: to the inventory",
   "screen.simpleores.terminal.no_cells": "No cells in the drives",
   "screen.simpleores.terminal.sort.most": "Most first",
   "screen.simpleores.terminal.sort.least": "Least first",
   "screen.simpleores.terminal.sort.a_z": "Name A-Z",
   "screen.simpleores.terminal.sort.z_a": "Name Z-A",
-  "screen.simpleores.terminal.put_hint": "Click: put in the crafting slot",
-  "screen.simpleores.terminal.grid_hint": "Left-click: pick this slot, then click an item - Right-click: empty it",
-  "screen.simpleores.terminal.craft_hint": "Left-click: craft one - Right-click: craft a stack"
+  "screen.simpleores.terminal.crafting": "Crafting"
 }

@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 
 /// Draws the ITEM of a star of the star storage (Magnetar Core, Stellar Terminal) as a round 3D star.
 /// Used from the item model files: { "type": "simpleores:storage_star", "star": "magnetar" }
+/// The Star Cells use CellItemRenderer (the same small star seen inside the Stellar Drive).
 public class StarItemRenderer implements NoDataSpecialModelRenderer {
     private final StarLook look;
 

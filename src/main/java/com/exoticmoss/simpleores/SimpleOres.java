@@ -7,6 +7,7 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
+import com.exoticmoss.simpleores.starstorage.CellItemRenderer;
 import com.exoticmoss.simpleores.starstorage.StarBlockRenderer;
 import com.exoticmoss.simpleores.starstorage.StarItemRenderer;
 import com.exoticmoss.simpleores.starstorage.StarLook;
@@ -14,7 +15,9 @@ import com.exoticmoss.simpleores.starstorage.StellarDriveRenderer;
 import com.exoticmoss.simpleores.starstorage.ModDataComponents;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
-import com.exoticmoss.simpleores.starstorage.TerminalGrid;
+import com.exoticmoss.simpleores.starstorage.ModMenus;
+import com.exoticmoss.simpleores.starstorage.client.TerminalScreen;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import com.exoticmoss.simpleores.worldgen.ModFeatures;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -54,6 +57,7 @@ public class SimpleOres {
         ModFeatures.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         ModDataComponents.register(modEventBus);
+        ModMenus.register(modEventBus);
 
 
 
@@ -72,8 +76,6 @@ public class SimpleOres {
                 .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle)
         // Stellar Terminal: the player took or stored items (client -> server)
                 .playToServer(TerminalAction.TYPE, TerminalAction.STREAM_CODEC, TerminalAction::handle)
-        // Stellar Terminal: the player changed the crafting grid (client -> server)
-                .playToServer(TerminalGrid.TYPE, TerminalGrid.STREAM_CODEC, TerminalGrid::handle)
         // Stellar Terminal: the items of the Magnetar network (server -> client)
                 .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle);
     }
@@ -107,12 +109,20 @@ public class SimpleOres {
             event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_DRIVE_BE.get(), StellarDriveRenderer::new);
         }
 
+        // Screen of the Stellar Terminal
+        @SubscribeEvent
+        public static void registerScreens(RegisterMenuScreensEvent event) {
+            event.register(ModMenus.TERMINAL.get(), TerminalScreen::new);
+        }
+
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)
         @SubscribeEvent
         public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
             event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
             // 3D item model of the stars of the star storage ("type": "simpleores:storage_star")
             event.register(Identifier.fromNamespaceAndPath(MODID, "storage_star"), StarItemRenderer.Unbaked.MAP_CODEC);
+            // 3D item model of the Star Cells ("type": "simpleores:star_cell")
+            event.register(Identifier.fromNamespaceAndPath(MODID, "star_cell"), CellItemRenderer.Unbaked.MAP_CODEC);
         }
 
     }

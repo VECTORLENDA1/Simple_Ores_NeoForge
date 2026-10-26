@@ -8,34 +8,25 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Optional;
 
 /// Sent by the client when the player does something in the terminal screen.
 /// The server checks everything again, changes the network and sends back the new contents.
-public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplate> item, int slot) implements CustomPacketPayload {
+public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplate> item) implements CustomPacketPayload {
     /// Only asks for the contents again (the screen does it every second).
     public static final int REFRESH = 0;
-    /// Takes a full stack of "item" from the network.
+    /// Takes a stack / one of "item" from the network into the mouse cursor.
     public static final int TAKE_STACK = 1;
-    /// Takes one "item" from the network.
     public static final int TAKE_ONE = 2;
-    /// Puts the stack of the inventory slot "slot" in the network.
-    public static final int INSERT_SLOT = 3;
-    /// Puts every item of the inventory (not the hotbar) in the network.
-    public static final int INSERT_ALL = 4;
-    /// Crafts the recipe of the crafting grid once / as many times as fit in one stack of the result.
-    public static final int CRAFT_ONE = 5;
-    public static final int CRAFT_STACK = 6;
-
-    /// Slots 0 to 8 are the hotbar, 9 to 35 the rest of the inventory.
-    public static final int HOTBAR_SIZE = 9;
-    public static final int INVENTORY_SIZE = 36;
+    /// Takes a stack of "item" from the network into the inventory (Shift + click).
+    public static final int TAKE_TO_INVENTORY = 3;
+    /// Puts the stack in the mouse cursor in the network (all of it / only one).
+    public static final int STORE_CARRIED = 4;
+    public static final int STORE_CARRIED_ONE = 5;
 
     /// How far (in blocks) the player can be from the terminal.
     public static final double RANGE = 8;
@@ -46,7 +37,6 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
             BlockPos.STREAM_CODEC, TerminalAction::pos,
             ByteBufCodecs.VAR_INT, TerminalAction::action,
             ByteBufCodecs.optional(ItemStackTemplate.STREAM_CODEC), TerminalAction::item,
-            ByteBufCodecs.VAR_INT, TerminalAction::slot,
             TerminalAction::new);
 
     @Override
@@ -57,42 +47,44 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
     public static void handle(TerminalAction message, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         BlockPos pos = message.pos();
-        if (player.position().distanceToSqr(Vec3.atCenterOf(pos)) > RANGE * RANGE) return;
-        if (!(player.level().getBlockState(pos).getBlock() instanceof StellarTerminalBlock)) return;
+        // Only while the screen of this terminal is open
+        if (!(player.containerMenu instanceof TerminalMenu menu) || !menu.pos.equals(pos) || !menu.stillValid(player)) return;
         StarNetwork network = StarNetwork.at(player.level(), pos);
-        Inventory inventory = player.getInventory();
+        ItemStack carried = menu.getCarried();
 
         switch (message.action()) {
             case TAKE_STACK, TAKE_ONE -> message.item().ifPresent(template -> {
                 ItemStack wanted = template.create();
-                int amount = message.action() == TAKE_ONE ? 1 : wanted.getMaxStackSize();
+                if (!carried.isEmpty() && !ItemStack.isSameItemSameComponents(carried, wanted)) return;
+                int room = wanted.getMaxStackSize() - carried.getCount();
+                int amount = Math.min(room, message.action() == TAKE_ONE ? 1 : wanted.getMaxStackSize());
+                if (amount <= 0) return;
                 ItemStack taken = network.extract(wanted.copyWithCount(1), amount);
                 if (taken.isEmpty()) return;
-                inventory.add(taken);
+                if (carried.isEmpty()) menu.setCarried(taken);
+                else carried.grow(taken.getCount());
+            });
+            case TAKE_TO_INVENTORY -> message.item().ifPresent(template -> {
+                ItemStack wanted = template.create();
+                ItemStack taken = network.extract(wanted.copyWithCount(1), wanted.getMaxStackSize());
+                if (taken.isEmpty()) return;
+                player.getInventory().add(taken);
                 // What did not fit in the inventory goes back to the network (or to the ground)
                 if (!taken.isEmpty()) {
                     ItemStack left = network.insert(taken);
                     if (!left.isEmpty()) player.drop(left, false);
                 }
             });
-            case INSERT_SLOT -> insertSlot(network, inventory, message.slot());
-            case INSERT_ALL -> {
-                for (int slot = HOTBAR_SIZE; slot < INVENTORY_SIZE; slot++) {
-                    insertSlot(network, inventory, slot);
-                }
+            case STORE_CARRIED -> {
+                if (!carried.isEmpty()) menu.setCarried(network.insert(carried));
             }
-            case CRAFT_ONE -> TerminalCrafting.craft(player, network, false);
-            case CRAFT_STACK -> TerminalCrafting.craft(player, network, true);
+            case STORE_CARRIED_ONE -> {
+                if (!carried.isEmpty() && network.insert(carried.copyWithCount(1)).isEmpty()) carried.shrink(1);
+            }
             default -> {
             }
         }
-        TerminalContents.send(player, pos, false);
-    }
-
-    private static void insertSlot(StarNetwork network, Inventory inventory, int slot) {
-        if (slot < 0 || slot >= INVENTORY_SIZE) return;
-        ItemStack stack = inventory.getItem(slot);
-        if (stack.isEmpty()) return;
-        inventory.setItem(slot, network.insert(stack.copy()));
+        menu.broadcastChanges();
+        TerminalContents.send(player, pos);
     }
 }

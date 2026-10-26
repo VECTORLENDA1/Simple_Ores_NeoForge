@@ -4,51 +4,40 @@ import com.exoticmoss.simpleores.starstorage.CellTier;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
-import com.exoticmoss.simpleores.starstorage.TerminalCrafting;
-import com.exoticmoss.simpleores.starstorage.TerminalGrid;
+import com.exoticmoss.simpleores.starstorage.TerminalLayout;
+import com.exoticmoss.simpleores.starstorage.TerminalMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-/// The screen of the Stellar Terminal.
-///  - Top left: crafting grid (3x3). Click a grid slot to pick it, then click an item of the network or of the
-///    inventory to put it there (right-click empties a slot). The grid only shows the items: when crafting, the
-///    ingredients are taken from the network (or from the inventory). Result: left-click crafts one,
-///    right-click crafts a stack.
-///  - Top right: how full each cell of the network is (mouse wheel to see more).
-///  - Search box and sort button (most first, least first, A-Z, Z-A).
-///  - Network: left-click takes a stack, right-click takes one. Mouse wheel scrolls.
-///  - Inventory (bottom): clicking an item stores it. "Store all" stores the whole inventory (not the hotbar).
-/// The screen only asks the server (TerminalAction, TerminalGrid); the server changes the network and sends
-/// back the new contents (TerminalContents). The game is not paused, so the server keeps answering.
-public class TerminalScreen extends Screen {
-    /// Network grid: columns, and the size of one cell (pixels).
-    private static final int COLUMNS = 9;
-    private static final int CELL_W = 26;
-    private static final int CELL_H = 28;
-    /// Inventory and crafting slots (like the vanilla ones).
-    private static final int SLOT = 18;
-    /// Rows of the cells panel, and the top part (crafting + cells) and the search line.
+/// The screen of the Stellar Terminal (see TerminalLayout for where everything is).
+///  - Top: how full each cell of the network is (mouse wheel to see more), the search box and the sort button
+///    (most first, least first, A-Z, Z-A).
+///  - Middle: the items of the network. Left-click takes a stack, right-click takes one (into the mouse cursor);
+///    Shift + click takes a stack into the inventory. Clicking with an item in the mouse cursor stores it
+///    (right-click: only one). Mouse wheel scrolls.
+///  - Bottom: the inventory and a normal crafting grid. Shift + click on an item of the inventory stores it.
+/// The screen only asks the server (TerminalAction); the server changes the network and sends back the new
+/// contents (TerminalContents). The game is not paused, so the server keeps answering.
+public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
+    /// Rows of the cells panel.
     private static final int CELL_ROWS = 5;
-    private static final int CRAFT_TOP = 20;
-    private static final int SEARCH_TOP = 80;
-    private static final int GRID_TOP = 100;
     /// The screen asks for the contents again every this many ticks (other players may change them).
     private static final int REFRESH_TICKS = 20;
     /// Colors (0xAARRGGBB).
@@ -57,24 +46,17 @@ public class TerminalScreen extends Screen {
     private static final int CELL_COLOR = 0xFF2A2A38;
     private static final int CELL_HOVER = 0xFF5A3A80;
     private static final int SLOT_COLOR = 0xFF20202C;
-    private static final int SLOT_PICKED = 0xFF2F8F72;
     private static final int RESULT_COLOR = 0xFF34344A;
     private static final int BAR_BACK = 0xFF15151E;
     private static final int SCROLL_BAR = 0xFF8060C0;
     private static final int TEXT = 0xFFFFFFFF;
     private static final int TEXT_DIM = 0xFFA0A0B0;
 
-    /// How the items are sorted.
+    /// How the items are sorted (kept while the game is open).
     private static final String[] SORT_KEYS = {"most", "least", "a_z", "z_a"};
     private static int sort = 0;
-    /// The crafting grid (kept while the game is open, also when the screen is closed).
-    private static final ItemStack[] GRID = new ItemStack[TerminalCrafting.SIZE];
 
-    static {
-        Arrays.fill(GRID, ItemStack.EMPTY);
-    }
-
-    private final BlockPos pos;
+    private final TerminalLayout layout;
     private TerminalContents contents;
     /// The items shown (after the search and the sorting).
     private List<TerminalContents.Item> shown = List.of();
@@ -82,22 +64,13 @@ public class TerminalScreen extends Screen {
     private int scroll;
     private int cellScroll;
     private int ticks;
-    /// The crafting slot picked (waiting for an item), or -1.
-    private int pickedSlot = -1;
-    private Button sortButton;
+    private EditBox searchBox;
 
-    private int left, top, panelWidth, panelHeight, rows, gridTop, inventoryTop;
-
-    public TerminalScreen(TerminalContents contents) {
-        super(Component.translatable("screen.simpleores.terminal.title"));
-        this.pos = contents.pos();
-        this.contents = contents;
+    public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title, TerminalLayout.WIDTH, menu.layout.height());
+        this.layout = menu.layout;
+        this.contents = TerminalClient.last(menu.pos);
         filter();
-        sendGrid();
-    }
-
-    public BlockPos pos() {
-        return pos;
     }
 
     /// New contents from the server.
@@ -129,33 +102,21 @@ public class TerminalScreen extends Screen {
     }
 
     private int maxScroll() {
-        int totalRows = (shown.size() + COLUMNS - 1) / COLUMNS;
-        return Math.max(0, totalRows - Math.max(1, rows));
+        int totalRows = (shown.size() + TerminalLayout.COLUMNS - 1) / TerminalLayout.COLUMNS;
+        return Math.max(0, totalRows - layout.rows());
     }
 
-    private void send(int action, Optional<ItemStackTemplate> item, int slot) {
-        ClientPacketDistributor.sendToServer(new TerminalAction(pos, action, item, slot));
-    }
-
-    private void sendGrid() {
-        ClientPacketDistributor.sendToServer(new TerminalGrid(pos, List.of(GRID)));
+    private void send(int action, Optional<ItemStackTemplate> item) {
+        ClientPacketDistributor.sendToServer(new TerminalAction(menu.pos, action, item));
     }
 
     // ---------------------------------------------------------------- layout and buttons
 
     @Override
     protected void init() {
-        // Smaller windows show fewer rows of the network
-        rows = Mth.clamp((height - 16 - (GRID_TOP + 30 + 3 * SLOT + 4 + SLOT + 10)) / CELL_H, 2, 5);
-        panelWidth = COLUMNS * CELL_W + 20;
-        panelHeight = GRID_TOP + rows * CELL_H + 30 + 3 * SLOT + 4 + SLOT + 10;
-        left = (width - panelWidth) / 2;
-        top = (height - panelHeight) / 2;
-        gridTop = top + GRID_TOP;
-        inventoryTop = gridTop + rows * CELL_H + 30;
-        scroll = Mth.clamp(scroll, 0, maxScroll());
-
-        EditBox searchBox = new EditBox(font, left + 10, top + SEARCH_TOP, 150, 14, Component.translatable("screen.simpleores.terminal.search"));
+        super.init();
+        int right = leftPos + TerminalLayout.WIDTH - 10;
+        searchBox = new EditBox(font, right - 104, topPos + TerminalLayout.TOP + 2, 104, 14, Component.translatable("screen.simpleores.terminal.search"));
         searchBox.setHint(Component.translatable("screen.simpleores.terminal.search"));
         searchBox.setValue(search);
         searchBox.setResponder(value -> {
@@ -165,22 +126,11 @@ public class TerminalScreen extends Screen {
         });
         addRenderableWidget(searchBox);
 
-        sortButton = addRenderableWidget(Button.builder(sortLabel(), b -> {
+        addRenderableWidget(Button.builder(sortLabel(), b -> {
             sort = (sort + 1) % SORT_KEYS.length;
             b.setMessage(sortLabel());
             filter();
-        }).bounds(left + panelWidth - 10 - 80, top + SEARCH_TOP - 2, 80, 18).build());
-
-        addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.terminal.clear"), b -> {
-            Arrays.fill(GRID, ItemStack.EMPTY);
-            pickedSlot = -1;
-            sendGrid();
-        }).bounds(left + 70, top + CRAFT_TOP + 40, 40, 14).build());
-
-        int inventoryRight = left + 10 + COLUMNS * SLOT;
-        addRenderableWidget(Button.builder(Component.translatable("screen.simpleores.terminal.store_all"),
-                        b -> send(TerminalAction.INSERT_ALL, Optional.empty(), 0))
-                .bounds(inventoryRight + 8, inventoryTop, left + panelWidth - 10 - inventoryRight - 8, 20).build());
+        }).bounds(right - 104, topPos + TerminalLayout.TOP + 22, 104, 18).build());
     }
 
     private static Component sortLabel() {
@@ -188,21 +138,18 @@ public class TerminalScreen extends Screen {
     }
 
     @Override
-    public void tick() {
+    protected void containerTick() {
         // Every second: ask for the contents again (other players or machines may have changed them)
-        if (++ticks % REFRESH_TICKS == 0) send(TerminalAction.REFRESH, Optional.empty(), 0);
-        // Too far from the terminal: close
-        if (minecraft.player == null || minecraft.player.position().distanceToSqr(Vec3.atCenterOf(pos))
-                > TerminalAction.RANGE * TerminalAction.RANGE) {
-            onClose();
-        }
+        if (++ticks % REFRESH_TICKS == 1) send(TerminalAction.REFRESH, Optional.empty());
     }
+
+    // ---------------------------------------------------------------- mouse and keyboard
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (scrollY == 0) return true;
         int step = scrollY > 0 ? -1 : 1;
-        if (x >= cellsX() && y >= top + CRAFT_TOP && y < top + CRAFT_TOP + 9 + CELL_ROWS * 9) {
+        if (isOverCells(x, y)) {
             cellScroll = Mth.clamp(cellScroll + step, 0, Math.max(0, contents.cells().size() - CELL_ROWS));
         } else {
             scroll = Mth.clamp(scroll + step, 0, maxScroll());
@@ -212,123 +159,65 @@ public class TerminalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (super.mouseClicked(event, doubleClick)) return true;
-        boolean right = event.button() == 1;
-
-        // Crafting grid: pick a slot (left) or empty it (right)
-        int craftSlot = craftSlotAt(event.x(), event.y());
-        if (craftSlot >= 0) {
-            if (right) {
-                GRID[craftSlot] = ItemStack.EMPTY;
-                if (pickedSlot == craftSlot) pickedSlot = -1;
-                sendGrid();
+        if (isOverNetwork(event.x(), event.y())) {
+            boolean right = event.button() == 1;
+            if (!menu.getCarried().isEmpty()) {
+                // An item in the mouse cursor: store it
+                send(right ? TerminalAction.STORE_CARRIED_ONE : TerminalAction.STORE_CARRIED, Optional.empty());
             } else {
-                pickedSlot = pickedSlot == craftSlot ? -1 : craftSlot;
+                int index = cellAt(event.x(), event.y());
+                if (index >= 0) {
+                    int action = event.hasShiftDown() ? TerminalAction.TAKE_TO_INVENTORY : right ? TerminalAction.TAKE_ONE : TerminalAction.TAKE_STACK;
+                    send(action, Optional.of(shown.get(index).item()));
+                }
             }
             return true;
         }
-        // Result: craft
-        if (isOverResult(event.x(), event.y())) {
-            if (!contents.craftResult().isEmpty()) {
-                send(right ? TerminalAction.CRAFT_STACK : TerminalAction.CRAFT_ONE, Optional.empty(), 0);
-            }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    /// While writing in the search box, the keys write (the inventory key doesn't close the screen).
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (searchBox != null && searchBox.isFocused() && !event.isEscape()) {
+            searchBox.keyPressed(event);
             return true;
         }
-
-        // Network grid: put in the crafting slot picked, or take
-        int index = cellAt(event.x(), event.y());
-        if (index >= 0) {
-            if (pickedSlot >= 0) {
-                putInGrid(shown.get(index).item().create());
-            } else {
-                send(right ? TerminalAction.TAKE_ONE : TerminalAction.TAKE_STACK, Optional.of(shown.get(index).item()), 0);
-            }
-            return true;
-        }
-        // Inventory: put in the crafting slot picked, or store
-        int slot = slotAt(event.x(), event.y());
-        if (slot >= 0 && minecraft.player != null) {
-            ItemStack stack = minecraft.player.getInventory().getItem(slot);
-            if (stack.isEmpty()) return true;
-            if (pickedSlot >= 0) putInGrid(stack);
-            else send(TerminalAction.INSERT_SLOT, Optional.empty(), slot);
-            return true;
-        }
-        return false;
+        return super.keyPressed(event);
     }
 
-    /// Puts (a picture of) the item in the crafting slot picked, then picks the next empty slot.
-    private void putInGrid(ItemStack stack) {
-        GRID[pickedSlot] = stack.copyWithCount(1);
-        int next = -1;
-        for (int i = 1; i < TerminalCrafting.SIZE && next < 0; i++) {
-            int candidate = (pickedSlot + i) % TerminalCrafting.SIZE;
-            if (GRID[candidate].isEmpty()) next = candidate;
-        }
-        pickedSlot = next;
-        sendGrid();
+    private int networkLeft() {
+        return leftPos + 10;
     }
 
-    // ---------------------------------------------------------------- where things are
-
-    private int craftX(int slot) {
-        return left + 10 + (slot % 3) * SLOT;
+    private int networkTop() {
+        return topPos + TerminalLayout.NETWORK_TOP;
     }
 
-    private int craftY(int slot) {
-        return top + CRAFT_TOP + (slot / 3) * SLOT;
-    }
-
-    private int craftSlotAt(double x, double y) {
-        for (int slot = 0; slot < TerminalCrafting.SIZE; slot++) {
-            if (x >= craftX(slot) && x < craftX(slot) + SLOT && y >= craftY(slot) && y < craftY(slot) + SLOT) return slot;
-        }
-        return -1;
-    }
-
-    private int resultX() {
-        return left + 86;
-    }
-
-    private int resultY() {
-        return top + CRAFT_TOP + 14;
-    }
-
-    private boolean isOverResult(double x, double y) {
-        return x >= resultX() - 2 && x < resultX() + SLOT + 2 && y >= resultY() - 2 && y < resultY() + SLOT + 2;
-    }
-
-    private int cellsX() {
-        return left + 124;
+    private boolean isOverNetwork(double x, double y) {
+        return x >= networkLeft() && x < networkLeft() + TerminalLayout.COLUMNS * TerminalLayout.CELL_W
+                && y >= networkTop() && y < networkTop() + layout.rows() * TerminalLayout.CELL_H;
     }
 
     /// The item (index in "shown") under the mouse, or -1.
     private int cellAt(double x, double y) {
-        if (x < left + 10 || y < gridTop) return -1;
-        int column = (int) ((x - left - 10) / CELL_W);
-        int row = (int) ((y - gridTop) / CELL_H);
-        if (column >= COLUMNS || row >= rows) return -1;
-        int index = (scroll + row) * COLUMNS + column;
+        if (!isOverNetwork(x, y)) return -1;
+        int column = (int) ((x - networkLeft()) / TerminalLayout.CELL_W);
+        int row = (int) ((y - networkTop()) / TerminalLayout.CELL_H);
+        int index = (scroll + row) * TerminalLayout.COLUMNS + column;
         return index < shown.size() ? index : -1;
     }
 
-    /// The inventory slot under the mouse (0-8 hotbar, 9-35 the rest), or -1.
-    private int slotAt(double x, double y) {
-        if (x < left + 10 || x >= left + 10 + COLUMNS * SLOT || y < inventoryTop) return -1;
-        int column = (int) ((x - left - 10) / SLOT);
-        double dy = y - inventoryTop;
-        if (dy < 3 * SLOT) return TerminalAction.HOTBAR_SIZE + (int) (dy / SLOT) * COLUMNS + column;
-        dy -= 3 * SLOT + 4;
-        if (dy >= 0 && dy < SLOT) return column;
-        return -1;
+    private int cellsLeft() {
+        return leftPos + 10;
     }
 
-    private int slotX(int slot) {
-        return left + 10 + (slot % COLUMNS) * SLOT;
+    private int cellsWidth() {
+        return 160;
     }
 
-    private int slotY(int slot) {
-        return slot < TerminalAction.HOTBAR_SIZE ? inventoryTop + 3 * SLOT + 4 : inventoryTop + (slot / COLUMNS - 1) * SLOT;
+    private boolean isOverCells(double x, double y) {
+        return x >= cellsLeft() && x < cellsLeft() + cellsWidth() && y >= topPos + TerminalLayout.TOP && y < networkTop();
     }
 
     // ---------------------------------------------------------------- drawing
@@ -338,92 +227,81 @@ public class TerminalScreen extends Screen {
         scroll = Mth.clamp(scroll, 0, maxScroll());
 
         // Panel
-        graphics.fill(left, top, left + panelWidth, top + panelHeight, PANEL);
-        graphics.outline(left, top, panelWidth, panelHeight, PANEL_BORDER);
-        graphics.centeredText(font, title, left + panelWidth / 2, top + 7, TEXT);
+        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL);
+        graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
+        graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
 
-        drawCrafting(graphics, mouseX, mouseY);
         drawCells(graphics);
+        int hovered = drawNetwork(graphics, mouseX, mouseY);
 
-        // Network grid
+        // Used / capacity
+        graphics.centeredText(font, Component.translatable("screen.simpleores.terminal.usage",
+                        StarNetwork.format(contents.used()), StarNetwork.format(contents.capacity()), shown.size()),
+                leftPos + imageWidth / 2, networkTop() + layout.rows() * TerminalLayout.CELL_H + 6, TEXT_DIM);
+
+        // Inventory and crafting: the frames of the slots (the items are drawn by the screen itself)
+        int top = topPos + layout.inventoryTop();
+        graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), leftPos + TerminalLayout.inventoryLeft(), top - 11, TEXT_DIM);
+        graphics.text(font, Component.translatable("screen.simpleores.terminal.crafting"), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
+        for (Slot slot : menu.slots) {
+            int x = leftPos + slot.x - 1, y = topPos + slot.y - 1;
+            if (slot.index == TerminalMenu.RESULT_SLOT) {
+                graphics.fill(x - 2, y - 2, x + TerminalLayout.SLOT + 2, y + TerminalLayout.SLOT + 2, RESULT_COLOR);
+            }
+            graphics.fill(x + 1, y + 1, x + TerminalLayout.SLOT - 1, y + TerminalLayout.SLOT - 1, SLOT_COLOR);
+        }
+        // Arrow between the crafting grid and the result
+        int ax = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT + 4, ay = topPos + layout.resultY() + 8;
+        graphics.fill(ax, ay, ax + 12, ay + 2, TEXT_DIM);
+        for (int i = 0; i < 4; i++) graphics.fill(ax + 8 + i, ay - 3 + i, ax + 9 + i, ay + 5 - i, TEXT_DIM);
+
+        super.extractRenderState(graphics, mouseX, mouseY, a);
+
+        // Tooltip of the items of the network
+        if (hovered >= 0 && menu.getCarried().isEmpty()) {
+            TerminalContents.Item item = shown.get(hovered);
+            graphics.setTooltipForNextFrame(font, List.of(item.item().create().getHoverName(),
+                            Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count())),
+                            Component.translatable("screen.simpleores.terminal.take_hint")),
+                    Optional.empty(), mouseX, mouseY);
+        }
+    }
+
+    /// The title and "Inventory" are drawn above (in extractRenderState).
+    @Override
+    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    }
+
+    /// The items of the network. Returns the one under the mouse (index in "shown"), or -1.
+    private int drawNetwork(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int hovered = cellAt(mouseX, mouseY);
-        for (int row = 0; row < rows; row++) {
-            for (int column = 0; column < COLUMNS; column++) {
-                int x = left + 10 + column * CELL_W;
-                int y = gridTop + row * CELL_H;
-                int index = (scroll + row) * COLUMNS + column;
-                graphics.fill(x + 1, y + 1, x + CELL_W - 1, y + CELL_H - 1, index == hovered ? CELL_HOVER : CELL_COLOR);
+        for (int row = 0; row < layout.rows(); row++) {
+            for (int column = 0; column < TerminalLayout.COLUMNS; column++) {
+                int x = networkLeft() + column * TerminalLayout.CELL_W;
+                int y = networkTop() + row * TerminalLayout.CELL_H;
+                int index = (scroll + row) * TerminalLayout.COLUMNS + column;
+                graphics.fill(x + 1, y + 1, x + TerminalLayout.CELL_W - 1, y + TerminalLayout.CELL_H - 1, index == hovered ? CELL_HOVER : CELL_COLOR);
                 if (index >= shown.size()) continue;
                 TerminalContents.Item item = shown.get(index);
-                graphics.item(item.item().create(), x + (CELL_W - 16) / 2, y + 3);
-                graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + CELL_W / 2, y + CELL_H - 10, TEXT);
+                graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
+                graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, TEXT);
             }
         }
         // Scroll bar (only when there are more rows than fit)
         int maxScroll = maxScroll();
         if (maxScroll > 0) {
-            int barTop = gridTop + 1, barHeight = rows * CELL_H - 2;
-            int thumb = Math.max(8, barHeight * rows / (rows + maxScroll));
+            int barTop = networkTop() + 1, barHeight = layout.rows() * TerminalLayout.CELL_H - 2;
+            int thumb = Math.max(8, barHeight * layout.rows() / (layout.rows() + maxScroll));
             int thumbY = barTop + (barHeight - thumb) * scroll / maxScroll;
-            graphics.fill(left + panelWidth - 7, thumbY, left + panelWidth - 4, thumbY + thumb, SCROLL_BAR);
+            graphics.fill(leftPos + imageWidth - 7, thumbY, leftPos + imageWidth - 4, thumbY + thumb, SCROLL_BAR);
         }
-
-        // Used / capacity
-        graphics.centeredText(font, Component.translatable("screen.simpleores.terminal.usage",
-                        StarNetwork.format(contents.used()), StarNetwork.format(contents.capacity()), shown.size()),
-                left + panelWidth / 2, gridTop + rows * CELL_H + 6, TEXT_DIM);
-
-        // Player inventory
-        graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), left + 10, inventoryTop - 11, TEXT_DIM);
-        int hoveredSlot = slotAt(mouseX, mouseY);
-        if (minecraft.player != null) {
-            for (int slot = 0; slot < TerminalAction.INVENTORY_SIZE; slot++) {
-                int x = slotX(slot), y = slotY(slot);
-                graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, slot == hoveredSlot ? CELL_HOVER : SLOT_COLOR);
-                ItemStack stack = minecraft.player.getInventory().getItem(slot);
-                if (stack.isEmpty()) continue;
-                graphics.item(stack, x + 1, y + 1);
-                if (stack.getCount() > 1) {
-                    String count = String.valueOf(stack.getCount());
-                    graphics.text(font, Component.literal(count), x + SLOT - 1 - font.width(count), y + SLOT - 9, TEXT);
-                }
-            }
-        }
-
-        super.extractRenderState(graphics, mouseX, mouseY, a);
-        drawTooltips(graphics, mouseX, mouseY, hovered, hoveredSlot);
-    }
-
-    /// The crafting grid, the arrow and the result.
-    private void drawCrafting(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        int hoveredSlot = craftSlotAt(mouseX, mouseY);
-        for (int slot = 0; slot < TerminalCrafting.SIZE; slot++) {
-            int x = craftX(slot), y = craftY(slot);
-            int color = slot == pickedSlot ? SLOT_PICKED : slot == hoveredSlot ? CELL_HOVER : SLOT_COLOR;
-            graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, color);
-            if (!GRID[slot].isEmpty()) graphics.item(GRID[slot], x + 1, y + 1);
-        }
-        // Arrow
-        int ax = left + 68, ay = top + CRAFT_TOP + 22;
-        graphics.fill(ax, ay, ax + 12, ay + 2, TEXT_DIM);
-        for (int i = 0; i < 4; i++) graphics.fill(ax + 8 + i, ay - 3 + i, ax + 9 + i, ay + 5 - i, TEXT_DIM);
-        // Result
-        int rx = resultX(), ry = resultY();
-        graphics.fill(rx - 2, ry - 2, rx + SLOT + 2, ry + SLOT + 2, isOverResult(mouseX, mouseY) ? CELL_HOVER : RESULT_COLOR);
-        ItemStack result = contents.craftResult();
-        if (!result.isEmpty()) {
-            graphics.item(result, rx + 1, ry + 1);
-            if (result.getCount() > 1) {
-                String count = String.valueOf(result.getCount());
-                graphics.text(font, Component.literal(count), rx + SLOT - 1 - font.width(count), ry + SLOT - 9, TEXT);
-            }
-        }
+        return hovered;
     }
 
     /// How full each cell is: a small square with the color of the cell, a bar and the %.
     private void drawCells(GuiGraphicsExtractor graphics) {
-        int x = cellsX(), y = top + CRAFT_TOP;
-        int width = left + panelWidth - 10 - x;
+        int x = cellsLeft(), y = topPos + TerminalLayout.TOP;
+        int width = cellsWidth();
         List<TerminalContents.Cell> cells = contents.cells();
         cellScroll = Mth.clamp(cellScroll, 0, Math.max(0, cells.size() - CELL_ROWS));
         graphics.text(font, Component.translatable("screen.simpleores.terminal.cells", cells.size()), x, y, TEXT_DIM);
@@ -437,8 +315,7 @@ public class TerminalScreen extends Screen {
             int ry = y + 11 + row * 9;
             double full = tier.capacity <= 0 ? 0 : Math.min(1, cell.used() / (double) tier.capacity);
             String percent = full > 0 && full < 0.01 ? "<1%" : Math.round(full * 100) + "%";
-            int textWidth = font.width("100%");
-            int barLeft = x + 9, barRight = x + width - textWidth - 4;
+            int barLeft = x + 9, barRight = x + width - font.width("100%") - 4;
             graphics.fill(x, ry + 1, x + 6, ry + 7, 0xFF000000 | tier.glowColor);
             graphics.fill(barLeft, ry + 2, barRight, ry + 6, BAR_BACK);
             int fill = barLeft + (int) Math.round((barRight - barLeft) * full);
@@ -449,29 +326,6 @@ public class TerminalScreen extends Screen {
         if (cells.size() > CELL_ROWS) {
             String more = (cellScroll + 1) + "-" + Math.min(cells.size(), cellScroll + CELL_ROWS) + "/" + cells.size();
             graphics.text(font, Component.literal(more), x + width - font.width(more), y, TEXT_DIM);
-        }
-    }
-
-    private void drawTooltips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int hovered, int hoveredSlot) {
-        int craftSlot = craftSlotAt(mouseX, mouseY);
-        if (hovered >= 0) {
-            TerminalContents.Item item = shown.get(hovered);
-            graphics.setTooltipForNextFrame(font, List.of(item.item().create().getHoverName(),
-                            Component.translatable("screen.simpleores.terminal.stored", String.format(Locale.ROOT, "%,d", item.count())),
-                            Component.translatable(pickedSlot >= 0 ? "screen.simpleores.terminal.put_hint" : "screen.simpleores.terminal.take_hint")),
-                    Optional.empty(), mouseX, mouseY);
-        } else if (hoveredSlot >= 0 && minecraft.player != null && !minecraft.player.getInventory().getItem(hoveredSlot).isEmpty()) {
-            graphics.setTooltipForNextFrame(font, List.of(minecraft.player.getInventory().getItem(hoveredSlot).getHoverName(),
-                    Component.translatable(pickedSlot >= 0 ? "screen.simpleores.terminal.put_hint" : "screen.simpleores.terminal.store_hint")),
-                    Optional.empty(), mouseX, mouseY);
-        } else if (craftSlot >= 0) {
-            List<Component> lines = new ArrayList<>();
-            if (!GRID[craftSlot].isEmpty()) lines.add(GRID[craftSlot].getHoverName());
-            lines.add(Component.translatable("screen.simpleores.terminal.grid_hint"));
-            graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
-        } else if (isOverResult(mouseX, mouseY) && !contents.craftResult().isEmpty()) {
-            graphics.setTooltipForNextFrame(font, List.of(contents.craftResult().getHoverName(),
-                    Component.translatable("screen.simpleores.terminal.craft_hint")), Optional.empty(), mouseX, mouseY);
         }
     }
 

@@ -122,6 +122,17 @@ public class TerminalMenu extends AbstractContainerMenu {
         if (changed) TerminalContents.send(player, pos);
     }
 
+    /// Puts every item of the crafting grid back in the network (what doesn't fit goes to the inventory).
+    public void clearGrid(ServerPlayer player, StarNetwork network) {
+        for (int i = 0; i < craftSlots.getContainerSize(); i++) {
+            ItemStack stack = craftSlots.getItem(i);
+            if (stack.isEmpty()) continue;
+            ItemStack left = network.insert(stack.copy());
+            craftSlots.setItem(i, ItemStack.EMPTY);
+            if (!left.isEmpty() && !player.getInventory().add(left)) player.drop(left, false);
+        }
+    }
+
     /// Closing the screen: the items left in the crafting grid go back to the player.
     @Override
     public void removed(Player player) {

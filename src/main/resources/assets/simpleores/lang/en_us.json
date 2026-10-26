@@ -72,5 +72,6 @@
   "screen.simpleores.terminal.sort.least": "Least first",
   "screen.simpleores.terminal.sort.a_z": "Name A-Z",
   "screen.simpleores.terminal.sort.z_a": "Name Z-A",
-  "screen.simpleores.terminal.crafting": "Crafting"
+  "screen.simpleores.terminal.crafting": "Crafting",
+  "screen.simpleores.terminal.clear_grid": "Put the items of the grid back in the network"
 }

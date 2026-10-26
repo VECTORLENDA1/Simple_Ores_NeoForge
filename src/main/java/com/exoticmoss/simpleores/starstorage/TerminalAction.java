@@ -27,6 +27,8 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
     /// Puts the stack in the mouse cursor in the network (all of it / only one).
     public static final int STORE_CARRIED = 4;
     public static final int STORE_CARRIED_ONE = 5;
+    /// Puts every item of the crafting grid back in the network (the small X button).
+    public static final int CLEAR_GRID = 6;
 
     /// How far (in blocks) the player can be from the terminal.
     public static final double RANGE = 8;
@@ -81,6 +83,7 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
             case STORE_CARRIED_ONE -> {
                 if (!carried.isEmpty() && network.insert(carried.copyWithCount(1)).isEmpty()) carried.shrink(1);
             }
+            case CLEAR_GRID -> menu.clearGrid(player, network);
             default -> {
             }
         }

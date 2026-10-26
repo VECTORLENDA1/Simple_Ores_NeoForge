@@ -132,5 +132,9 @@
   "screen.simpleores.quasar.job.waiting_results": "Waiting for the results",
   "screen.simpleores.binary.tank": "Empty tank",
   "screen.simpleores.terminal.craft.auto": "Auto",
-  "screen.simpleores.terminal.craft.auto_info": "The first recipe that has everything"
+  "screen.simpleores.terminal.craft.auto_info": "The first recipe that has everything",
+  "screen.simpleores.magnetar.field": "Field: %s blocks",
+  "screen.simpleores.magnetar.drives": "%s drives, %s cells",
+  "screen.simpleores.magnetar.items": "Items",
+  "screen.simpleores.magnetar.fluids": "Liquids"
 }

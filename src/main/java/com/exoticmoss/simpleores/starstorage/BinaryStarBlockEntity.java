@@ -100,12 +100,13 @@ public class BinaryStarBlockEntity extends BlockEntity {
 
     private static void workSlot(StarNetwork network, ResourceHandler<ItemResource> items, int slot, SlotRule rule) {
         if (rule.keeps()) {
-            ItemStack item = rule.item().get().create();
-            // BOTH: what is not the item of the slot goes out first
-            if (rule.takes() && !ItemStack.isSameItemSameComponents(StarAccess.stack(items, slot), item)) {
+            // BOTH: what is not one of the items of the slot goes out first
+            ItemStack inside = StarAccess.stack(items, slot);
+            if (rule.takes() && !inside.isEmpty() && rule.items().stream().noneMatch(item -> ItemStack.isSameItemSameComponents(inside, item.create()))) {
                 StarAccess.takeItems(network, items, slot);
             }
-            StarAccess.keepItems(network, items, slot, item);
+            // Each item (a normal slot takes only the first that fits; a trash can takes them all)
+            for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) StarAccess.keepItems(network, items, slot, item.create());
         } else if (rule.takes()) {
             StarAccess.takeItems(network, items, slot);
         }
@@ -113,11 +114,17 @@ public class BinaryStarBlockEntity extends BlockEntity {
 
     /// A tank: the same as a slot, with the liquid of the bucket of the rule.
     private static void workTank(StarNetwork network, ResourceHandler<FluidResource> fluids, int tank, SlotRule rule) {
-        Fluid fluid = rule.keeps() ? StarFluids.fromBucket(rule.item().get().create()) : null;
-        if (fluid != null) {
+        List<Fluid> kept = new ArrayList<>();
+        if (rule.keeps()) {
+            for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) {
+                Fluid fluid = StarFluids.fromBucket(item.create());
+                if (fluid != null) kept.add(fluid);
+            }
+        }
+        if (!kept.isEmpty()) {
             FluidResource current = fluids.getResource(tank);
-            if (rule.takes() && !current.isEmpty() && current.getFluid() != fluid) StarAccess.takeFluid(network, fluids, tank);
-            StarAccess.keepFluid(network, fluids, tank, fluid);
+            if (rule.takes() && !current.isEmpty() && !kept.contains(current.getFluid())) StarAccess.takeFluid(network, fluids, tank);
+            for (Fluid fluid : kept) StarAccess.keepFluid(network, fluids, tank, fluid);
         } else if (rule.takes()) {
             StarAccess.takeFluid(network, fluids, tank);
         }

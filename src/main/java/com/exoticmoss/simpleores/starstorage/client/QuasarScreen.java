@@ -36,8 +36,9 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
     private static final int PATTERN_ROWS = 2;
     private static final int TAB = 22;
     private static final int TABS = 4;
-    private static final int TAB_ON = 0xFF2A2A3E;
-    private static final int TAB_OFF = 0xE0101018;
+    /// The color of the panel (the tab shown looks like a part of it).
+    private static final int TAB_ON = 0xE0101018;
+    private static final int TAB_OFF = 0xF0060609;
     private static final int JOB_H = 26;
 
     /// JEI (set by its plugin when JEI is installed): shows the recipes of an item.
@@ -102,6 +103,16 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
 
     private int tabY() {
         return topPos - TAB + 2;
+    }
+
+    @Override
+    protected int[] topGap() {
+        return new int[]{tabX(menu.tab) + 1, tabX(menu.tab) + TAB - 1};
+    }
+
+    @Override
+    protected boolean showGrid() {
+        return menu.tab != QuasarMenu.TAB_JOBS;
     }
 
     private int patternX(int i) {
@@ -268,9 +279,17 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 new ItemStack(Items.FURNACE), new ItemStack(Items.CLOCK)};
         for (int which = 0; which < TABS; which++) {
             int x = tabX(which), y = tabY();
-            graphics.fill(x, y, x + TAB, y + TAB, which == menu.tab ? TAB_ON : TAB_OFF);
-            graphics.outline(x, y, TAB, TAB, PANEL_BORDER);
-            graphics.item(icons[which], x + 3, y + 3);
+            if (which == menu.tab) {
+                // The tab shown joins the panel: same color, no line between them (see topGap)
+                graphics.fill(x, y, x + TAB, topPos, TAB_ON);
+                graphics.fill(x, y, x + TAB, y + 1, PANEL_BORDER);
+                graphics.fill(x, y, x + 1, topPos + 1, PANEL_BORDER);
+                graphics.fill(x + TAB - 1, y, x + TAB, topPos + 1, PANEL_BORDER);
+            } else {
+                graphics.fill(x, y, x + TAB, topPos, TAB_OFF);
+                graphics.outline(x, y, TAB, topPos - y, PANEL_BORDER);
+            }
+            graphics.item(icons[which], x + 3, y + 2);
         }
         super.extractRenderState(graphics, mouseX, mouseY, a);
     }

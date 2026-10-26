@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import java.util.List;
 import java.util.Optional;
 
 /// Sent by the client when the player changes the rules in the Binary Star screen.
@@ -91,7 +92,7 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
     private static void takeAll(BinaryStarBlockEntity binary, BlockPos block, int slot) {
         SlotRule rule = binary.rulesOf(block).get(slot);
         binary.setRule(block, slot, new SlotRule(slot, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,
-                rule == null ? Optional.empty() : rule.item()));
+                rule == null ? List.of() : rule.items()));
     }
 
     /// A bucket of the liquid of the tank (EMPTY if the tank is empty or the liquid has no bucket).
@@ -100,20 +101,24 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         return fluid.isEmpty() ? ItemStack.EMPTY : StarFluids.bucket(fluid.getFluid());
     }
 
-    /// Left-click on a slot: with an item in the mouse cursor, the slot keeps that item; else the next mode.
+    /// Left-click on a slot: with an item in the mouse cursor, the slot keeps that item too (or, if it was kept
+    /// already, not any more: a slot can keep many items, e.g. a trash can); else the next mode.
     /// The modes that keep an item need one: the one already chosen, or the one in the slot (else they are skipped).
     /// "inside" = what is in the slot now (for a tank: a bucket of its liquid).
     private static void click(BinaryStarBlockEntity binary, BlockPos block, ItemStack inside, int slot, ItemStack carried) {
         SlotRule old = binary.rulesOf(block).get(slot);
         int mode = old == null ? 0 : old.mode();
-        Optional<ItemStackTemplate> item = old == null ? Optional.empty() : old.item();
+        List<ItemStackTemplate> items = old == null ? List.of() : old.items();
         if (!carried.isEmpty()) {
-            item = Optional.of(ItemStackTemplate.fromNonEmptyStack(carried.copyWithCount(1)));
-            binary.setRule(block, slot, new SlotRule(slot, (mode & SlotRule.TAKE) | SlotRule.KEEP, item));
+            SlotRule rule = new SlotRule(slot, (mode & SlotRule.TAKE) | SlotRule.KEEP, items)
+                    .toggle(ItemStackTemplate.fromNonEmptyStack(carried.copyWithCount(1)));
+            // The last item taken away: the slot doesn't keep anything any more
+            if (rule.items().isEmpty()) rule = (mode & SlotRule.TAKE) != 0 ? new SlotRule(slot, SlotRule.TAKE, List.of()) : null;
+            binary.setRule(block, slot, rule);
             return;
         }
-        if (item.isEmpty() && !inside.isEmpty()) {
-            item = Optional.of(ItemStackTemplate.fromNonEmptyStack(inside.copyWithCount(1)));
+        if (items.isEmpty() && !inside.isEmpty()) {
+            items = List.of(ItemStackTemplate.fromNonEmptyStack(inside.copyWithCount(1)));
         }
         int[] order = {0, SlotRule.TAKE, SlotRule.KEEP, SlotRule.BOTH};
         int at = 0;
@@ -121,8 +126,9 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         int next = 0;
         for (int step = 1; step <= order.length; step++) {
             next = order[(at + step) % order.length];
-            if ((next & SlotRule.KEEP) == 0 || item.isPresent()) break;
+            if ((next & SlotRule.KEEP) == 0 || !items.isEmpty()) break;
         }
-        binary.setRule(block, slot, next == 0 ? null : new SlotRule(slot, next, (next & SlotRule.KEEP) != 0 ? item : Optional.empty()));
+        // (the items stay in the rule also in TAKE mode, so they are there again in the next modes)
+        binary.setRule(block, slot, next == 0 ? null : new SlotRule(slot, next, items));
     }
 }

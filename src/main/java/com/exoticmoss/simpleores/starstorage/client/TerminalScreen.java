@@ -26,6 +26,8 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -149,6 +151,16 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
     protected int networkTopY() {
         return networkTop();
+    }
+
+    /// The crafting grid (or the recipe of the Quasar) is shown (not in the auto-crafts tab of the Quasar).
+    protected boolean showGrid() {
+        return true;
+    }
+
+    /// The part of the top border that is not drawn {from x, to x} (where a tab joins the panel), or null.
+    protected int @Nullable [] topGap() {
+        return null;
     }
 
     /// Drawn after everything (the Quasar draws its tabs and tooltips).
@@ -628,7 +640,17 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
         // Panel
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL);
-        graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
+        // The border; the top line has a gap where a tab joins the panel (the Quasar)
+        int[] gap = topGap();
+        if (gap == null) {
+            graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + 1, PANEL_BORDER);
+        } else {
+            graphics.fill(leftPos, topPos, gap[0], topPos + 1, PANEL_BORDER);
+            graphics.fill(gap[1], topPos, leftPos + imageWidth, topPos + 1, PANEL_BORDER);
+        }
+        graphics.fill(leftPos, topPos + imageHeight - 1, leftPos + imageWidth, topPos + imageHeight, PANEL_BORDER);
+        graphics.fill(leftPos, topPos, leftPos + 1, topPos + imageHeight, PANEL_BORDER);
+        graphics.fill(leftPos + imageWidth - 1, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL_BORDER);
         graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
 
         if (craftItem == null) drawTopLeft(graphics, mouseX, mouseY);
@@ -640,11 +662,6 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             drawCraftPanel(graphics, mouseX, mouseY);
         }
 
-        // Used / capacity
-        graphics.centeredText(font, Component.translatable("screen.simpleores.terminal.usage",
-                        StarNetwork.format(contents.used()), StarNetwork.format(contents.capacity()), shown.size()),
-                leftPos + imageWidth / 2, networkTop() + layout.rows() * TerminalLayout.CELL_H + 6, TEXT_DIM);
-
         // The experience of the auto-crafts (click: the player gets it)
         if (contents.experience() > 0) {
             boolean over = isOverExperience(mouseX, mouseY);
@@ -654,7 +671,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         // Inventory and crafting: the frames of the slots (the items are drawn by the screen itself)
         int top = topPos + layout.inventoryTop();
         graphics.text(font, Component.translatable("screen.simpleores.terminal.inventory"), leftPos + TerminalLayout.inventoryLeft(), top - 11, TEXT_DIM);
-        graphics.text(font, gridLabel(), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
+        if (showGrid()) graphics.text(font, gridLabel(), leftPos + TerminalLayout.craftLeft(), top - 11, TEXT_DIM);
         for (Slot slot : menu.slots) {
             if (!slot.isActive()) continue;
             int x = leftPos + slot.x - 1, y = topPos + slot.y - 1;
@@ -664,14 +681,17 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             graphics.fill(x + 1, y + 1, x + TerminalLayout.SLOT - 1, y + TerminalLayout.SLOT - 1, SLOT_COLOR);
         }
         // Arrow between the crafting grid and the result
-        int ax = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT + 4, ay = topPos + layout.resultY() + 8;
-        graphics.fill(ax, ay, ax + 12, ay + 2, TEXT_DIM);
-        for (int i = 0; i < 4; i++) graphics.fill(ax + 8 + i, ay - 3 + i, ax + 9 + i, ay + 5 - i, TEXT_DIM);
+        if (showGrid()) {
+            int ax = leftPos + TerminalLayout.craftLeft() + 3 * TerminalLayout.SLOT + 4, ay = topPos + layout.resultY() + 8;
+            graphics.fill(ax, ay, ax + 12, ay + 2, TEXT_DIM);
+            for (int i = 0; i < 4; i++) graphics.fill(ax + 8 + i, ay - 3 + i, ax + 9 + i, ay + 5 - i, TEXT_DIM);
+        }
+        if (clearButton != null) clearButton.visible = showGrid();
 
         super.extractRenderState(graphics, mouseX, mouseY, a);
 
         // The X of the button that empties the crafting grid (5x5 pixels, in the middle of the button)
-        if (clearButton != null) {
+        if (clearButton != null && clearButton.visible) {
             int cx = clearButton.getX() + 3, cy = clearButton.getY() + 3;
             for (int i = 0; i < 5; i++) {
                 graphics.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, TEXT);

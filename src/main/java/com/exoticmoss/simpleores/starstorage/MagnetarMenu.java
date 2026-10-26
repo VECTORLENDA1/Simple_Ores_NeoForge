@@ -1,6 +1,7 @@
 package com.exoticmoss.simpleores.starstorage;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,12 +14,16 @@ import net.minecraft.world.phys.Vec3;
 /// The menu of the Magnetar Core: its upgrade slots (see MagnetarBlockEntity) and the player's inventory.
 public class MagnetarMenu extends AbstractContainerMenu {
     public static final int WIDTH = 176;
-    public static final int HEIGHT = 150;
+    public static final int HEIGHT = 208;
     public static final int UPGRADES_TOP = 26;
-    public static final int INVENTORY_TOP = 68;
+    /// The info of the network (MagnetarInfo) is drawn between the upgrades and the inventory.
+    public static final int INFO_TOP = 50;
+    public static final int INVENTORY_TOP = 126;
 
     public final BlockPos pos;
     private final Container upgrades;
+    private final Player player;
+    private int ticks;
 
     /// Client: the upgrades are sent by the menu itself.
     public MagnetarMenu(int id, Inventory inventory, BlockPos pos) {
@@ -29,6 +34,7 @@ public class MagnetarMenu extends AbstractContainerMenu {
         super(ModMenus.MAGNETAR.get(), id);
         this.pos = pos;
         this.upgrades = upgrades;
+        this.player = inventory.player;
         addSlot(new UpgradeSlot(MagnetarBlockEntity.SPEED_SLOT, slotX(0), UPGRADES_TOP));
         addSlot(new UpgradeSlot(MagnetarBlockEntity.RANGE_SLOT, slotX(1), UPGRADES_TOP));
         for (int i = 0; i < MagnetarBlockEntity.LINK_SLOTS; i++) {
@@ -78,6 +84,16 @@ public class MagnetarMenu extends AbstractContainerMenu {
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
         else slot.setChanged();
         return before;
+    }
+
+    /// Server: the info of the network is sent again every second.
+    @Override
+    public void broadcastChanges() {
+        super.broadcastChanges();
+        if (++ticks % 20 == 0 && player instanceof ServerPlayer serverPlayer
+                && player.level().getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar) {
+            MagnetarInfo.send(serverPlayer, magnetar);
+        }
     }
 
     @Override

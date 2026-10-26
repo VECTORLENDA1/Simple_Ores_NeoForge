@@ -238,9 +238,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
                         tooltip.add(fluid != null ? StarFluids.name(fluid) : Component.translatable("screen.simpleores.binary.tank"));
                         tooltip.add(Component.literal(String.format(Locale.ROOT, "%,d / %,d mB", tank.amount(), tank.capacity())).withColor(TANK_TEXT));
                         if (rule != null && rule.keeps()) {
-                            Fluid kept = StarFluids.fromBucket(rule.item().get().create());
-                            Component name = kept != null ? StarFluids.name(kept) : rule.item().get().create().getHoverName();
-                            tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", name)
+                            tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", keptNames(rule))
                                     .withColor(rule.takes() ? BOTH_COLOR : KEEP_COLOR));
                         } else if (rule != null && rule.takes()) {
                             tooltip.add(Component.translatable("screen.simpleores.binary.taking").withColor(TAKE_COLOR));
@@ -263,9 +261,9 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
                     tooltip = new ArrayList<>();
                     tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.binary.empty") : stack.getHoverName());
                     if (rule != null && rule.takes() && rule.keeps()) {
-                        tooltip.add(Component.translatable("screen.simpleores.binary.both", rule.item().get().create().getHoverName()).withColor(BOTH_COLOR));
+                        tooltip.add(Component.translatable("screen.simpleores.binary.both", keptNames(rule)).withColor(BOTH_COLOR));
                     } else if (rule != null && rule.keeps()) {
-                        tooltip.add(Component.translatable("screen.simpleores.binary.keeping", rule.item().get().create().getHoverName()).withColor(KEEP_COLOR));
+                        tooltip.add(Component.translatable("screen.simpleores.binary.keeping", keptNames(rule)).withColor(KEEP_COLOR));
                     } else if (rule != null && rule.takes()) {
                         tooltip.add(Component.translatable("screen.simpleores.binary.taking").withColor(TAKE_COLOR));
                     }
@@ -285,6 +283,18 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> {
 
         super.extractRenderState(graphics, mouseX, mouseY, a);
         if (tooltip != null && menu.getCarried().isEmpty()) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
+    }
+
+    /// The names of the items kept by a rule ("Cobblestone, Dirt, Gravel"); liquids by their names.
+    private static Component keptNames(SlotRule rule) {
+        net.minecraft.network.chat.MutableComponent names = Component.empty();
+        for (int i = 0; i < rule.items().size(); i++) {
+            if (i > 0) names.append(", ");
+            ItemStack item = rule.items().get(i).create();
+            Fluid fluid = StarFluids.fromBucket(item);
+            names.append(fluid != null ? StarFluids.name(fluid) : item.getHoverName());
+        }
+        return names;
     }
 
     private static int color(SlotRule rule) {

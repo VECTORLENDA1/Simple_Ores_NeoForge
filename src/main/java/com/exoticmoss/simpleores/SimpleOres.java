@@ -105,7 +105,10 @@ public class SimpleOres {
                 .playToClient(QuasarJobs.TYPE, QuasarJobs.STREAM_CODEC, QuasarJobs::handle)
         // Auto-craft: the player asked to craft (client -> server) and the answer (server -> client)
                 .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
-                .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle);
+                .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle)
+        // Magnetar screen: how the network is (server -> client)
+                .playToClient(com.exoticmoss.simpleores.starstorage.MagnetarInfo.TYPE, com.exoticmoss.simpleores.starstorage.MagnetarInfo.STREAM_CODEC,
+                        com.exoticmoss.simpleores.starstorage.MagnetarInfo::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

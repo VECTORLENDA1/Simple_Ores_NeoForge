@@ -1,7 +1,7 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 3,
-  "time": 300,
+  "tier": 1,
+  "time": 200,
   "ingredients": [
     {
       "item": "simpleores:stellar_terminal"
@@ -12,11 +12,11 @@
     },
     {
       "item": "simpleores:celestine_block",
-      "count": 2
+      "count": 4
     },
     {
       "item": "minecraft:gold_block",
-      "count": 4
+      "count": 8
     },
     {
       "item": "minecraft:nether_star"

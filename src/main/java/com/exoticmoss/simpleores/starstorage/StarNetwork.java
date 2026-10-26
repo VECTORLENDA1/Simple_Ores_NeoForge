@@ -114,24 +114,16 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives) {
     // ---------------------------------------------------------------- putting in and taking out
 
     /// Puts the stack in the network. Returns what did not fit (EMPTY = everything fit).
-    /// First the cells that already have this item, then the cells with free room for a new kind of item,
-    /// and only at the end an empty Singularity cell (it keeps only one kind of item forever).
+    /// First the cells that already have this item (so the same item stays together), then any cell with room.
     public ItemStack insert(ItemStack stack) {
         if (stack.isEmpty() || stack.getItem() instanceof StarCellItem && !StarCellItem.isEmptyCell(stack)) return stack;
         ItemStack left = stack.copy();
-        for (int pass = 0; pass < 3 && !left.isEmpty(); pass++) {
-            final int currentPass = pass;
+        for (int pass = 0; pass < 2 && !left.isEmpty(); pass++) {
+            final boolean onlyWithItem = pass == 0;
             forEachCell((drive, cell, item) -> {
                 if (left.isEmpty()) return;
-                boolean has = StarCellItem.getContents(cell).indexOf(left) >= 0;
-                boolean singularity = item.tier == CellTier.SINGULARITY;
-                boolean fits = switch (currentPass) {
-                    case 0 -> has;
-                    case 1 -> !has && !singularity;
-                    default -> !has && singularity;
-                };
-                if (!fits) return;
-                int amount = Math.min(left.getCount(), item.spaceFor(cell, left));
+                if (onlyWithItem && StarCellItem.getContents(cell).indexOf(left) < 0) return;
+                int amount = Math.min(left.getCount(), item.space(cell));
                 if (amount <= 0) return;
                 item.insert(cell, left, amount);
                 left.shrink(amount);
@@ -157,6 +149,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives) {
 
     private interface CellAction {
         void accept(StellarDriveBlockEntity drive, ItemStack cell, StarCellItem item);
+    }
+
+    /// Every cell of the network: its kind and how many items it has (for the bars of the terminal).
+    public java.util.List<TerminalContents.Cell> cells() {
+        java.util.List<TerminalContents.Cell> list = new ArrayList<>();
+        forEachCell((drive, cell, item) -> list.add(new TerminalContents.Cell(item.tier.ordinal(), StarCellItem.getContents(cell).totalCount())));
+        return list;
     }
 
     private void forEachCell(CellAction action) {

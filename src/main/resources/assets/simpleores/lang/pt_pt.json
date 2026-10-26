@@ -18,7 +18,7 @@
   "item.simpleores.neutron_cell": "Célula de Neutrões",
   "item.simpleores.singularity_cell": "Célula de Singularidade",
   "item.simpleores.star_cell.items": "Items: %s / %s",
-  "item.simpleores.star_cell.types": "Tipos de items: %s / %s",
+  "item.simpleores.star_cell.types": "Tipos de items: %s",
   "item.simpleores.star_cell.more": " ...e mais %s",
   "item.simpleores.star_cell.hint": "Coloca-a numa Drive Estelar perto de um Núcleo Magnetar",
   "message.simpleores.magnetar.info": "Campo do Magnetar (%5$s blocos): %1$s drives, %2$s células, %3$s / %4$s items",
@@ -31,5 +31,14 @@
   "screen.simpleores.terminal.store_all": "Guardar tudo",
   "screen.simpleores.terminal.stored": "Guardados: %s",
   "screen.simpleores.terminal.take_hint": "Clique esquerdo: tirar um stack  -  Clique direito: tirar um",
-  "screen.simpleores.terminal.store_hint": "Clica para guardar"
+  "screen.simpleores.terminal.store_hint": "Clica para guardar",
+  "screen.simpleores.terminal.clear": "Limpar",
+  "screen.simpleores.terminal.no_cells": "Sem células nas drives",
+  "screen.simpleores.terminal.sort.most": "Mais primeiro",
+  "screen.simpleores.terminal.sort.least": "Menos primeiro",
+  "screen.simpleores.terminal.sort.a_z": "Nome A-Z",
+  "screen.simpleores.terminal.sort.z_a": "Nome Z-A",
+  "screen.simpleores.terminal.put_hint": "Clica: pôr no slot de crafting",
+  "screen.simpleores.terminal.grid_hint": "Clique esquerdo: escolher este slot e depois clica num item - Clique direito: esvaziar",
+  "screen.simpleores.terminal.craft_hint": "Clique esquerdo: fazer um - Clique direito: fazer um stack"
 }

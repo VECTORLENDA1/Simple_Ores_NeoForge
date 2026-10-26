@@ -29,6 +29,9 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
     public static final int INSERT_SLOT = 3;
     /// Puts every item of the inventory (not the hotbar) in the network.
     public static final int INSERT_ALL = 4;
+    /// Crafts the recipe of the crafting grid once / as many times as fit in one stack of the result.
+    public static final int CRAFT_ONE = 5;
+    public static final int CRAFT_STACK = 6;
 
     /// Slots 0 to 8 are the hotbar, 9 to 35 the rest of the inventory.
     public static final int HOTBAR_SIZE = 9;
@@ -78,6 +81,8 @@ public record TerminalAction(BlockPos pos, int action, Optional<ItemStackTemplat
                     insertSlot(network, inventory, slot);
                 }
             }
+            case CRAFT_ONE -> TerminalCrafting.craft(player, network, false);
+            case CRAFT_STACK -> TerminalCrafting.craft(player, network, true);
             default -> {
             }
         }

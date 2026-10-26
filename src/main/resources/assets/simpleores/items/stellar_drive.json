@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "simpleores:block/stellar_drive_0"
+    "model": "simpleores:block/stellar_drive"
   }
 }

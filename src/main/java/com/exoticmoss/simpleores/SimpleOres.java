@@ -7,11 +7,14 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
-import com.exoticmoss.simpleores.starstorage.MagnetarItemRenderer;
-import com.exoticmoss.simpleores.starstorage.MagnetarRenderer;
+import com.exoticmoss.simpleores.starstorage.StarBlockRenderer;
+import com.exoticmoss.simpleores.starstorage.StarItemRenderer;
+import com.exoticmoss.simpleores.starstorage.StarLook;
+import com.exoticmoss.simpleores.starstorage.StellarDriveRenderer;
 import com.exoticmoss.simpleores.starstorage.ModDataComponents;
 import com.exoticmoss.simpleores.starstorage.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.TerminalContents;
+import com.exoticmoss.simpleores.starstorage.TerminalGrid;
 import com.exoticmoss.simpleores.worldgen.ModFeatures;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -69,6 +72,8 @@ public class SimpleOres {
                 .playToServer(SelectCoreRecipe.TYPE, SelectCoreRecipe.STREAM_CODEC, SelectCoreRecipe::handle)
         // Stellar Terminal: the player took or stored items (client -> server)
                 .playToServer(TerminalAction.TYPE, TerminalAction.STREAM_CODEC, TerminalAction::handle)
+        // Stellar Terminal: the player changed the crafting grid (client -> server)
+                .playToServer(TerminalGrid.TYPE, TerminalGrid.STREAM_CODEC, TerminalGrid::handle)
         // Stellar Terminal: the items of the Magnetar network (server -> client)
                 .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle);
     }
@@ -97,15 +102,17 @@ public class SimpleOres {
         @SubscribeEvent
         public static void registerBER(EntityRenderersEvent.RegisterRenderers event) {
             event.registerBlockEntityRenderer(ModBlockEntities.GRAVITY_CORE_BE.get(), GravityCoreRenderer::new);
-            event.registerBlockEntityRenderer(ModBlockEntities.MAGNETAR_BE.get(), MagnetarRenderer::new);
+            event.registerBlockEntityRenderer(ModBlockEntities.MAGNETAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.MAGNETAR));
+            event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL));
+            event.registerBlockEntityRenderer(ModBlockEntities.STELLAR_DRIVE_BE.get(), StellarDriveRenderer::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)
         @SubscribeEvent
         public static void registerItemRenderers(RegisterSpecialModelRendererEvent event) {
             event.register(Identifier.fromNamespaceAndPath(MODID, "gravity_core"), GravityCoreItemRenderer.Unbaked.MAP_CODEC);
-            // 3D item model of the Magnetar Core ("type": "simpleores:magnetar")
-            event.register(Identifier.fromNamespaceAndPath(MODID, "magnetar"), MagnetarItemRenderer.Unbaked.MAP_CODEC);
+            // 3D item model of the stars of the star storage ("type": "simpleores:storage_star")
+            event.register(Identifier.fromNamespaceAndPath(MODID, "storage_star"), StarItemRenderer.Unbaked.MAP_CODEC);
         }
 
     }

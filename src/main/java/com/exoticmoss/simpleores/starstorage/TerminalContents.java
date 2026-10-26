@@ -8,6 +8,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -16,12 +17,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/// Sent by the server to the player using a Stellar Terminal: everything inside the Magnetar network.
+/// Sent by the server to the player using a Stellar Terminal: everything inside the Magnetar network,
+/// how full each cell is, and what the crafting grid of the terminal makes (EMPTY = nothing).
 /// "open" = open the terminal screen (false = only update the screen that is already open).
-public record TerminalContents(BlockPos pos, boolean open, List<Item> items, long used, long capacity, int cells)
-        implements CustomPacketPayload {
+public record TerminalContents(BlockPos pos, boolean open, List<Item> items, long used, long capacity, List<Cell> cells,
+                               ItemStack craftResult) implements CustomPacketPayload {
     /// One kind of item and how many of it the whole network has.
     public record Item(ItemStackTemplate item, long count) {
+    }
+
+    /// One cell of the network: its kind (CellTier ordinal) and how many items it has.
+    public record Cell(int tier, long used) {
     }
 
     public static final Type<TerminalContents> TYPE =
@@ -37,7 +43,12 @@ public record TerminalContents(BlockPos pos, boolean open, List<Item> items, lon
                 }
                 buf.writeVarLong(message.used());
                 buf.writeVarLong(message.capacity());
-                buf.writeVarInt(message.cells());
+                buf.writeVarInt(message.cells().size());
+                for (Cell cell : message.cells()) {
+                    buf.writeVarInt(cell.tier());
+                    buf.writeVarLong(cell.used());
+                }
+                ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, message.craftResult());
             },
             buf -> {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
@@ -47,7 +58,12 @@ public record TerminalContents(BlockPos pos, boolean open, List<Item> items, lon
                 for (int i = 0; i < size; i++) {
                     items.add(new Item(ItemStackTemplate.STREAM_CODEC.decode(buf), buf.readVarLong()));
                 }
-                return new TerminalContents(pos, open, items, buf.readVarLong(), buf.readVarLong(), buf.readVarInt());
+                long used = buf.readVarLong();
+                long capacity = buf.readVarLong();
+                int cellCount = buf.readVarInt();
+                List<Cell> cells = new ArrayList<>(cellCount);
+                for (int i = 0; i < cellCount; i++) cells.add(new Cell(buf.readVarInt(), buf.readVarLong()));
+                return new TerminalContents(pos, open, items, used, capacity, cells, ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
             });
 
     @Override
@@ -63,7 +79,7 @@ public record TerminalContents(BlockPos pos, boolean open, List<Item> items, lon
             items.add(new Item(entry.getKey(), entry.getValue()));
         }
         PacketDistributor.sendToPlayer(player, new TerminalContents(pos, open, items,
-                network.usedItems(), network.capacity(), network.cellCount()));
+                network.usedItems(), network.capacity(), network.cells(), TerminalCrafting.result(player)));
     }
 
     /// Runs on the client: opens or updates the terminal screen.

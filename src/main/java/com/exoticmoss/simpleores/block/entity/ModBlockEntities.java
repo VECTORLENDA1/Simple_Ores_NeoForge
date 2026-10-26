@@ -4,6 +4,7 @@ import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
 import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.StellarDriveBlockEntity;
+import com.exoticmoss.simpleores.starstorage.StellarTerminalBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -27,6 +28,9 @@ public class ModBlockEntities {
 
     public static final Supplier<BlockEntityType<StellarDriveBlockEntity>> STELLAR_DRIVE_BE =
             BLOCK_ENTITIES.register("stellar_drive_be", () -> new BlockEntityType<>(StellarDriveBlockEntity::new, ModBlocks.STELLAR_DRIVE.get()));
+
+    public static final Supplier<BlockEntityType<StellarTerminalBlockEntity>> STELLAR_TERMINAL_BE =
+            BLOCK_ENTITIES.register("stellar_terminal_be", () -> new BlockEntityType<>(StellarTerminalBlockEntity::new, ModBlocks.STELLAR_TERMINAL.get()));
 
 
     public static void register(IEventBus eventBus) {

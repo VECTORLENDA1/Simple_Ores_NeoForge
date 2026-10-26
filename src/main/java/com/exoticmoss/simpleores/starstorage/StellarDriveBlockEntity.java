@@ -2,6 +2,11 @@ package com.exoticmoss.simpleores.starstorage;
 
 import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -9,12 +14,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /// Keeps the Star Cells put in a Stellar Drive (in the order they were put in).
 public class StellarDriveBlockEntity extends BlockEntity {
     private final List<ItemStack> cells = new ArrayList<>();
+    /// Client only: the kinds of the cells inside (CellTier ordinals), to draw them. The client never gets
+    /// the items of the cells (they can be millions), only this.
+    private int[] clientTiers = new int[0];
 
     public StellarDriveBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.STELLAR_DRIVE_BE.get(), pos, state);
@@ -41,13 +51,27 @@ public class StellarDriveBlockEntity extends BlockEntity {
         return cell;
     }
 
-    /// Saves the changes and shows on the front how many cells are inside.
+    /// Client: the kinds of the cells inside (CellTier ordinals), in order.
+    public int[] getClientTiers() {
+        return clientTiers;
+    }
+
+    /// The kinds of the cells inside (CellTier ordinals), in order.
+    private int[] tiers() {
+        return cells.stream().mapToInt(cell -> cell.getItem() instanceof StarCellItem item ? item.tier.ordinal() : 0).toArray();
+    }
+
+    /// Saves the changes. When cells are put in or taken out, the clients are told (to draw the stars).
     public void cellsChanged() {
         setChanged();
         if (level != null && !level.isClientSide()) {
             BlockState state = getBlockState();
             if (state.hasProperty(StellarDriveBlock.CELLS) && state.getValue(StellarDriveBlock.CELLS) != cells.size()) {
                 level.setBlock(worldPosition, state.setValue(StellarDriveBlock.CELLS, cells.size()), 3);
+            }
+            if (!java.util.Arrays.equals(clientTiers, tiers())) {
+                clientTiers = tiers();
+                level.sendBlockUpdated(worldPosition, state, state, 3);
             }
         }
     }
@@ -73,7 +97,22 @@ public class StellarDriveBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+        // The server reads the cells; the client only gets the kinds of the cells (getUpdateTag)
         cells.clear();
         cells.addAll(input.read("cells", ItemStack.CODEC.listOf()).orElse(List.of()));
+        clientTiers = input.getIntArray("tiers").orElseGet(this::tiers);
+    }
+
+    @Override
+    public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    /// Sent to the clients: only the kinds of the cells (enough to draw them).
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putIntArray("tiers", tiers());
+        return tag;
     }
 }

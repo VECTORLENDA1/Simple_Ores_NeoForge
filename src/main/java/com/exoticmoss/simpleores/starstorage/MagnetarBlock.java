@@ -16,7 +16,7 @@ import net.minecraft.world.phys.BlockHitResult;
 /// The Magnetar Core: the "brain" of the star storage.
 /// Every Stellar Drive and Stellar Terminal inside its magnetic field (StarNetwork.FIELD_RADIUS blocks
 /// in every direction) is connected to it, without cables. It needs no energy: stars live for billions of years.
-/// The star is not a block model: it is drawn by MagnetarRenderer.
+/// The star is not a block model: it is drawn by StarBlockRenderer (StarLook.MAGNETAR).
 public class MagnetarBlock extends BaseEntityBlock {
     public static final MapCodec<MagnetarBlock> CODEC = simpleCodec(MagnetarBlock::new);
 

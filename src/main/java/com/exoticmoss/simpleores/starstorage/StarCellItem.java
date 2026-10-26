@@ -36,14 +36,12 @@ public class StarCellItem extends Item {
         return getContents(cell).isEmpty();
     }
 
-    /// How many of this item the cell can still take (0 = none).
-    public int spaceFor(ItemStack cell, ItemStack stack) {
-        CellContents contents = getContents(cell);
-        if (contents.indexOf(stack) < 0 && contents.entries().size() >= tier.maxTypes) return 0;
-        return (int) Math.max(0, Math.min(Integer.MAX_VALUE, tier.capacity - contents.totalCount()));
+    /// How many more items the cell can take (any kind of item: there is no limit of kinds).
+    public int space(ItemStack cell) {
+        return (int) Math.max(0, Math.min(Integer.MAX_VALUE, tier.capacity - getContents(cell).totalCount()));
     }
 
-    /// Puts "amount" of this item in the cell (call spaceFor first).
+    /// Puts "amount" of this item in the cell (call space first).
     public void insert(ItemStack cell, ItemStack stack, int amount) {
         if (amount > 0) setContents(cell, getContents(cell).plus(stack, amount));
     }
@@ -70,7 +68,7 @@ public class StarCellItem extends Item {
         tooltip.accept(Component.translatable("item.simpleores.star_cell.items",
                 StarNetwork.format(contents.totalCount()), StarNetwork.format(tier.capacity)).withStyle(ChatFormatting.GRAY));
         tooltip.accept(Component.translatable("item.simpleores.star_cell.types",
-                contents.entries().size(), tier.maxTypes).withStyle(ChatFormatting.GRAY));
+                contents.entries().size()).withStyle(ChatFormatting.GRAY));
         for (int i = 0; i < Math.min(TOOLTIP_LINES, contents.entries().size()); i++) {
             CellContents.Entry entry = contents.entries().get(i);
             tooltip.accept(Component.literal(" " + StarNetwork.format(entry.count()) + "x ")

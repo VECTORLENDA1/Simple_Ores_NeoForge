@@ -9,27 +9,22 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/// Draws a placed Magnetar Core: a small, very bright star with two magnetic beams that spin around it
-/// (the same drawing as the Gravity Cores, see CoreDrawing).
-public class MagnetarRenderer implements BlockEntityRenderer<MagnetarBlockEntity, MagnetarRenderer.State> {
-    /// Colors (0xAARRGGBB).
-    public static final int CORE_COLOR = 0xFFEAF2FF;
-    public static final int SPOT_COLOR = 0xFF8A6CFF;
-    public static final int GLOW_COLOR = 0xFFA070FF;
-    public static final int BEAM_COLOR = 0xFFC9A6FF;
-    /// Radius of the star (0.5 = one block wide) and length of the beams (blocks).
-    private static final float RADIUS = 0.36f;
-    private static final float BEAM_LENGTH = 2.5f;
+/// Draws a placed star of the star storage (Magnetar Core or Stellar Terminal), with its StarLook.
+/// The star floats in the middle of the block and slowly "pulses".
+public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRenderer<T, StarBlockRenderer.State> {
+    private final StarLook look;
 
     public static class State extends BlockEntityRenderState {
         float time;
     }
 
-    public MagnetarRenderer(BlockEntityRendererProvider.Context context) {
+    public StarBlockRenderer(BlockEntityRendererProvider.Context context, StarLook look) {
+        this.look = look;
     }
 
     @Override
@@ -38,16 +33,16 @@ public class MagnetarRenderer implements BlockEntityRenderer<MagnetarBlockEntity
     }
 
     @Override
-    public void extractRenderState(MagnetarBlockEntity magnetar, State state, float partialTick, Vec3 cameraPos,
+    public void extractRenderState(T blockEntity, State state, float partialTick, Vec3 cameraPos,
                                    ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
-        BlockEntityRenderer.super.extractRenderState(magnetar, state, partialTick, cameraPos, breakProgress);
-        state.time = (magnetar.getLevel().getGameTime() % 100000) + partialTick;
+        BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTick, cameraPos, breakProgress);
+        state.time = (blockEntity.getLevel().getGameTime() % 100000) + partialTick;
     }
 
     @Override
     public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
         float time = state.time;
-        float radius = RADIUS * (1 + 0.04f * Mth.sin(time * 0.3f)); // it "pulses" faster than the Gravity Cores
+        float radius = look.radius * (1 + 0.04f * Mth.sin(time * 0.3f));
 
         Vec3 center = Vec3.atCenterOf(state.blockPos);
         Vec3 toCamera = camera.pos.subtract(center).normalize();
@@ -55,14 +50,14 @@ public class MagnetarRenderer implements BlockEntityRenderer<MagnetarBlockEntity
 
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);
-        CoreDrawing.drawStar(pose, collector, radius, time * 1.5f, CORE_COLOR, SPOT_COLOR, GLOW_COLOR,
-                0x00000000, BEAM_COLOR, BEAM_LENGTH, shading);
+        CoreDrawing.drawStar(pose, collector, radius, time * 1.5f, look.coreColor, look.spotColor, look.glowColor,
+                0x00000000, look.beamColor, look.beamLength, shading);
         pose.popPose();
     }
 
     /// The beams go outside the block: this makes Minecraft draw them even when the block is just off screen.
     @Override
-    public AABB getRenderBoundingBox(MagnetarBlockEntity magnetar) {
-        return new AABB(magnetar.getBlockPos()).inflate(4);
+    public AABB getRenderBoundingBox(T blockEntity) {
+        return new AABB(blockEntity.getBlockPos()).inflate(4);
     }
 }

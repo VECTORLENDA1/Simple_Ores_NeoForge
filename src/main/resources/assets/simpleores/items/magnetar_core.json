@@ -3,7 +3,8 @@
     "type": "minecraft:special",
     "base": "simpleores:item/magnetar_core",
     "model": {
-      "type": "simpleores:magnetar"
+      "type": "simpleores:storage_star",
+      "star": "magnetar"
     },
     "transformation": {
       "left_rotation": [

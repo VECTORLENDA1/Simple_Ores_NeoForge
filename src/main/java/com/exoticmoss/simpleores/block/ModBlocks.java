@@ -104,11 +104,13 @@ public class ModBlocks {
             () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
                     .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> 13));
     public static final DeferredBlock<Block> STELLAR_DRIVE = registerBlockItem("stellar_drive", StellarDriveBlock::new,
-            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
-                    .lightLevel(state -> state.getValue(StellarDriveBlock.CELLS) > 0 ? 6 : 0));
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.GLASS)
+                    .noOcclusion().isViewBlocking((state, level, pos) -> false).isSuffocating((state, level, pos) -> false)
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .lightLevel(state -> state.getValue(StellarDriveBlock.CELLS) > 0 ? 9 : 0));
     public static final DeferredBlock<Block> STELLAR_TERMINAL = registerBlockItem("stellar_terminal", StellarTerminalBlock::new,
-            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
-                    .lightLevel(state -> 7));
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 11));
 
     static {
         // The Magnetar item can't be destroyed by fire, lava or explosions (like the Gravity Cores)

@@ -55,7 +55,7 @@
   "item.simpleores.neutron_cell": "Neutron Cell",
   "item.simpleores.singularity_cell": "Singularity Cell",
   "item.simpleores.star_cell.items": "Items: %s / %s",
-  "item.simpleores.star_cell.types": "Kinds of items: %s / %s",
+  "item.simpleores.star_cell.types": "Kinds of items: %s",
   "item.simpleores.star_cell.more": " ...and %s more",
   "item.simpleores.star_cell.hint": "Put it in a Stellar Drive near a Magnetar Core",
   "message.simpleores.magnetar.info": "Magnetar field (%5$s blocks): %1$s drives, %2$s cells, %3$s / %4$s items",
@@ -68,5 +68,14 @@
   "screen.simpleores.terminal.store_all": "Store all",
   "screen.simpleores.terminal.stored": "Stored: %s",
   "screen.simpleores.terminal.take_hint": "Left-click: take a stack  -  Right-click: take one",
-  "screen.simpleores.terminal.store_hint": "Click to store"
+  "screen.simpleores.terminal.store_hint": "Click to store",
+  "screen.simpleores.terminal.clear": "Clear",
+  "screen.simpleores.terminal.no_cells": "No cells in the drives",
+  "screen.simpleores.terminal.sort.most": "Most first",
+  "screen.simpleores.terminal.sort.least": "Least first",
+  "screen.simpleores.terminal.sort.a_z": "Name A-Z",
+  "screen.simpleores.terminal.sort.z_a": "Name Z-A",
+  "screen.simpleores.terminal.put_hint": "Click: put in the crafting slot",
+  "screen.simpleores.terminal.grid_hint": "Left-click: pick this slot, then click an item - Right-click: empty it",
+  "screen.simpleores.terminal.craft_hint": "Left-click: craft one - Right-click: craft a stack"
 }

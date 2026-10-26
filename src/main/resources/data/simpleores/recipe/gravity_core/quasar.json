@@ -1,7 +1,7 @@
 {
   "type": "simpleores:gravity_craft",
-  "tier": 4,
-  "time": 400,
+  "tier": 2,
+  "time": 200,
   "ingredients": [
     {
       "item": "simpleores:obscuridium",
@@ -13,7 +13,7 @@
     },
     {
       "item": "minecraft:crafting_table",
-      "count": 8
+      "count": 32
     },
     {
       "item": "minecraft:nether_star"

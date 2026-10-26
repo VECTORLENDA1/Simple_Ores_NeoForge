@@ -27,8 +27,8 @@ import java.util.Locale;
 import java.util.Optional;
 
 /// The screen of the Stellar Terminal (see TerminalLayout for where everything is).
-///  - Top: how full each cell of the network is (mouse wheel to see more), the search box and the sort button
-///    (most first, least first, A-Z, Z-A).
+///  - Top: how full each cell of the network is (mouse wheel to see more), the search box (right-click clears it)
+///    and the sort button (most first, least first, A-Z, Z-A).
 ///  - Middle: the items of the network. Left-click takes a stack, right-click takes one (into the mouse cursor);
 ///    Shift + click takes a stack into the inventory. Clicking with an item in the mouse cursor stores it
 ///    (right-click: only one). Mouse wheel scrolls.
@@ -166,6 +166,11 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // Right-click on the search box: clears it
+        if (searchBox != null && event.button() == 1 && searchBox.isMouseOver(event.x(), event.y())) {
+            searchBox.setValue("");
+            return true;
+        }
         boolean handled = handleClick(event, doubleClick);
         // Nothing stays selected (white outline) after a click: only the search box, while clicking on it
         if (searchBox == null || !searchBox.isMouseOver(event.x(), event.y())) {

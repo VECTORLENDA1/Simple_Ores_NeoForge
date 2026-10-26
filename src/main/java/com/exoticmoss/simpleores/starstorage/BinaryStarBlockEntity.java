@@ -6,7 +6,10 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.transfer.ResourceHandler;
+import org.jspecify.annotations.Nullable;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -29,6 +32,7 @@ import java.util.TreeMap;
 /// Works with every block that has an inventory (chests, barrels, furnaces, hoppers, brewing stands, the machines of
 /// other mods...) and with tanks of liquids (TAKE: the liquid goes to the Fluid Cells; KEEP: the tank is kept full of
 /// the liquid). It uses the transfer API of NeoForge (see StarAccess).
+/// It is also the door of the network for other mods: their pipes can put in and take out items and liquids.
 public class BinaryStarBlockEntity extends BlockEntity {
     /// Every how many ticks the Binary Star moves the items (10 ticks = half a second).
     public static final int WORK_TICKS = 10;
@@ -117,6 +121,30 @@ public class BinaryStarBlockEntity extends BlockEntity {
         } else if (rule.takes()) {
             StarAccess.takeFluid(network, fluids, tank);
         }
+    }
+
+    // ---------------------------------------------------------------- the network for other mods
+
+    private NetworkHandler.Items itemHandler;
+    private NetworkHandler.Fluids fluidHandler;
+
+    /// The pipes, hoppers and machines of other mods that touch the Binary Star see the whole network
+    /// (see NetworkHandler): they can put items and liquids in it and take them out.
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.Item.BLOCK, ModBlockEntities.BINARY_STAR_BE.get(), (binary, side) -> binary.items());
+        event.registerBlockEntity(Capabilities.Fluid.BLOCK, ModBlockEntities.BINARY_STAR_BE.get(), (binary, side) -> binary.fluids());
+    }
+
+    private @Nullable NetworkHandler.Items items() {
+        if (level == null || level.isClientSide()) return null;
+        if (itemHandler == null) itemHandler = new NetworkHandler.Items(level, worldPosition);
+        return itemHandler;
+    }
+
+    private @Nullable NetworkHandler.Fluids fluids() {
+        if (level == null || level.isClientSide()) return null;
+        if (fluidHandler == null) fluidHandler = new NetworkHandler.Fluids(level, worldPosition);
+        return fluidHandler;
     }
 
     // ---------------------------------------------------------------- saving

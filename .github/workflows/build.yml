@@ -22,3 +22,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: build
+
+      - name: Probe API (temporary)
+        if: always()
+        run: |
+          JAVAP=$(find / -name javap -path "*bin*" 2>/dev/null | head -1)
+          for f in $(find build ~/.gradle -name "*.jar" 2>/dev/null); do unzip -l "$f" 2>/dev/null | grep -iE "neoforge/client/event/.*(Highlight|Outline)[A-Za-z$]*\.class" | awk '{print $4}' | sed "s|^|$f :: |"; done | sort -u | head -20
+          for f in $(find build ~/.gradle -name "*.jar" 2>/dev/null); do for c in $(unzip -l "$f" 2>/dev/null | grep -iE "neoforge/client/event/.*(Highlight|Outline)[A-Za-z$]*\.class" | awk '{print $4}' | sed 's|\.class$||; s|/|.|g'); do echo "=== $c"; $JAVAP -cp "$f" -p "$c" | head -30; done; done 2>/dev/null | head -150
+          J=build/moddev/artifacts/minecraft-patched-26.2.0.88.jar
+          $JAVAP -cp $J -p net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState | head -20
+          $JAVAP -cp $J -p net.minecraft.world.level.block.Block | grep -i "shape" | head
+          $JAVAP -cp $J -p net.minecraft.world.level.block.state.BlockBehaviour | grep -i "shape" | head -20

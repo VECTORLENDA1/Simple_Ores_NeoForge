@@ -49,8 +49,14 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
         return new Pattern(output, count, List.of(List.of(input)), List.of(), Optional.empty(), 0, true);
     }
 
-    /// Crafting table recipes are level 1; Gravity Core and furnace recipes need level 2 (Stellar Terminal II, Quasar).
+    /// Gravity Core recipes need level 2 (Stellar Terminal II, Quasar); crafting table and furnace recipes work in
+    /// every terminal.
     public boolean advanced() {
+        return isCore();
+    }
+
+    /// Recipes that take time (Gravity Core, furnace): a plan with them becomes a Job of a Quasar.
+    public boolean takesTime() {
         return isCore() || furnace;
     }
 

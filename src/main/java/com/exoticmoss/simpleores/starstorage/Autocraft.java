@@ -69,7 +69,7 @@ public final class Autocraft {
     }
 
     /// Plans and, if nothing is missing, crafts "amount" of "item" into the network.
-    /// "advanced" = the Gravity Core and furnace recipes can be used (Stellar Terminal II, Quasar).
+    /// "advanced" = the Gravity Core recipes can be used (Stellar Terminal II, Quasar).
     /// "chosen" = the recipe chosen by the player (empty = the first one that has everything).
     public static Result request(ServerLevel level, StarNetwork network, BlockPos pos, ItemStackTemplate item, long amount,
                                  boolean advanced, Optional<Pattern> chosen) {
@@ -83,7 +83,7 @@ public final class Autocraft {
         }
         if (craft.crafts > MAX_CRAFTS) return new Result(Map.of(), "screen.simpleores.terminal.craft.too_big");
         if (!craft.missing.isEmpty()) return new Result(craft.missing, null);
-        if (craft.steps.stream().anyMatch(step -> step.pattern().advanced()) || craft.crafts > CRAFTS_AT_ONCE) {
+        if (craft.steps.stream().anyMatch(step -> step.pattern().takesTime()) || craft.crafts > CRAFTS_AT_ONCE) {
             if (network.quasars().isEmpty()) return new Result(Map.of(), "screen.simpleores.terminal.craft.no_recipe");
             // A Quasar of this dimension if there is one (the network can reach others with Wormhole Links)
             QuasarBlockEntity quasar = network.quasars().stream().filter(other -> other.getLevel() == level).findFirst()

@@ -34,6 +34,8 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
     public static final int TAKE_ALL = 3;
     /// No rules for the block.
     public static final int CLEAR = 4;
+    /// Links (or unlinks) the machine recipe number "slot" (of BinaryView.options) to the block.
+    public static final int LINK = 5;
 
     /// How far (in blocks) the player can be from the Binary Star.
     public static final double RANGE = 8;
@@ -83,6 +85,10 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
                     for (int t = 0; t < tankCount; t++) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
                 }
                 case CLEAR -> binary.clearRules(block);
+                case LINK -> {
+                    List<com.exoticmoss.simpleores.starstorage.quasar.Pattern> options = BinaryView.options(player.level(), pos, block);
+                    if (slot >= 0 && slot < options.size()) binary.toggleLink(block, options.get(slot));
+                }
                 default -> {
                 }
             }

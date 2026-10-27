@@ -53,6 +53,9 @@ public class BinaryStarBlockEntity extends BlockEntity {
 
     /// The rules of each block (position -> slot -> rule).
     private final Map<BlockPos, Map<Integer, SlotRule>> rules = new HashMap<>();
+    /// The recipes of the Quasars (machine recipes) each machine makes (position -> recipes). A recipe linked to
+    /// machines is only made in those machines, and a machine with recipes only makes those (see Autocraft).
+    private final Map<BlockPos, List<com.exoticmoss.simpleores.starstorage.quasar.Pattern>> links = new HashMap<>();
     /// Every how many ticks the blocks around are looked at for new machines (5 seconds).
     public static final int SCAN_TICKS = 100;
     /// The blocks whose output slots were already set to TAKE by themselves (see scanOutputs): a rule the player
@@ -85,6 +88,25 @@ public class BinaryStarBlockEntity extends BlockEntity {
         if (rule == null) slots.remove(slot);
         else slots.put(slot, rule);
         if (slots.isEmpty()) rules.remove(pos);
+        setChanged();
+    }
+
+    /// The recipes linked to each machine.
+    public Map<BlockPos, List<com.exoticmoss.simpleores.starstorage.quasar.Pattern>> links() {
+        return links;
+    }
+
+    /// The recipes linked to the machine at "pos" (empty if none).
+    public List<com.exoticmoss.simpleores.starstorage.quasar.Pattern> linksOf(BlockPos pos) {
+        return links.getOrDefault(pos, List.of());
+    }
+
+    /// Links the recipe to the machine (or, if it was linked, unlinks it).
+    public void toggleLink(BlockPos pos, com.exoticmoss.simpleores.starstorage.quasar.Pattern pattern) {
+        List<com.exoticmoss.simpleores.starstorage.quasar.Pattern> list = new ArrayList<>(linksOf(pos));
+        if (!list.remove(pattern)) list.add(pattern);
+        if (list.isEmpty()) links.remove(pos);
+        else links.put(pos.immutable(), list);
         setChanged();
     }
 
@@ -224,6 +246,14 @@ public class BinaryStarBlockEntity extends BlockEntity {
 
     // ---------------------------------------------------------------- saving
 
+    /// The recipes linked to one machine, as they are saved.
+    private record BlockLinks(BlockPos pos, List<com.exoticmoss.simpleores.starstorage.quasar.Pattern> recipes) {
+        static final Codec<BlockLinks> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                BlockPos.CODEC.fieldOf("pos").forGetter(BlockLinks::pos),
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.CODEC.listOf().fieldOf("recipes").forGetter(BlockLinks::recipes)
+        ).apply(inst, BlockLinks::new));
+    }
+
     /// The rules of one block, as they are saved.
     private record BlockRules(BlockPos pos, List<SlotRule> slots) {
         static final Codec<BlockRules> CODEC = RecordCodecBuilder.create(inst -> inst.group(
@@ -240,12 +270,19 @@ public class BinaryStarBlockEntity extends BlockEntity {
         output.store("rules", BlockRules.CODEC.listOf(), list);
         output.store("upgrades", ItemStack.OPTIONAL_CODEC, upgrades.getItem(0));
         output.store("configured", BlockPos.CODEC.listOf(), new ArrayList<>(configured));
+        List<BlockLinks> linkList = new ArrayList<>();
+        links.forEach((pos, recipes) -> linkList.add(new BlockLinks(pos, recipes)));
+        output.store("links", BlockLinks.CODEC.listOf(), linkList);
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         upgrades.setItem(0, input.read("upgrades", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
+        links.clear();
+        for (BlockLinks block : input.read("links", BlockLinks.CODEC.listOf()).orElse(List.of())) {
+            if (!block.recipes().isEmpty()) links.put(block.pos(), new ArrayList<>(block.recipes()));
+        }
         configured.clear();
         configured.addAll(input.read("configured", BlockPos.CODEC.listOf()).orElse(List.of()));
         rules.clear();

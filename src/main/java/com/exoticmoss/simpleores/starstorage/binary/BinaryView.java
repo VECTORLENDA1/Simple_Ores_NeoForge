@@ -15,6 +15,7 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -30,7 +31,10 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
     /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks, the rules
     /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank) and what each slot is
     /// for (SlotRoles: input / output).
-    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules, List<Integer> roles) {
+    /// "options": the machine recipes of the Quasars this block can make, and which of them are linked to it
+    /// (it makes only those, see BinaryStarBlockEntity.links).
+    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules, List<Integer> roles,
+                        List<Pattern> options, List<Boolean> linked) {
     }
 
     /// One tank: a bucket of its liquid (EMPTY = empty tank or a liquid without bucket), the mB and how many fit.
@@ -64,6 +68,11 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     for (SlotRule rule : block.rules()) SlotRule.STREAM_CODEC.encode(buf, rule);
                     buf.writeVarInt(block.roles().size());
                     for (int role : block.roles()) buf.writeByte(role);
+                    buf.writeVarInt(block.options().size());
+                    for (int o = 0; o < block.options().size(); o++) {
+                        Pattern.STREAM_CODEC.encode(buf, block.options().get(o));
+                        buf.writeBoolean(block.linked().get(o));
+                    }
                 }
             },
             buf -> {
@@ -93,7 +102,14 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     int roleCount = buf.readVarInt();
                     List<Integer> roles = new ArrayList<>(roleCount);
                     for (int r = 0; r < roleCount; r++) roles.add((int) buf.readByte());
-                    blocks.add(new Block(blockPos, icon, slots, tanks, rules, roles));
+                    int optionCount = buf.readVarInt();
+                    List<Pattern> options = new ArrayList<>(optionCount);
+                    List<Boolean> linked = new ArrayList<>(optionCount);
+                    for (int o = 0; o < optionCount; o++) {
+                        options.add(Pattern.STREAM_CODEC.decode(buf));
+                        linked.add(buf.readBoolean());
+                    }
+                    blocks.add(new Block(blockPos, icon, slots, tanks, rules, roles, options, linked));
                 }
                 return new BinaryView(pos, open, drives, cells, used, capacity, blocks, radius);
             });
@@ -134,12 +150,30 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
             }
             Map<Integer, SlotRule> rules = binary.rulesOf(blockPos);
             List<Integer> roles = items == null ? List.of() : SlotRoles.items(player.level(), blockPos, items);
-            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles));
+            List<Pattern> options = options(network, blockEntity.getBlockState());
+            List<Pattern> links = binary.linksOf(blockPos);
+            List<Boolean> linked = new ArrayList<>();
+            for (Pattern option : options) linked.add(links.contains(option));
+            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles, options, linked));
         });
         // The closest blocks first
         blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));
         PacketDistributor.sendToPlayer(player, new BinaryView(pos, open, network.drives().size(), network.cellCount(),
                 network.usedItems(), network.capacity(), blocks, binary.radius()));
+    }
+
+    /// The machine recipes of the Quasars of the network that the block can make (in the order of the Quasars).
+    public static List<Pattern> options(StarNetwork network, net.minecraft.world.level.block.state.BlockState state) {
+        List<Pattern> options = new ArrayList<>();
+        for (Pattern pattern : network.patterns()) {
+            if (pattern.isMachine() && pattern.madeBy(state) && !options.contains(pattern)) options.add(pattern);
+        }
+        return options;
+    }
+
+    /// The same, for the block at "block", seen from the Binary Star at "binary".
+    public static List<Pattern> options(net.minecraft.world.level.Level level, BlockPos binary, BlockPos block) {
+        return options(StarNetwork.at(level, binary), level.getBlockState(block));
     }
 
     /// Runs on the client: opens or updates the Binary Star screen.

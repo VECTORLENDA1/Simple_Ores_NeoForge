@@ -645,9 +645,17 @@ public final class Autocraft {
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             if (magnetar == null) return false;
             List<BlockPos> list = new ArrayList<>();
+            // The recipes linked to machines in the Binary Stars of the field
+            Map<BlockPos, List<Pattern>> links = new HashMap<>();
             StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
                 if (step.pattern().madeBy(blockEntity.getBlockState())) list.add(blockEntity.getBlockPos());
+                if (blockEntity instanceof com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity binary) {
+                    binary.links().forEach((machine, recipes) -> links.computeIfAbsent(machine, p -> new ArrayList<>()).addAll(recipes));
+                }
             });
+            // A machine with linked recipes makes only those; a recipe linked to machines goes only to those
+            boolean linkedRecipe = links.values().stream().anyMatch(recipes -> recipes.contains(step.pattern()));
+            list.removeIf(machine -> links.containsKey(machine) ? !links.get(machine).contains(step.pattern()) : linkedRecipe);
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_machines" : "screen.simpleores.quasar.job.working";
             // The ingredients of one craft and how many of each
             List<ItemStack> items = new ArrayList<>();

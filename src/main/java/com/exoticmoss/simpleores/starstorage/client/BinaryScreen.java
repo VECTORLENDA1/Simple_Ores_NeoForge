@@ -143,6 +143,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     /// JEI: the slots that can be seen whole now.
     public List<DropSlot> dropSlots() {
         List<DropSlot> list = new ArrayList<>();
+        if (linkingBlock() != null) return list;
         for (Card card : cards()) {
             BinaryView.Block block = view.blocks().get(card.index());
             for (int slot = 0; slot < cells(block); slot++) {
@@ -183,6 +184,16 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     @Override
     public @Nullable JeiTarget jeiTargetAt(double mouseX, double mouseY) {
         if (mouseY < areaTop() || mouseY >= areaBottom()) return null;
+        BinaryView.Block linkingBlock = linkingBlock();
+        if (linkingBlock != null) {
+            for (int i = 0; i < linkingBlock.options().size(); i++) {
+                int[] at = optionAt(i);
+                if (mouseX >= at[0] && mouseX < at[0] + SLOT && mouseY >= at[1] && mouseY < at[1] + SLOT) {
+                    return JeiTarget.of(linkingBlock.options().get(i).outputStack().copyWithCount(1), at[0] + 1, at[1] + 1);
+                }
+            }
+            return null;
+        }
         for (Card card : cards()) {
             BinaryView.Block block = view.blocks().get(card.index());
             if (mouseX >= card.x() + 2 && mouseX < card.x() + 18 && mouseY >= card.y() + 2 && mouseY < card.y() + 18) {
@@ -221,7 +232,13 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     }
 
     /// The two buttons of a card: 0 = "Take all", 1 = "Clear". {x, y, width, height}
+    /// 2 = "Recipes" (only for machines that can make recipes of the Quasars).
     private static int[] button(Card card, int which) {
+        if (which == 2) {
+            int[] take = button(card, 0);
+            int recipesWidth = 48;
+            return new int[]{take[0] - 3 - recipesWidth, take[1], recipesWidth, 14};
+        }
         int clearWidth = 36, takeWidth = 52;
         int right = card.x() + WIDTH - 20 - 2;
         return which == 1 ? new int[]{right - clearWidth, card.y() + 3, clearWidth, 14}
@@ -315,6 +332,10 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             dragTo(event.y());
             return true;
         }
+        if (linkingBlock() != null) {
+            clickLinks(event.x(), event.y());
+            return true;
+        }
         boolean right = event.button() == 1;
         boolean inArea = event.y() >= areaTop() && event.y() < areaBottom();
         for (Card card : inArea ? cards() : List.<Card>of()) {
@@ -325,6 +346,10 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             }
             if (inside(button(card, 1), event.x(), event.y())) {
                 send(block.pos(), BinaryAction.CLEAR, 0);
+                return true;
+            }
+            if (!block.options().isEmpty() && inside(button(card, 2), event.x(), event.y())) {
+                linking = block.pos();
                 return true;
             }
             for (int slot = 0; slot < cells(block); slot++) {
@@ -360,7 +385,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         int cardMouseY = mouseY >= areaTop() && mouseY < areaBottom() ? mouseY : -10_000;
         graphics.enableScissor(left + 1, areaTop(), left + WIDTH - 1, areaBottom());
         List<Component> tooltip = null;
-        List<Card> cards = cards();
+        List<Card> cards = linkingBlock() != null ? List.of() : cards();
         for (Card card : cards) {
             BinaryView.Block block = view.blocks().get(card.index());
             Map<Integer, SlotRule> rules = new HashMap<>();
@@ -368,11 +393,14 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
             graphics.fill(card.x(), card.y(), card.x() + WIDTH - 20, card.y() + card.height(), CARD);
             graphics.item(block.icon(), card.x() + 2, card.y() + 2);
-            int nameRight = button(card, 0)[0] - 4;
+            int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
             graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - card.x() - 22)),
                     card.x() + 22, card.y() + 6, TEXT);
             drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, cardMouseY);
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
+            if (!block.options().isEmpty()) {
+                drawButton(graphics, button(card, 2), Component.translatable("screen.simpleores.binary.recipes"), mouseX, cardMouseY);
+            }
 
             for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
@@ -429,8 +457,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             }
         }
         graphics.disableScissor();
+        // The recipes of a machine (over the cards)
+        BinaryView.Block linkingBlock = linkingBlock();
+        if (linkingBlock != null) tooltip = drawLinks(graphics, linkingBlock, mouseX, mouseY);
         // The bar on the right (when not every card fits)
-        if (hasBar()) {
+        if (linkingBlock == null && hasBar()) {
             int[] thumb = thumb();
             graphics.fill(barX(), areaTop(), barX() + BAR_WIDTH, areaBottom(), SLOT_COLOR);
             graphics.fill(barX(), thumb[0], barX() + BAR_WIDTH, thumb[0] + thumb[1], dragging ? RANGE_COLOR : PANEL_BORDER);
@@ -492,6 +523,78 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private static int color(SlotRule rule) {
         if (rule.takes() && rule.keeps()) return BOTH_COLOR;
         return rule.keeps() ? KEEP_COLOR : TAKE_COLOR;
+    }
+
+    // ---------------------------------------------------------------- the recipes of a machine
+
+    /// The machine whose recipes are shown (null = the cards are shown).
+    private @Nullable BlockPos linking;
+
+    private BinaryView.@Nullable Block linkingBlock() {
+        if (linking == null) return null;
+        for (BinaryView.Block block : view.blocks()) {
+            if (block.pos().equals(linking) && !block.options().isEmpty()) return block;
+        }
+        linking = null;
+        return null;
+    }
+
+    private int[] backButton() {
+        return new int[]{left + WIDTH - 10 - 2 - 44, areaTop() + 3, 44, 14};
+    }
+
+    /// Where the recipe "i" is drawn: {x, y}.
+    private int[] optionAt(int i) {
+        return new int[]{left + 14 + (i % COLUMNS) * SLOT, areaTop() + CARD_HEADER + 2 + (i / COLUMNS) * SLOT};
+    }
+
+    /// The recipes of the Quasars the machine can make: a click links (or unlinks) one. The linked ones are green.
+    private @Nullable List<Component> drawLinks(GuiGraphicsExtractor graphics, BinaryView.Block block, int mouseX, int mouseY) {
+        graphics.fill(left + 10, areaTop(), left + WIDTH - 10, areaBottom(), CARD);
+        graphics.item(block.icon(), left + 12, areaTop() + 2);
+        int nameRight = backButton()[0] - 4;
+        graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - left - 32)), left + 32, areaTop() + 6, TEXT);
+        drawButton(graphics, backButton(), Component.translatable("screen.simpleores.binary.back"), mouseX, mouseY);
+        List<Component> tooltip = null;
+        for (int i = 0; i < block.options().size(); i++) {
+            int[] at = optionAt(i);
+            if (at[1] + SLOT > areaBottom()) break;
+            boolean linked = block.linked().get(i);
+            boolean hovered = mouseX >= at[0] && mouseX < at[0] + SLOT && mouseY >= at[1] && mouseY < at[1] + SLOT;
+            graphics.fill(at[0] + 1, at[1] + 1, at[0] + SLOT - 1, at[1] + SLOT - 1, hovered ? SLOT_HOVER : linked ? INPUT_BACK : SLOT_COLOR);
+            if (linked) graphics.outline(at[0], at[1], SLOT, SLOT, INPUT_LINE);
+            com.exoticmoss.simpleores.starstorage.quasar.Pattern pattern = block.options().get(i);
+            graphics.item(pattern.outputStack(), at[0] + 1, at[1] + 1);
+            if (hovered) {
+                tooltip = new ArrayList<>();
+                tooltip.add(pattern.outputStack().getHoverName().copy().append(" x" + pattern.count()));
+                for (int k = 0; k < pattern.inputs().size(); k++) {
+                    List<net.minecraft.world.item.ItemStackTemplate> slot = pattern.inputs().get(k);
+                    if (slot.isEmpty()) continue;
+                    String amount = pattern.amount(k) > 1 ? pattern.amount(k) + " x " : "";
+                    tooltip.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
+                }
+                tooltip.add(Component.translatable(linked ? "screen.simpleores.binary.linked" : "screen.simpleores.binary.not_linked")
+                        .withColor(linked ? INPUT_LINE : TEXT_DIM));
+            }
+        }
+        return tooltip;
+    }
+
+    private void clickLinks(double mouseX, double mouseY) {
+        BinaryView.Block block = linkingBlock();
+        if (block == null) return;
+        if (inside(backButton(), mouseX, mouseY)) {
+            linking = null;
+            return;
+        }
+        for (int i = 0; i < block.options().size(); i++) {
+            int[] at = optionAt(i);
+            if (mouseX >= at[0] && mouseX < at[0] + SLOT && mouseY >= at[1] && mouseY < at[1] + SLOT) {
+                send(block.pos(), BinaryAction.LINK, i);
+                return;
+            }
+        }
     }
 
     private void drawButton(GuiGraphicsExtractor graphics, int[] box, Component text, int mouseX, int mouseY) {

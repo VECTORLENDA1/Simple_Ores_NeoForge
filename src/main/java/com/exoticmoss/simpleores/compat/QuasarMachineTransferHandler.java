@@ -92,6 +92,8 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
     }
 
     /// The blocks that make this recipe: the ones JEI shows next to its kind of recipe.
+    /// (createRecipeCatalystLookup is marked to be removed in a later JEI: it still works in this one.)
+    @SuppressWarnings("removal")
     private static List<ItemStack> machines(Object recipe) {
         if (runtime == null) return List.of();
         IRecipeManager manager = runtime.getRecipeManager();

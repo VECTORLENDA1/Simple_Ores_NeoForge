@@ -82,12 +82,14 @@ public class JEISimpleOresPlugin implements IModPlugin {
                     .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack));
         };
         com.exoticmoss.simpleores.starstorage.client.QuasarScreen.jeiTick = () -> QuasarGhostHandler.tick(runtime);
+        com.exoticmoss.simpleores.starstorage.client.BinaryScreen.jeiTick = () -> BinaryGhostHandler.tick(runtime);
     }
 
     // Drag and drop from the JEI list onto the recipe grid of the Quasar
     @Override
     public void registerGuiHandlers(mezz.jei.api.registration.IGuiHandlerRegistration registration) {
         registration.addGhostIngredientHandler(com.exoticmoss.simpleores.starstorage.client.QuasarScreen.class, new QuasarGhostHandler());
+        registration.addGhostIngredientHandler(com.exoticmoss.simpleores.starstorage.client.BinaryScreen.class, new BinaryGhostHandler());
         // R / U (and the clicks of JEI) on the items drawn by the screens of the star storage
         registration.addGuiContainerHandler(StarScreenJeiHandler.screen(com.exoticmoss.simpleores.starstorage.client.TerminalScreen.class), new StarScreenJeiHandler());
         registration.addGuiContainerHandler(StarScreenJeiHandler.screen(com.exoticmoss.simpleores.starstorage.client.QuasarScreen.class), new StarScreenJeiHandler());

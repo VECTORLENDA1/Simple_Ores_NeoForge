@@ -95,6 +95,7 @@ public class SimpleOres {
                 .playToClient(TerminalContents.TYPE, TerminalContents.STREAM_CODEC, TerminalContents::handle)
         // Binary Star screen: the player changed the rules of the slots (client -> server)
                 .playToServer(BinaryAction.TYPE, BinaryAction.STREAM_CODEC, BinaryAction::handle)
+                .playToServer(BinaryAction.Ghost.TYPE, BinaryAction.Ghost.STREAM_CODEC, BinaryAction.Ghost::handle)
         // Binary Star screen: the blocks around it (server -> client)
                 .playToClient(BinaryView.TYPE, BinaryView.STREAM_CODEC, BinaryView::handle)
         // Quasar: the recipes saved in it (server -> client), JEI filled its grid (client -> server)

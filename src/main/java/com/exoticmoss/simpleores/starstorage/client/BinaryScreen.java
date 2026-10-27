@@ -128,6 +128,30 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     @Override
     protected void containerTick() {
         if (++ticks % REFRESH_TICKS == 1) send(pos, BinaryAction.REFRESH, 0);
+        jeiTick.run();
+    }
+
+    /// JEI: runs every tick while the screen is open (see BinaryGhostHandler).
+    public static Runnable jeiTick = () -> {
+    };
+
+    /// A slot (or tank) shown on the screen where an item can be dropped from JEI: the block, the slot number of
+    /// the rules (tanks: BinaryStarBlockEntity.TANKS + tank) and where it is.
+    public record DropSlot(BlockPos block, int slot, boolean tank, int x, int y) {
+    }
+
+    /// JEI: the slots that can be seen whole now.
+    public List<DropSlot> dropSlots() {
+        List<DropSlot> list = new ArrayList<>();
+        for (Card card : cards()) {
+            BinaryView.Block block = view.blocks().get(card.index());
+            for (int slot = 0; slot < cells(block); slot++) {
+                int x = slotX(card, slot), y = slotY(card, slot);
+                if (y < areaTop() || y + SLOT > areaBottom()) continue;
+                list.add(new DropSlot(block.pos(), slotId(block, slot), slot >= block.slots().size(), x + 1, y + 1));
+            }
+        }
+        return list;
     }
 
     // ---------------------------------------------------------------- where things are

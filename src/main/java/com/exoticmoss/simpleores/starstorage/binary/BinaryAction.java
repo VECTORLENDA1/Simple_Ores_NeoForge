@@ -90,6 +90,46 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         BinaryView.send(player, pos, false);
     }
 
+    /// Sent by the client when an item (or a liquid, as its bucket) is dragged from JEI onto a slot of the Binary
+    /// Star screen: the slot keeps that item, like a left-click with it in the mouse cursor.
+    public record Ghost(BlockPos binary, BlockPos block, int slot, ItemStack item) implements CustomPacketPayload {
+        public static final Type<Ghost> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "binary_ghost"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Ghost> STREAM_CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC, Ghost::binary,
+                BlockPos.STREAM_CODEC, Ghost::block,
+                ByteBufCodecs.VAR_INT, Ghost::slot,
+                ItemStack.STREAM_CODEC, Ghost::item,
+                Ghost::new);
+
+        @Override
+        public Type<Ghost> type() {
+            return TYPE;
+        }
+
+        public static void handle(Ghost message, IPayloadContext context) {
+            if (!(context.player() instanceof ServerPlayer player) || !(player.containerMenu instanceof BinaryMenu menu)) return;
+            BlockPos pos = message.binary();
+            if (!menu.pos.equals(pos) || !menu.stillValid(player)) return;
+            if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
+            BlockPos block = message.block();
+            if (!binary.inReach(block)) return;
+            int slot = message.slot();
+            ItemStack item = message.item();
+            if (slot >= BinaryStarBlockEntity.TANKS) {
+                ResourceHandler<FluidResource> fluids = StarAccess.fluids(player.level(), block);
+                int tank = slot - BinaryStarBlockEntity.TANKS;
+                // A tank keeps a liquid: only a full bucket
+                if (fluids == null || tank >= fluids.size() || StarFluids.fromBucket(item) == null) return;
+                click(binary, block, tankBucket(fluids, tank), slot, item);
+            } else {
+                ResourceHandler<ItemResource> items = StarAccess.items(player.level(), block);
+                if (items == null || slot < 0 || slot >= items.size()) return;
+                click(binary, block, StarAccess.stack(items, slot), slot, item);
+            }
+            BinaryView.send(player, pos, false);
+        }
+    }
+
     private static void takeAll(BinaryStarBlockEntity binary, BlockPos block, int slot) {
         SlotRule rule = binary.rulesOf(block).get(slot);
         binary.setRule(block, slot, new SlotRule(slot, (rule == null ? 0 : rule.mode()) | SlotRule.TAKE,

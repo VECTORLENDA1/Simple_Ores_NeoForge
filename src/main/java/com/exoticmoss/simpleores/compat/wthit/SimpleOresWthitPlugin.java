@@ -40,6 +40,18 @@ public class SimpleOresWthitPlugin implements IWailaCommonPlugin {
         registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.QuasarBlockEntity.class, 0);
         registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity.class, 0);
         registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity.class, 0);
+        // The drive: only its bars (DriveDataProvider), not the items
+        registrar.blockData(HideItemsProvider.INSTANCE, StellarDriveBlockEntity.class, 0);
+    }
+
+    /// Hides the items that WTHIT shows by itself.
+    public enum HideItemsProvider implements IDataProvider<net.minecraft.world.level.block.entity.BlockEntity> {
+        INSTANCE;
+
+        @Override
+        public void appendData(IDataWriter data, IServerAccessor<net.minecraft.world.level.block.entity.BlockEntity> accessor, IPluginConfig config) {
+            data.blockAll(ItemData.TYPE);
+        }
     }
 
     /// Hides the items and liquids (WTHIT shows them by itself for blocks that let other mods take items out).

@@ -113,7 +113,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
 
     /// Goes through the block entities of the loaded chunks inside the cube around "center".
     /// (Much faster than looking at every block of the cube.)
-    static void forEachBlockEntity(Level level, BlockPos center, int radius, Consumer<BlockEntity> action) {
+    public static void forEachBlockEntity(Level level, BlockPos center, int radius, Consumer<BlockEntity> action) {
         int minX = center.getX() - radius, maxX = center.getX() + radius;
         int minY = center.getY() - radius, maxY = center.getY() + radius;
         int minZ = center.getZ() - radius, maxZ = center.getZ() + radius;

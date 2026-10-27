@@ -645,7 +645,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Auto-craft: to the network (what doesn't fit pops out of the core)
         if (networkPos != null) {
             if (level instanceof ServerLevel serverLevel) {
-                com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.arrived(serverLevel, networkPos, result.copy());
+                // The results a job waits for go to its storage (see Autocraft.Job)
+                result = com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.deliver(serverLevel, networkPos, result.copy());
             }
             result = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, networkPos).insert(result);
             if (!result.isEmpty()) {

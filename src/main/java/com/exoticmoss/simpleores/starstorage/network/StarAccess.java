@@ -124,6 +124,15 @@ public final class StarAccess {
         }
     }
 
+    /// Takes all of the item out of the machine (from any slot that gives it, then through the sides). Returns how many.
+    public static int extractAll(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, ItemStack item) {
+        try (Transaction transaction = Transaction.openRoot()) {
+            int taken = extractAny(handler, sides, ItemResource.of(item), Integer.MAX_VALUE, transaction);
+            transaction.commit();
+            return taken;
+        }
+    }
+
     /// Puts as many of the items as fit in the machine (the machine chooses the slots). Returns how many went in.
     public static int insertSome(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, ItemStack item) {
         try (Transaction transaction = Transaction.openRoot()) {

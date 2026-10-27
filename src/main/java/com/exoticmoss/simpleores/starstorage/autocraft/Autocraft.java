@@ -30,7 +30,11 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// The auto-craft of the Quasar.
 ///  1. plan: works out everything that is needed, also the sub-recipes (planks -> sticks -> tool), using what
 ///     the network has; if something is missing, it says what and how many (nothing is crafted);
-///  2. run: crafts every step in order, taking the ingredients from the network and putting the results back.
+///  2. run: first every item of the network the plan uses is taken out of the network into the job (like the
+///     crafting CPUs of Applied Energistics 2): the job has its own storage, so nothing else can use those items and
+///     nothing is counted twice. Then it crafts every step, taking the ingredients from its storage; the results of
+///     the sub-crafts go to its storage too, and only what was asked for goes to the network. When the job ends (or
+///     is cancelled), what is left in its storage goes back to the network.
 ///     Crafting table steps are done at once. Gravity Core steps take time: the ingredients go to the free
 ///     Gravity Cores of the field of the Magnetar, and their results come back to the network by themselves.
 ///     So a plan with Gravity Core steps becomes a Job, worked on by a Quasar of the network every few ticks (faster with Solar Wind Upgrades)
@@ -60,6 +64,10 @@ public final class Autocraft {
     }
 
     private final Map<ItemStackTemplate, Long> stock = new HashMap<>();
+    /// The extra items the planned crafts make (e.g. 9 when 8 are needed): used before the network.
+    private final Map<ItemStackTemplate, Long> extras = new HashMap<>();
+    /// The items of the network the plan uses (they go into the storage of the job when it starts).
+    private final Map<ItemStackTemplate, Long> fromNetwork = new HashMap<>();
     private final List<Pattern> patterns;
     private final List<Step> steps = new ArrayList<>();
     private final Map<ItemStackTemplate, Long> missing = new LinkedHashMap<>();
@@ -92,13 +100,20 @@ public final class Autocraft {
             // A Quasar of this dimension if there is one (the network can reach others with Wormhole Links)
             QuasarBlockEntity quasar = network.quasars().stream().filter(other -> other.getLevel() == level).findFirst()
                     .orElse(network.quasars().get(0));
-            quasar.startJob(new Job(craft.steps, level, pos, item, amount));
+            Job job = new Job(craft.steps, level, pos, item, amount);
+            if (!job.reserve(network, craft.fromNetwork)) return new Result(Map.of(), "screen.simpleores.terminal.craft.changed");
+            quasar.startJob(job);
             return new Result(Map.of(), null);
         }
         Job job = new Job(craft.steps, level, pos, item, amount);
+        if (!job.reserve(network, craft.fromNetwork)) return new Result(Map.of(), "screen.simpleores.terminal.craft.changed");
         while (!job.done()) {
-            if (!job.work(level, network)) return new Result(Map.of(), "screen.simpleores.terminal.craft.changed");
+            if (!job.work(level, network)) {
+                job.finish(network);
+                return new Result(Map.of(), "screen.simpleores.terminal.craft.changed");
+            }
         }
+        job.finish(network);
         return new Result(Map.of(), null);
     }
 
@@ -112,9 +127,18 @@ public final class Autocraft {
 
     /// Uses "amount" of "item" from the network, crafting what is not there. false = something is missing.
     private boolean need(ItemStackTemplate item, long amount, int depth) {
+        // First the extra items of the planned crafts, then the network
+        long extra = extras.getOrDefault(item, 0L);
+        long fromExtra = Math.min(extra, amount);
+        if (fromExtra > 0) extras.put(item, extra - fromExtra);
+        amount -= fromExtra;
+        if (amount <= 0) return true;
         long have = stock.getOrDefault(item, 0L);
         long used = Math.min(have, amount);
-        if (used > 0) stock.put(item, have - used);
+        if (used > 0) {
+            stock.put(item, have - used);
+            fromNetwork.merge(item, used, Long::sum);
+        }
         amount -= used;
         if (amount <= 0) return true;
         // An item that is being crafted further up is not crafted again to make itself
@@ -134,12 +158,18 @@ public final class Autocraft {
             for (Pattern option : options) {
                 // Try it; if something is missing, everything goes back to how it was
                 Map<ItemStackTemplate, Long> stockBefore = new HashMap<>(stock);
+                Map<ItemStackTemplate, Long> extrasBefore = new HashMap<>(extras);
+                Map<ItemStackTemplate, Long> fromNetworkBefore = new HashMap<>(fromNetwork);
                 Map<ItemStackTemplate, Long> missingBefore = new LinkedHashMap<>(missing);
                 int stepsBefore = steps.size();
                 long craftsBefore = crafts;
                 if (craft(option, item, amount, depth) && crafts <= MAX_CRAFTS) return true;
                 stock.clear();
                 stock.putAll(stockBefore);
+                extras.clear();
+                extras.putAll(extrasBefore);
+                fromNetwork.clear();
+                fromNetwork.putAll(fromNetworkBefore);
                 missing.clear();
                 missing.putAll(missingBefore);
                 while (steps.size() > stepsBefore) steps.remove(steps.size() - 1);
@@ -178,7 +208,7 @@ public final class Autocraft {
         }
         steps.add(new Step(pattern, items, times));
         long extra = times * pattern.count() - amount;
-        if (extra > 0) stock.merge(item, extra, Long::sum);
+        if (extra > 0) extras.merge(item, extra, Long::sum);
         return ok;
     }
 
@@ -186,15 +216,19 @@ public final class Autocraft {
     /// else one that has a recipe, else the first one.
     private ItemStackTemplate choose(List<ItemStackTemplate> choices, long needed) {
         for (ItemStackTemplate choice : choices) {
-            if (stock.getOrDefault(choice, 0L) >= needed) return choice;
+            if (available(choice) >= needed) return choice;
         }
         for (ItemStackTemplate choice : choices) {
-            if (stock.getOrDefault(choice, 0L) > 0) return choice;
+            if (available(choice) > 0) return choice;
         }
         for (ItemStackTemplate choice : choices) {
             if (!patternsFor(choice).isEmpty()) return choice;
         }
         return choices.get(0);
+    }
+
+    private long available(ItemStackTemplate item) {
+        return stock.getOrDefault(item, 0L) + extras.getOrDefault(item, 0L);
     }
 
     // ---------------------------------------------------------------- run
@@ -255,6 +289,100 @@ public final class Autocraft {
         private final java.util.Set<MachineKey> usedMachines = new java.util.HashSet<>();
 
         private record FurnaceWait(ItemStackTemplate output, long expected) {
+        }
+
+        /// The storage of the job: the items it took from the network and the results of its sub-crafts.
+        private final Map<ItemStackTemplate, Long> storage = new HashMap<>();
+        /// How many of each ingredient each machine step sent (all the machines together): never more than the step needs.
+        private final Map<Integer, long[]> stepSent = new HashMap<>();
+
+        private static ItemStackTemplate key(ItemStack stack) {
+            return ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1));
+        }
+
+        /// Takes the items the plan uses out of the network into the storage of the job. false = the network
+        /// doesn't have them any more (nothing is taken).
+        boolean reserve(StarNetwork network, Map<ItemStackTemplate, Long> items) {
+            List<ItemStack> taken = new ArrayList<>();
+            for (Map.Entry<ItemStackTemplate, Long> entry : items.entrySet()) {
+                long left = entry.getValue();
+                while (left > 0) {
+                    ItemStack got = network.extract(entry.getKey().create(), (int) Math.min(left, Integer.MAX_VALUE));
+                    if (got.isEmpty()) break;
+                    taken.add(got);
+                    left -= got.getCount();
+                }
+                if (left > 0) {
+                    for (ItemStack stack : taken) network.insert(stack);
+                    return false;
+                }
+            }
+            for (ItemStack stack : taken) store(stack);
+            return true;
+        }
+
+        /// Up to "amount" of the item, from the storage of the job (EMPTY if it has none).
+        private ItemStack take(ItemStack item, int amount) {
+            ItemStackTemplate key = key(item);
+            long have = storage.getOrDefault(key, 0L);
+            int got = (int) Math.min(have, amount);
+            if (got <= 0) return ItemStack.EMPTY;
+            if (have - got <= 0) storage.remove(key);
+            else storage.put(key, have - got);
+            return item.copyWithCount(got);
+        }
+
+        private void store(ItemStack stack) {
+            if (!stack.isEmpty()) storage.merge(key(stack), (long) stack.getCount(), Long::sum);
+        }
+
+        private void giveBack(List<ItemStack> items) {
+            for (ItemStack item : items) store(item);
+        }
+
+        /// How many of the item the storage of the job has.
+        private long stored(ItemStackTemplate item) {
+            return storage.getOrDefault(key(item.create()), 0L);
+        }
+
+        /// Results made for this job: what was asked for goes to the network (and counts), the results of the
+        /// sub-crafts stay in the storage of the job.
+        private void receive(StarNetwork network, ItemStack stack) {
+            if (stack.isEmpty()) return;
+            madeBySteps(stack);
+            if (ItemStack.isSameItemSameComponents(stack, output.create())) {
+                countFinal(stack.getCount());
+                ItemStack left = network.insert(stack.copy());
+                store(left);
+            } else {
+                store(stack);
+            }
+        }
+
+        private void countFinal(long count) {
+            if (made >= amount) return;
+            made += Math.min(count, amount - made);
+            arrivedNow = true;
+        }
+
+        /// The job ended (done or cancelled): what is left in its storage goes back to the network.
+        public void finish(StarNetwork network) {
+            for (Map.Entry<ItemStackTemplate, Long> entry : storage.entrySet()) {
+                long left = entry.getValue();
+                while (left > 0) {
+                    int part = (int) Math.min(left, Integer.MAX_VALUE);
+                    ItemStack rest = network.insert(entry.getKey().create().copyWithCount(part));
+                    left -= part;
+                    if (!rest.isEmpty()) break;
+                }
+            }
+            storage.clear();
+        }
+
+        /// The same, from the Quasar (it finds the network of the job).
+        public void finish(ServerLevel quasarLevel) {
+            ServerLevel level = quasarLevel.getServer().getLevel(dimension);
+            if (level != null) finish(StarNetwork.at(level, pos));
         }
 
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
@@ -327,29 +455,41 @@ public final class Autocraft {
             return made;
         }
 
-        /// Items of the output that came back to the network (from the cores, the furnaces or the crafting
-        /// table). Returns how many this job took (the rest can count for another job).
-        long arrived(ItemStack stack) {
-            madeBySteps(stack);
-            if (made >= amount || !ItemStack.isSameItemSameComponents(stack, output.create())) return 0;
-            long counted = Math.min(stack.getCount(), amount - made);
-            made += counted;
-            arrivedNow = true;
-            return counted;
-        }
-
-        /// A Gravity Core gave items to the network of "networkPos": they count for the jobs waiting for them.
-        public static void arrived(ServerLevel level, BlockPos networkPos, ItemStack stack) {
+        /// A Gravity Core finished items for the network of "networkPos": the results of the sub-crafts a job
+        /// waits for go to the storage of that job, what was asked for counts for its job. Returns what goes to the
+        /// network.
+        public static ItemStack deliver(ServerLevel level, BlockPos networkPos, ItemStack stack) {
             long left = stack.getCount();
             for (QuasarBlockEntity quasar : StarNetwork.at(level, networkPos).quasars()) {
                 for (Job job : quasar.getJobs()) {
-                    if (left <= 0) return;
-                    if (job.dimension == level.dimension() && job.pos.equals(networkPos)) {
-                        left -= job.arrived(stack.copyWithCount((int) left));
+                    if (left <= 0) return ItemStack.EMPTY;
+                    if (job.dimension != level.dimension() || !job.pos.equals(networkPos)) continue;
+                    if (ItemStack.isSameItemSameComponents(stack, job.output.create())) {
+                        job.countFinal(left);
+                        continue;
                     }
+                    long room = job.coreRoom(stack);
+                    long taken = Math.min(left, room);
+                    if (taken <= 0) continue;
+                    job.madeBySteps(stack.copyWithCount((int) taken));
+                    job.store(stack.copyWithCount((int) taken));
+                    left -= taken;
                 }
             }
+            return stack.copyWithCount((int) left);
         }
+
+        /// How many of the item the Gravity Core steps of this job still have to make.
+        private long coreRoom(ItemStack stack) {
+            long room = 0;
+            for (int i = 0; i < steps.size() - 1; i++) {
+                Step step = steps.get(i);
+                if (!step.pattern().isCore() || !ItemStack.isSameItemSameComponents(stack, step.pattern().output().create())) continue;
+                room += step.times() * step.pattern().count() - madeSteps[i];
+            }
+            return Math.max(0, room);
+        }
+
         /// Quasar: every tick (the job works every INTERVAL ticks). false = the job is cancelled (no progress for too long).
         public boolean tick(ServerLevel quasarLevel) {
             ServerLevel level = quasarLevel.getServer().getLevel(dimension);
@@ -373,14 +513,13 @@ public final class Autocraft {
             // can be used by the next ones in the same work.
             String firstStatus = null;
             index = steps.size();
-            Map<ItemStackTemplate, Long> stock = null;
             for (int i = 0; i < steps.size(); i++) {
                 Step step = steps.get(i);
                 // The last step stops when enough came back (some recipes give more than planned)
                 if (i == steps.size() - 1 && made >= amount) doneSteps[i] = step.times();
                 if (doneSteps[i] >= step.times()) continue;
-                // A sub-craft only makes what is still missing for the steps that use it (what the network has and
-                // what is still in the machines and furnaces count), so nothing more than needed is sent
+                // A sub-craft only makes what is still missing for the steps that use it (what the storage of the job
+                // has and what is still in the machines and furnaces count), so nothing more than needed is sent
                 target = step.times();
                 if (i < steps.size() - 1 && !step.pattern().isCore()) {
                     long demand = demand(i);
@@ -390,9 +529,8 @@ public final class Autocraft {
                         madeSteps[i] = Math.max(madeSteps[i], step.times() * step.pattern().count());
                         continue;
                     }
-                    if (stock == null) stock = stock(network);
                     ItemStackTemplate output = step.pattern().output();
-                    long deficit = demand - stock.getOrDefault(output, 0L) - inFlight(output);
+                    long deficit = demand - stored(output) - inFlight(output);
                     if (deficit <= 0) {
                         index = Math.min(index, i);
                         continue;
@@ -442,13 +580,6 @@ public final class Autocraft {
             return demand;
         }
 
-        /// How many of each item the network has now.
-        private static Map<ItemStackTemplate, Long> stock(StarNetwork network) {
-            Map<ItemStackTemplate, Long> stock = new HashMap<>();
-            for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) stock.put(entry.getKey(), entry.getValue());
-            return stock;
-        }
-
         /// How many of the item are still to come out of the machines and furnaces used by this job.
         private long inFlight(ItemStackTemplate output) {
             ItemStack stack = output.create();
@@ -486,9 +617,9 @@ public final class Autocraft {
                         grid.add(ItemStack.EMPTY);
                         continue;
                     }
-                    ItemStack got = network.extract(item.create(), 1);
+                    ItemStack got = take(item.create(), 1);
                     if (got.isEmpty()) {
-                        giveBack(network, grid);
+                        giveBack(grid);
                         status = "screen.simpleores.quasar.job.waiting_items";
                         return progress;
                     }
@@ -500,17 +631,14 @@ public final class Autocraft {
                 Optional<RecipeHolder<CraftingRecipe>> recipe = last != null && last.value().matches(input, level)
                         ? Optional.of(last) : level.recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, level);
                 if (recipe.isEmpty()) {
-                    giveBack(network, grid);
+                    giveBack(grid);
                     return progress;
                 }
                 last = recipe.get();
                 ItemStack result = recipe.get().value().assemble(input);
                 NonNullList<ItemStack> remaining = recipe.get().value().getRemainingItems(input);
-                arrived(result);
-                network.insert(result);
-                for (ItemStack rest : remaining) {
-                    if (!rest.isEmpty()) network.insert(rest);
-                }
+                receive(network, result);
+                for (ItemStack rest : remaining) store(rest);
                 done++;
                 progress = true;
             }
@@ -550,9 +678,9 @@ public final class Autocraft {
                 }
                 int sets = core.setsThatFit(set, (int) Math.min(SETS[speed], target - done));
                 if (sets <= 0) continue;
-                // Take them from the network (only whole sets go to the core)
+                // Take them from the storage of the job (only whole sets go to the core)
                 List<ItemStack> got = new ArrayList<>();
-                for (ItemStack one : set) got.add(network.extract(one, one.getCount() * sets));
+                for (ItemStack one : set) got.add(take(one, one.getCount() * sets));
                 int whole = sets;
                 for (int i = 0; i < set.size(); i++) whole = Math.min(whole, got.get(i).getCount() / set.get(i).getCount());
                 List<ItemStack> give = new ArrayList<>();
@@ -560,7 +688,7 @@ public final class Autocraft {
                     ItemStack stack = got.get(i);
                     int keep = whole * set.get(i).getCount();
                     if (stack.getCount() > keep) {
-                        network.insert(stack.copyWithCount(stack.getCount() - keep));
+                        store(stack.copyWithCount(stack.getCount() - keep));
                         stack.setCount(keep);
                     }
                     if (!stack.isEmpty()) give.add(stack);
@@ -574,7 +702,7 @@ public final class Autocraft {
                 for (ItemStack stack : give) {
                     while (!stack.isEmpty()) stacks.add(stack.split(stack.getMaxStackSize()));
                 }
-                giveBack(network, core.insertFromNetwork(stacks, recipe, pos));
+                giveBack(core.insertFromNetwork(stacks, recipe, pos));
                 done += whole;
                 progress = true;
             }
@@ -601,7 +729,7 @@ public final class Autocraft {
                 int room = item.getMaxStackSize() - current.getCount();
                 int send = (int) Math.min(room, target - done);
                 if (send <= 0) continue;
-                ItemStack got = network.extract(item.copyWithCount(1), send);
+                ItemStack got = take(item, send);
                 if (got.isEmpty()) {
                     status = "screen.simpleores.quasar.job.waiting_items";
                     return progress;
@@ -636,10 +764,8 @@ public final class Autocraft {
                 ItemStack out = furnace.getItem(2);
                 long expected = wait.expected();
                 if (!out.isEmpty() && ItemStack.isSameItemSameComponents(out, wait.output().create())) {
-                    int take = (int) Math.min(out.getCount(), expected);
-                    ItemStack left = network.insert(out.copyWithCount(take));
-                    int taken = take - left.getCount();
-                    if (taken > 0) arrived(out.copyWithCount(taken));
+                    int taken = (int) Math.min(out.getCount(), expected);
+                    if (taken > 0) receive(network, out.copyWithCount(taken));
                     if (taken > 0) {
                         ItemStack rest = out.copy();
                         rest.shrink(taken);
@@ -697,20 +823,24 @@ public final class Autocraft {
                 // Each ingredient goes in by itself, as much as fits (one doesn't wait for room for the others):
                 // the crafts given to a machine are the whole sets it got
                 long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
+                long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
                 long setsBefore = sets(sent, amounts);
                 long goal = setsBefore + Math.min(SETS[speed], target - done);
                 for (int k = 0; k < items.size(); k++) {
-                    long want = Math.min(goal * amounts.get(k) - sent[k], MAX_SEND);
+                    // (all the machines together never get more of an ingredient than the step needs)
+                    long want = Math.min(Math.min(goal * amounts.get(k) - sent[k], MAX_SEND),
+                            step.times() * amounts.get(k) - total[k]);
                     if (want <= 0) continue;
-                    ItemStack got = network.extract(items.get(k).copyWithCount(1), (int) want);
+                    ItemStack got = take(items.get(k), (int) want);
                     if (got.isEmpty()) {
                         status = "screen.simpleores.quasar.job.waiting_items";
                         continue;
                     }
                     int put = com.exoticmoss.simpleores.starstorage.network.StarAccess.insertSome(handler, sides, got);
-                    if (put < got.getCount()) network.insert(got.copyWithCount(got.getCount() - put));
+                    if (put < got.getCount()) store(got.copyWithCount(got.getCount() - put));
                     if (put > 0) {
                         sent[k] += put;
+                        total[k] += put;
                         progress = true;
                     }
                 }
@@ -732,8 +862,8 @@ public final class Autocraft {
             return sets;
         }
 
-        /// Takes the results out of the machines used by this job to the network: all of that item that is in the
-        /// machine (also when the recipe gives more than it said), until what was expected came out.
+        /// Takes the results out of the machines used by this job (to its storage, or to the network if it is what
+        /// was asked for): all of that item that is in the machine (also when the recipe gives more than it said).
         private boolean collectMachines(ServerLevel level, StarNetwork network) {
             boolean progress = false;
             for (MachineKey key : new ArrayList<>(usedMachines)) {
@@ -745,9 +875,9 @@ public final class Autocraft {
                 }
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, key.pos());
                 ItemStack output = key.output().create();
-                int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.takeOut(network, handler, sides, output, Integer.MAX_VALUE);
+                int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.extractAll(handler, sides, output);
                 if (taken <= 0) continue;
-                arrived(output.copyWithCount(taken));
+                receive(network, output.copyWithCount(taken));
                 FurnaceWait wait = machines.get(key);
                 if (wait != null) {
                     long expected = wait.expected() - taken;
@@ -757,12 +887,6 @@ public final class Autocraft {
                 progress = true;
             }
             return progress;
-        }
-    }
-
-    private static void giveBack(StarNetwork network, List<ItemStack> items) {
-        for (ItemStack item : items) {
-            if (!item.isEmpty()) network.insert(item);
         }
     }
 }

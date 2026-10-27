@@ -54,14 +54,23 @@ public class QuasarBlockEntity extends BlockEntity {
     }
 
     public void cancelJob(int id) {
-        jobs.removeIf(job -> job.id == id);
+        jobs.removeIf(job -> {
+            if (job.id != id) return false;
+            // What the job keeps goes back to the network
+            if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) job.finish(serverLevel);
+            return true;
+        });
     }
 
     /// Server: works on the jobs (each one works every few ticks, faster with Solar Wind Upgrades;
     /// the finished and the stuck ones go away).
     public void serverTick() {
         if (jobs.isEmpty() || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
-        jobs.removeIf(job -> !job.tick(serverLevel) || job.done());
+        jobs.removeIf(job -> {
+            if (job.tick(serverLevel) && !job.done()) return false;
+            job.finish(serverLevel);
+            return true;
+        });
     }
 
     @Override

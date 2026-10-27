@@ -4,6 +4,7 @@ import com.exoticmoss.simpleores.starstorage.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.BinaryView;
 import com.exoticmoss.simpleores.starstorage.SlotRule;
+import com.exoticmoss.simpleores.item.ModItems;
 import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.StarFluids;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
@@ -50,6 +51,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private static final int CARD = 0xFF1C1C28;
     private static final int SLOT_COLOR = 0xFF2A2A38;
     private static final int SLOT_HOVER = 0xFF5A3A80;
+    /// The outline of the upgrade slot (like the range slot of the Magnetar).
+    private static final int RANGE_COLOR = 0xFFC060E0;
     private static final int TANK_COLOR = 0xFF1E3048;
     private static final int TANK_TEXT = 0xFF8FD0FF;
     private static final int TAKE_COLOR = 0xFFE08A30;
@@ -314,6 +317,13 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         graphics.text(font, playerInventoryTitle, left + 10, top + height2 - BinaryMenu.INVENTORY_HEIGHT + 2, TEXT_DIM);
         for (Slot slot : menu.slots) {
             graphics.fill(left + slot.x, top + slot.y, left + slot.x + 16, top + slot.y + 16, SLOT_COLOR);
+        }
+        // The slot of the Magnetic Field Upgrades (the same color as in the Magnetar)
+        Slot upgrade = menu.slots.get(0);
+        int ux = left + upgrade.x, uy = top + upgrade.y;
+        graphics.outline(ux - 1, uy - 1, 18, 18, RANGE_COLOR);
+        if (!upgrade.hasItem() && menu.getCarried().isEmpty() && mouseX >= ux && mouseX < ux + 16 && mouseY >= uy && mouseY < uy + 16) {
+            tooltip = List.of(ModItems.MAGNETIC_FIELD_UPGRADE.get().getDefaultInstance().getHoverName());
         }
 
         super.extractRenderState(graphics, mouseX, mouseY, a);

@@ -34,6 +34,23 @@ public class SimpleOresWthitPlugin implements IWailaCommonPlugin {
     public void register(ICommonRegistrar registrar) {
         registrar.blockData(GravityCoreDataProvider.INSTANCE, GravityCoreBlockEntity.class);
         registrar.blockData(DriveDataProvider.INSTANCE, StellarDriveBlockEntity.class);
+        // The other blocks of the star storage see the whole network: WTHIT would show all its items
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.StellarTerminalBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.AdvancedTerminalBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.QuasarBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity.class, 0);
+    }
+
+    /// Hides the items and liquids (WTHIT shows them by itself for blocks that let other mods take items out).
+    public enum HideContentsProvider implements IDataProvider<net.minecraft.world.level.block.entity.BlockEntity> {
+        INSTANCE;
+
+        @Override
+        public void appendData(IDataWriter data, IServerAccessor<net.minecraft.world.level.block.entity.BlockEntity> accessor, IPluginConfig config) {
+            data.blockAll(ItemData.TYPE);
+            data.blockAll(FluidData.TYPE);
+        }
     }
 
     /// Stellar Drive: a bar with how full its Star Cells are (not the items: they can be thousands of kinds) and the

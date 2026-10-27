@@ -148,7 +148,5 @@
   "item.simpleores.preon_cell": "Preon Cell",
   "item.simpleores.preon_fluid_cell": "Preon Fluid Cell",
   "screen.simpleores.area.show": "Show area",
-  "screen.simpleores.area.hide": "Hide area",
-  "screen.simpleores.binary.input": "Input",
-  "screen.simpleores.binary.output": "Output"
+  "screen.simpleores.area.hide": "Hide area"
 }

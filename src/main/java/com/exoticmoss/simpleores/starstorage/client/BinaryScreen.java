@@ -6,7 +6,6 @@ import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
 import com.exoticmoss.simpleores.starstorage.binary.SlotRule;
 import com.exoticmoss.simpleores.item.ModItems;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.network.StarAccess;
 import com.exoticmoss.simpleores.starstorage.network.StarFluids;
 import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 import net.minecraft.world.level.material.Fluid;
@@ -54,12 +53,6 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private static final int SLOT_HOVER = 0xFF5A3A80;
     /// The outline of the upgrade slot (like the range slot of the Magnetar).
     private static final int RANGE_COLOR = 0xFFC060E0;
-    /// Inputs and outputs of the machines (the background and the line at the bottom of the squares).
-    private static final int INPUT_BACK = 0xFF3C2228;
-    private static final int OUTPUT_BACK = 0xFF222A40;
-    private static final int INPUT_LINE = 0xFFD04848;
-    private static final int OUTPUT_LINE = 0xFF4878D8;
-    private static final int OUTPUT_TEXT = 0xFF7FA8FF;
     private static final int TANK_COLOR = 0xFF1E3048;
     private static final int TANK_TEXT = 0xFF8FD0FF;
     private static final int TAKE_COLOR = 0xFFE08A30;
@@ -270,8 +263,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 if (slot >= block.slots().size()) {
                     // A tank: blue square, the bucket of its liquid and the buckets inside
                     BinaryView.Tank tank = block.tanks().get(slot - block.slots().size());
-                    graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : roleColor(block, slot, TANK_COLOR));
-                    drawRole(graphics, block, slot, x, y);
+                    graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : TANK_COLOR);
                     if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
                     if (tank.amount() > 0) {
                         String amount = tank.amount() < StarFluids.BUCKET ? tank.amount() + "m" : StarNetwork.format(tank.amount() / StarFluids.BUCKET);
@@ -282,7 +274,6 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                         tooltip = new ArrayList<>();
                         Fluid fluid = StarFluids.fromBucket(tank.bucket());
                         tooltip.add(fluid != null ? StarFluids.name(fluid) : Component.translatable("screen.simpleores.binary.tank"));
-                        addRole(tooltip, block, slot);
                         tooltip.add(Component.literal(String.format(Locale.ROOT, "%,d / %,d mB", tank.amount(), tank.capacity())).withColor(TANK_TEXT));
                         if (rule != null && rule.keeps()) {
                             tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", keptNames(rule))
@@ -293,8 +284,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     }
                     continue;
                 }
-                graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : roleColor(block, slot, SLOT_COLOR));
-                drawRole(graphics, block, slot, x, y);
+                graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : SLOT_COLOR);
                 ItemStack stack = block.slots().get(slot);
                 if (!stack.isEmpty()) {
                     graphics.item(stack, x + 1, y + 1);
@@ -308,7 +298,6 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 if (hovered) {
                     tooltip = new ArrayList<>();
                     tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.binary.empty") : stack.getHoverName());
-                    addRole(tooltip, block, slot);
                     if (rule != null && rule.takes() && rule.keeps()) {
                         tooltip.add(Component.translatable("screen.simpleores.binary.both", keptNames(rule)).withColor(BOTH_COLOR));
                     } else if (rule != null && rule.keeps()) {
@@ -351,30 +340,6 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             names.append(fluid != null ? StarFluids.name(fluid) : item.getHoverName());
         }
         return names;
-    }
-
-    /// What square "cell" of a block is for (StarAccess.INPUT / OUTPUT; UNKNOWN if the server didn't say).
-    private static int role(BinaryView.Block block, int cell) {
-        return cell < block.roles().size() ? block.roles().get(cell) : StarAccess.UNKNOWN;
-    }
-
-    /// The background of a square: reddish for an input, bluish for an output (like the machines of Mekanism).
-    private static int roleColor(BinaryView.Block block, int cell, int normal) {
-        int role = role(block, cell);
-        return role == StarAccess.INPUT ? INPUT_BACK : role == StarAccess.OUTPUT ? OUTPUT_BACK : normal;
-    }
-
-    /// A line at the bottom of the square: red = input, blue = output.
-    private static void drawRole(GuiGraphicsExtractor graphics, BinaryView.Block block, int cell, int x, int y) {
-        int role = role(block, cell);
-        if (role == StarAccess.UNKNOWN) return;
-        graphics.fill(x + 1, y + SLOT - 3, x + SLOT - 1, y + SLOT - 1, role == StarAccess.INPUT ? INPUT_LINE : OUTPUT_LINE);
-    }
-
-    private static void addRole(List<Component> tooltip, BinaryView.Block block, int cell) {
-        int role = role(block, cell);
-        if (role == StarAccess.INPUT) tooltip.add(Component.translatable("screen.simpleores.binary.input").withColor(INPUT_LINE));
-        else if (role == StarAccess.OUTPUT) tooltip.add(Component.translatable("screen.simpleores.binary.output").withColor(OUTPUT_TEXT));
     }
 
     private static int color(SlotRule rule) {

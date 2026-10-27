@@ -1,7 +1,6 @@
 package com.exoticmoss.simpleores.starstorage.binary;
 
 import com.exoticmoss.simpleores.SimpleOres;
-import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -81,18 +80,8 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
                 }
                 case REMOVE -> binary.setRule(block, slot, null);
                 case TAKE_ALL -> {
-                    // Every slot that is not an input of the machine (a chest: every slot)
-                    StarNetwork network = StarNetwork.at(player.level(), pos);
-                    List<Integer> slotRoles = slotCount == 0 ? List.of() : StarAccess.itemRoles(items, StarAccess.itemSides(player.level(), block), slotCount, StarAccess.itemProbes(player, network));
-                    List<Integer> tankRoles = tankCount == 0 ? List.of() : StarAccess.fluidRoles(fluids, StarAccess.fluidSides(player.level(), block), tankCount, StarAccess.fluidProbes(network));
-                    boolean machine = slotRoles.contains(StarAccess.OUTPUT) || slotRoles.contains(StarAccess.UNKNOWN);
-                    boolean tankMachine = tankRoles.contains(StarAccess.OUTPUT) || tankRoles.contains(StarAccess.UNKNOWN);
-                    for (int i = 0; i < slotCount; i++) {
-                        if (!machine || slotRoles.get(i) != StarAccess.INPUT) takeAll(binary, block, i);
-                    }
-                    for (int t = 0; t < tankCount; t++) {
-                        if (!tankMachine || tankRoles.get(t) != StarAccess.INPUT) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
-                    }
+                    for (int i = 0; i < slotCount; i++) takeAll(binary, block, i);
+                    for (int t = 0; t < tankCount; t++) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
                 }
                 case CLEAR -> binary.clearRules(block);
                 default -> {

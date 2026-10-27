@@ -27,10 +27,9 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// (its slots and the rules of each slot). "open" = open the Binary Star screen.
 public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks, int radius)
         implements CustomPacketPayload {
-    /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks, the rules
-    /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank), and what each slot and
-    /// then each tank is for ("roles": StarAccess.INPUT / OUTPUT).
-    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules, List<Integer> roles) {
+    /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks and the rules
+    /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank).
+    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules) {
     }
 
     /// One tank: a bucket of its liquid (EMPTY = empty tank or a liquid without bucket), the mB and how many fit.
@@ -62,8 +61,6 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     }
                     buf.writeVarInt(block.rules().size());
                     for (SlotRule rule : block.rules()) SlotRule.STREAM_CODEC.encode(buf, rule);
-                    buf.writeVarInt(block.roles().size());
-                    for (int role : block.roles()) buf.writeByte(role);
                 }
             },
             buf -> {
@@ -90,10 +87,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     int ruleCount = buf.readVarInt();
                     List<SlotRule> rules = new ArrayList<>(ruleCount);
                     for (int r = 0; r < ruleCount; r++) rules.add(SlotRule.STREAM_CODEC.decode(buf));
-                    int roleCount = buf.readVarInt();
-                    List<Integer> roles = new ArrayList<>(roleCount);
-                    for (int r = 0; r < roleCount; r++) roles.add((int) buf.readByte());
-                    blocks.add(new Block(blockPos, icon, slots, tanks, rules, roles));
+                    blocks.add(new Block(blockPos, icon, slots, tanks, rules));
                 }
                 return new BinaryView(pos, open, drives, cells, used, capacity, blocks, radius);
             });
@@ -111,9 +105,6 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
         if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
         StarNetwork network = StarNetwork.at(player.level(), pos);
         List<Block> blocks = new ArrayList<>();
-        // What is tried to find the inputs of the machines
-        List<ItemResource> itemProbes = StarAccess.itemProbes(player, network);
-        List<FluidResource> fluidProbes = StarAccess.fluidProbes(network);
         StarNetwork.forEachBlockEntity(player.level(), pos, binary.radius(), blockEntity -> {
             if (blockEntity.isRemoved() || blockEntity instanceof BinaryStarBlockEntity) return;
             BlockPos blockPos = blockEntity.getBlockPos();
@@ -135,11 +126,8 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     tanks.add(new Tank(bucket, fluids.getAmountAsLong(t), fluids.getCapacityAsLong(t, fluid)));
                 }
             }
-            List<Integer> roles = new ArrayList<>();
-            if (items != null) roles.addAll(StarAccess.itemRoles(items, StarAccess.itemSides(player.level(), blockPos), slots.size(), itemProbes));
-            if (fluids != null) roles.addAll(StarAccess.fluidRoles(fluids, StarAccess.fluidSides(player.level(), blockPos), tanks.size(), fluidProbes));
             Map<Integer, SlotRule> rules = binary.rulesOf(blockPos);
-            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles));
+            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values())));
         });
         // The closest blocks first
         blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));

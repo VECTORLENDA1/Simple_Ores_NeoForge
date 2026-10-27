@@ -111,7 +111,5 @@
   "item.simpleores.preon_cell": "Célula de Preão",
   "item.simpleores.preon_fluid_cell": "Célula de Líquidos de Preão",
   "screen.simpleores.area.show": "Ver área",
-  "screen.simpleores.area.hide": "Esconder área",
-  "screen.simpleores.binary.input": "Entrada",
-  "screen.simpleores.binary.output": "Saída"
+  "screen.simpleores.area.hide": "Esconder área"
 }

@@ -44,6 +44,7 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// puts a picture of it there; clicking with an empty cursor (or right-clicking) empties it. JEI fills them too.
 /// The core slots: left-click with items adds them (the same item) or puts them; right-click with items adds one;
 /// right-click with an empty cursor takes one away, left-click empties it.
+/// With the recipe of a machine, the slots of the grid keep an amount too (clicks like the core slots).
 /// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
 /// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
@@ -71,6 +72,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int CANCEL_JOB = 10_000;
     /// PICK + slot * 2 (+ 1 = the other way): the mouse wheel on a slot of the grid with many items.
     public static final int PICK = 1_000_000;
+    /// The most of one ingredient in the recipe of a machine.
+    public static final int MAX_AMOUNT = 99;
 
     public final BlockPos pos;
     public final TerminalLayout layout;
@@ -211,6 +214,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             if (slotId != RESULT_SLOT && slots.get(slotId).isActive()) {
                 ItemStack carried = getCarried();
                 if (slotId >= CORE_START && slotId < CORE_START + CORE_VIEW) clickCore(slotId, button, carried);
+                else if (slotId < GRID_SLOTS && isMachine()) clickAmount(slotId, button, carried);
                 else setPicture(slotId, carried.isEmpty() || button == 1 ? ItemStack.EMPTY : carried);
             }
             return;
@@ -230,6 +234,27 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         else count = same ? current.getCount() + carried.getCount() : carried.getCount();
         ItemStack item = carried.isEmpty() ? current : carried;
         setCore(index, count <= 0 || item.isEmpty() ? ItemStack.EMPTY : item.copyWithCount(Math.min(count, item.getMaxStackSize())));
+    }
+
+    /// A click on a slot of the grid with the recipe of a machine: changes its amount, like the core slots
+    /// (left-click with items adds them, right-click with items adds one, right-click with an empty cursor takes one
+    /// away, left-click with an empty cursor empties it; another item takes the place of the one there).
+    private void clickAmount(int slot, int button, ItemStack carried) {
+        ItemStack current = pictures.getItem(slot);
+        boolean same = !current.isEmpty() && !carried.isEmpty() && (ItemStack.isSameItemSameComponents(current, carried)
+                || choices.get(slot).stream().anyMatch(choice -> ItemStack.isSameItemSameComponents(choice.create(), carried)));
+        int count;
+        if (carried.isEmpty()) count = button == 1 ? amounts[slot] - 1 : 0;
+        else if (button == 1) count = same ? amounts[slot] + 1 : 1;
+        else count = same ? amounts[slot] + carried.getCount() : carried.getCount();
+        if (count <= 0) {
+            setPicture(slot, ItemStack.EMPTY);
+            return;
+        }
+        if (!same && !carried.isEmpty()) setPicture(slot, carried);
+        amounts[slot] = Math.min(count, MAX_AMOUNT);
+        pictures.setItem(slot, pictures.getItem(slot).copyWithCount(Math.min(amounts[slot], 99)));
+        updateResult();
     }
 
     /// Changes a core slot. They stay together: a new item goes after the last one, an emptied slot closes the gap.

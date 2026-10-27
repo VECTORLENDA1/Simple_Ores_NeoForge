@@ -48,7 +48,8 @@ public final class StarAccess {
 
     /// What a slot (or tank) of a machine is for, found by trying (nothing is really moved):
     ///  - INPUT: it takes something (its own item, an item of the player, or of the network);
-    ///  - OUTPUT: it takes nothing (things only come out of it).
+    ///  - OUTPUT: it has something that can be taken out, and takes nothing;
+    ///  - UNKNOWN: it is empty and nothing tried could go in (no color on the screen).
     public static final int UNKNOWN = 0;
     public static final int INPUT = 1;
     public static final int OUTPUT = 2;
@@ -89,8 +90,27 @@ public final class StarAccess {
             }
         }
         List<Integer> roles = new ArrayList<>();
-        for (boolean in : input) roles.add(in ? INPUT : OUTPUT);
+        for (int slot = 0; slot < count; slot++) {
+            if (input[slot]) roles.add(INPUT);
+            else if (handler.getResource(slot).isEmpty()) roles.add(UNKNOWN);
+            else roles.add(canTake(handler, sides, slot) ? OUTPUT : UNKNOWN);
+        }
         return roles;
+    }
+
+    /// True if something can be taken out of the slot (directly or through a side), only tried.
+    private static <T extends Resource> boolean canTake(ResourceHandler<T> handler, List<ResourceHandler<T>> sides, int slot) {
+        T resource = handler.getResource(slot);
+        long before = handler.getAmountAsLong(slot);
+        try (Transaction test = Transaction.openRoot()) {
+            if (handler.extract(slot, resource, 1, test) > 0) return true;
+        }
+        for (ResourceHandler<T> side : sides) {
+            try (Transaction test = Transaction.openRoot()) {
+                if (side.extract(resource, 1, test) > 0 && handler.getAmountAsLong(slot) < before) return true;
+            }
+        }
+        return false;
     }
 
     /// The same for tanks. "probes" = the liquids tried.
@@ -123,7 +143,11 @@ public final class StarAccess {
             }
         }
         List<Integer> roles = new ArrayList<>();
-        for (boolean in : input) roles.add(in ? INPUT : OUTPUT);
+        for (int tank = 0; tank < count; tank++) {
+            if (input[tank]) roles.add(INPUT);
+            else if (handler.getResource(tank).isEmpty()) roles.add(UNKNOWN);
+            else roles.add(canTake(handler, sides, tank) ? OUTPUT : UNKNOWN);
+        }
         return roles;
     }
 

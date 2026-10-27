@@ -45,7 +45,10 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey())
                 .add(ModBlocks.MAGNETAR_CORE.getKey())
                 .add(ModBlocks.STELLAR_DRIVE.getKey())
-                .add(ModBlocks.STELLAR_TERMINAL.getKey());
+                .add(ModBlocks.STELLAR_TERMINAL.getKey())
+                .add(ModBlocks.ADVANCED_TERMINAL.getKey())
+                .add(ModBlocks.BINARY_STAR.getKey())
+                .add(ModBlocks.QUASAR.getKey());
 
 
         tag(BlockTags.NEEDS_STONE_TOOL)
@@ -62,7 +65,14 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.RAW_ASTRALITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_NEXALITE_BLOCK.getKey())
                 .add(ModBlocks.NETHER_ANTRACITE_ORE.getKey())
-                .add(ModBlocks.ANTRACITE_BLOCK.getKey());
+                .add(ModBlocks.ANTRACITE_BLOCK.getKey())
+                // The star storage: an iron pickaxe (or better)
+                .add(ModBlocks.MAGNETAR_CORE.getKey())
+                .add(ModBlocks.STELLAR_DRIVE.getKey())
+                .add(ModBlocks.STELLAR_TERMINAL.getKey())
+                .add(ModBlocks.ADVANCED_TERMINAL.getKey())
+                .add(ModBlocks.BINARY_STAR.getKey())
+                .add(ModBlocks.QUASAR.getKey());
 
         tag(BlockTags.NEEDS_DIAMOND_TOOL)
                 .add(ModBlocks.CELESTINE_BLOCK.getKey())

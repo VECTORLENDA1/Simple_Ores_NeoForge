@@ -69,7 +69,7 @@ public final class Autocraft {
     }
 
     /// Plans and, if nothing is missing, crafts "amount" of "item" into the network.
-    /// "advanced" = the Gravity Core recipes can be used (Stellar Terminal II, Quasar).
+    /// "advanced" = the Gravity Core recipes can be used (the network has a Stellar Terminal II).
     /// "chosen" = the recipe chosen by the player (empty = the first one that has everything).
     public static Result request(ServerLevel level, StarNetwork network, BlockPos pos, ItemStackTemplate item, long amount,
                                  boolean advanced, Optional<Pattern> chosen) {

@@ -63,7 +63,7 @@
   "block.simpleores.advanced_stellar_terminal": "Terminal Estelar II",
   "tooltip.simpleores.magnetar_core": "Liga tudo à volta (16 blocos) numa só rede de armazenamento",
   "tooltip.simpleores.stellar_terminal": "Ver, tirar e guardar os items da rede, e craftar",
-  "tooltip.simpleores.advanced_stellar_terminal": "Terminal que também crafta com os Gravity Cores",
+  "tooltip.simpleores.advanced_stellar_terminal": "Permite a toda a rede craftar com os Gravity Cores",
   "tooltip.simpleores.binary_star": "Mete e tira items dos blocos à volta (8 blocos)",
   "tooltip.simpleores.quasar": "Guarda as receitas e faz o auto-craft",
   "tooltip.simpleores.stellar_drive": "Guarda até 4 Células Estelares",

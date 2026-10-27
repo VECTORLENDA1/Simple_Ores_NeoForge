@@ -113,7 +113,8 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
         List<ItemStackTemplate> craftables = new ArrayList<>();
         // The recipes the terminal can use (to choose one when an item has more than one)
         List<Pattern> recipes = new ArrayList<>();
-        boolean advanced = AdvancedTerminalBlock.usesCores(player.level(), pos) || player.level().getBlockState(pos).getBlock() instanceof QuasarBlock;
+        // The Gravity Core recipes: only with a Stellar Terminal II in the network
+        boolean advanced = network.coreCrafting();
         for (Pattern pattern : network.patterns()) {
             if (!advanced && pattern.advanced()) continue;
             recipes.add(pattern);

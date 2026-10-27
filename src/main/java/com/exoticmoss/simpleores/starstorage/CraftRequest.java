@@ -45,7 +45,7 @@ public record CraftRequest(BlockPos pos, ItemStackTemplate item, long amount, Op
         if (message.amount() <= 0) return;
         StarNetwork network = StarNetwork.at(level, message.pos());
         Autocraft.Result result = Autocraft.request(level, network, message.pos(), message.item(), message.amount(),
-                AdvancedTerminalBlock.usesCores(level, message.pos()) || player.containerMenu instanceof QuasarMenu, message.recipe());
+                network.coreCrafting(), message.recipe());
         List<Missing> missing = new ArrayList<>();
         for (Map.Entry<ItemStackTemplate, Long> entry : result.missing().entrySet()) {
             missing.add(new Missing(entry.getKey().create(), entry.getValue()));

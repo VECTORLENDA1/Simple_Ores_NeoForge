@@ -24,7 +24,8 @@ import java.util.function.Consumer;
 /// There are no cables: the field is a cube of FIELD_RADIUS blocks in every direction around the Magnetar
 /// (more with Magnetic Field Upgrades). Wormhole Links join the networks of other Magnetars.
 /// The network is found again every time it is used, so placing or breaking a drive works right away.
-public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars) {
+/// "coreCrafting" = the network has a Stellar Terminal II: only then the Gravity Core recipes of the Quasars can be crafted.
+public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars, boolean coreCrafting) {
     /// Size of the magnetic field of a Magnetar without upgrades (blocks in every direction).
     public static final int FIELD_RADIUS = 16;
 
@@ -56,7 +57,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// The network of the Magnetar whose field reaches this position (empty if there is no Magnetar).
     public static StarNetwork at(Level level, BlockPos pos) {
         MagnetarBlockEntity magnetar = findMagnetar(level, pos);
-        return magnetar == null ? new StarNetwork(List.of(), List.of()) : around(level, magnetar.getBlockPos());
+        return magnetar == null ? new StarNetwork(List.of(), List.of(), false) : around(level, magnetar.getBlockPos());
     }
 
     /// Every drive and Quasar inside the field of the Magnetar at this position, and inside the fields of the
@@ -64,12 +65,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public static StarNetwork around(Level level, BlockPos magnetarPos) {
         List<StellarDriveBlockEntity> drives = new ArrayList<>();
         List<QuasarBlockEntity> quasars = new ArrayList<>();
-        collect(level, magnetarPos, drives, quasars, new HashSet<>());
-        return new StarNetwork(drives, quasars);
+        boolean[] coreCrafting = {false};
+        collect(level, magnetarPos, drives, quasars, coreCrafting, new HashSet<>());
+        return new StarNetwork(drives, quasars, coreCrafting[0]);
     }
 
     private static void collect(Level level, BlockPos magnetarPos, List<StellarDriveBlockEntity> drives,
-                                List<QuasarBlockEntity> quasars, Set<GlobalPos> visited) {
+                                List<QuasarBlockEntity> quasars, boolean[] coreCrafting, Set<GlobalPos> visited) {
         if (!visited.add(GlobalPos.of(level.dimension(), magnetarPos))) return;
         MagnetarBlockEntity magnetar = level.getBlockEntity(magnetarPos) instanceof MagnetarBlockEntity found ? found : null;
         int radius = magnetar == null ? FIELD_RADIUS : magnetar.radius();
@@ -77,13 +79,14 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             if (blockEntity.isRemoved()) return;
             if (blockEntity instanceof StellarDriveBlockEntity drive && !drives.contains(drive)) drives.add(drive);
             else if (blockEntity instanceof QuasarBlockEntity quasar && !quasars.contains(quasar)) quasars.add(quasar);
+            else if (blockEntity instanceof AdvancedTerminalBlockEntity) coreCrafting[0] = true;
         });
         if (magnetar == null || !(level instanceof ServerLevel serverLevel)) return;
         for (GlobalPos link : magnetar.links()) {
             ServerLevel other = serverLevel.getServer().getLevel(link.dimension());
             BlockPos otherPos = link.pos();
             if (other == null || other.getChunkSource().getChunkNow(otherPos.getX() >> 4, otherPos.getZ() >> 4) == null) continue;
-            if (other.getBlockEntity(otherPos) instanceof MagnetarBlockEntity) collect(other, otherPos, drives, quasars, visited);
+            if (other.getBlockEntity(otherPos) instanceof MagnetarBlockEntity) collect(other, otherPos, drives, quasars, coreCrafting, visited);
         }
     }
 

@@ -100,7 +100,7 @@
   "block.simpleores.advanced_stellar_terminal": "Stellar Terminal II",
   "tooltip.simpleores.magnetar_core": "Connects everything around it (16 blocks) into one storage network",
   "tooltip.simpleores.stellar_terminal": "See, take and store the items of the network, and craft",
-  "tooltip.simpleores.advanced_stellar_terminal": "Stellar Terminal that also crafts with Gravity Cores",
+  "tooltip.simpleores.advanced_stellar_terminal": "Lets the whole network craft with the Gravity Cores",
   "tooltip.simpleores.binary_star": "Moves items in and out of the blocks around it (8 blocks)",
   "tooltip.simpleores.quasar": "Keeps the recipes and does the auto-craft",
   "tooltip.simpleores.stellar_drive": "Holds up to 4 Star Cells",

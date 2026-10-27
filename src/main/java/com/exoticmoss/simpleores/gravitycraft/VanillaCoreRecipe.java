@@ -20,10 +20,10 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-/// A vanilla crafting recipe (crafting table) that also works in the Gravity Core.
+/// A crafting table recipe (of Minecraft or of any mod) that also works in the Gravity Core.
 ///
-/// There are no files for these: when the server starts (and after /reload) every crafting recipe
-/// of Minecraft is turned into one of these. The shape of the grid is ignored, only the amounts
+/// There are no files for these: when the server starts (and after /reload) every crafting table recipe
+/// is turned into one of these. The shape of the grid is ignored, only the amounts
 /// count: a stone pickaxe becomes "3 cobblestone + 2 sticks". When two recipes use the same items
 /// (pickaxe and axe), the selection bar above the core lets the player pick one.
 ///
@@ -33,7 +33,7 @@ import java.util.*;
 ///  - they give the same amount as the crafting table (no bonus in higher tiers);
 ///  - items that stay behind in the crafting table (e.g. the empty buckets of a cake) are given back.
 ///
-/// Only recipes of Minecraft itself ("minecraft:" IDs) are used, not recipes of other mods.
+/// Crafting table recipes of every mod are used; furnace recipes only of Minecraft itself ("minecraft:" IDs).
 /// Special recipes without fixed ingredients (fireworks, dyeing armor, copying maps...) are skipped.
 public class VanillaCoreRecipe extends GravityCoreRecipe {
     /// Craft time (in ticks, 20 = 1 second) of every vanilla recipe in the Sun, Red Giant and Pulsar.
@@ -107,12 +107,12 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         List<RecipeHolder<GravityCoreRecipe>> list = new ArrayList<>();
         Map<ResourceKey<Recipe<?>>, RecipeHolder<GravityCoreRecipe>> byId = new HashMap<>();
         for (RecipeHolder<?> holder : manager.getRecipes()) {
-            if (!holder.id().identifier().getNamespace().equals("minecraft")) continue;
+            boolean minecraft = holder.id().identifier().getNamespace().equals("minecraft");
             try {
-                // Crafting table recipes and furnace recipes (cooking food, smelting ores...)
+                // Crafting table recipes (of every mod) and furnace recipes (of Minecraft: cooking food...)
                 VanillaCoreRecipe converted;
                 if (holder.value() instanceof CraftingRecipe crafting) converted = convert(crafting);
-                else if (holder.value() instanceof SmeltingRecipe smelting) converted = convertCooking(smelting);
+                else if (minecraft && holder.value() instanceof SmeltingRecipe smelting) converted = convertCooking(smelting);
                 else continue;
                 if (converted == null) continue;
                 RecipeHolder<GravityCoreRecipe> convertedHolder = new RecipeHolder<>(holder.id(), converted);
@@ -127,7 +127,7 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         cached = List.copyOf(list);
         cachedById = Map.copyOf(byId);
         cachedFor = manager;
-        SimpleOres.LOGGER.info("Gravity Core: {} vanilla crafting and cooking recipes available", cached.size());
+        SimpleOres.LOGGER.info("Gravity Core: {} crafting table and cooking recipes available", cached.size());
     }
 
     /// Turns a crafting recipe into a Gravity Core recipe. null = it can't be used (special recipe).
@@ -145,6 +145,12 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
         if (parts.isEmpty()) return null;
 
         ItemStack result = recipe.assemble(CraftingInput.EMPTY);
+        if (result.isEmpty()) {
+            // Some recipes of other mods only give their result for real ingredients: try the first item of each
+            List<ItemStack> first = new ArrayList<>();
+            for (Ingredient ingredient : recipe.placementInfo().ingredients()) first.add(new ItemStack(ingredient.items().findFirst().get()));
+            result = recipe.assemble(CraftingInput.of(first.size(), 1, first));
+        }
         if (result.isEmpty()) return null;
 
         return new VanillaCoreRecipe(recipe, new ArrayList<>(parts.values()), result);

@@ -94,6 +94,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     private final List<ItemStack> cores = new ArrayList<>();
     /// The first row of core slots shown.
     public int coreScroll;
+    /// Client: true while the grid has the recipe of a machine (sent by the server).
+    private boolean syncedMachine;
     /// Client: how many core slots have an item (sent by the server).
     private int syncedCoreCount;
     /// The tab shown (the client tells the server with TAB + n).
@@ -126,6 +128,17 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             @Override
             public void set(int value) {
                 syncedCoreCount = value;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return isMachine() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedMachine = value == 1;
             }
         });
         addSlot(new PictureSlot(FURNACE_SLOT, left + 18 + 1, top + 18 + 1, TAB_FURNACE));
@@ -214,7 +227,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             if (slotId != RESULT_SLOT && slots.get(slotId).isActive()) {
                 ItemStack carried = getCarried();
                 if (slotId >= CORE_START && slotId < CORE_START + CORE_VIEW) clickCore(slotId, button, carried);
-                else if (slotId < GRID_SLOTS && isMachine()) clickAmount(slotId, button, carried);
+                else if (slotId < GRID_SLOTS && isMachine()) clickAmount(slotId, button, carried, input == ContainerInput.QUICK_MOVE);
                 else setPicture(slotId, carried.isEmpty() || button == 1 ? ItemStack.EMPTY : carried);
             }
             return;
@@ -239,8 +252,20 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     /// A click on a slot of the grid with the recipe of a machine: changes its amount, like the core slots
     /// (left-click with items adds them, right-click with items adds one, right-click with an empty cursor takes one
     /// away, left-click with an empty cursor empties it; another item takes the place of the one there).
-    private void clickAmount(int slot, int button, ItemStack carried) {
+    /// Shift + left-click adds one, shift + right-click takes one away.
+    private void clickAmount(int slot, int button, ItemStack carried, boolean shift) {
         ItemStack current = pictures.getItem(slot);
+        if (shift) {
+            if (current.isEmpty()) return;
+            carried = ItemStack.EMPTY;
+            if (button == 0) {
+                amounts[slot] = Math.min(amounts[slot] + 1, MAX_AMOUNT);
+                pictures.setItem(slot, current.copyWithCount(Math.min(amounts[slot], 99)));
+                updateResult();
+                return;
+            }
+            button = 1;
+        }
         boolean same = !current.isEmpty() && !carried.isEmpty() && (ItemStack.isSameItemSameComponents(current, carried)
                 || choices.get(slot).stream().anyMatch(choice -> ItemStack.isSameItemSameComponents(choice.create(), carried)));
         int count;
@@ -331,9 +356,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         updateResult();
     }
 
-    /// True while the grid has the recipe of a machine.
-    private boolean isMachine() {
-        return !machineOutput.isEmpty();
+    /// True while the grid has the recipe of a machine (its slots keep amounts).
+    public boolean isMachine() {
+        return player.level().isClientSide() ? syncedMachine : !machineOutput.isEmpty();
     }
 
     /// The server works out what the slots of the tab shown make.

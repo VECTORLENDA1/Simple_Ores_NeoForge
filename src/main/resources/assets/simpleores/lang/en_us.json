@@ -134,6 +134,8 @@
   "screen.simpleores.quasar.machine": "Machine: %s",
   "screen.simpleores.quasar.machine.none": "No machine makes this recipe",
   "screen.simpleores.quasar.machine.no_items": "This recipe has no items",
+  "screen.simpleores.quasar.amount.more": "Shift + left-click: one more",
+  "screen.simpleores.quasar.amount.less": "Shift + right-click: one less",
   "screen.simpleores.binary.tank": "Empty tank",
   "screen.simpleores.terminal.craft.auto": "Auto",
   "screen.simpleores.terminal.craft.auto_info": "The first recipe that has everything",

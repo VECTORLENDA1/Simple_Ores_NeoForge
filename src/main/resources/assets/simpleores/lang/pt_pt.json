@@ -97,6 +97,8 @@
   "screen.simpleores.quasar.machine": "Máquina: %s",
   "screen.simpleores.quasar.machine.none": "Nenhuma máquina faz esta receita",
   "screen.simpleores.quasar.machine.no_items": "Esta receita não tem items",
+  "screen.simpleores.quasar.amount.more": "Shift + clique esquerdo: mais um",
+  "screen.simpleores.quasar.amount.less": "Shift + clique direito: menos um",
   "screen.simpleores.binary.tank": "Tanque vazio",
   "screen.simpleores.terminal.craft.auto": "Auto",
   "screen.simpleores.terminal.craft.auto_info": "A primeira receita que tem tudo",

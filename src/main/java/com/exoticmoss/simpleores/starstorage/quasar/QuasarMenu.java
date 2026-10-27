@@ -44,7 +44,8 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// puts a picture of it there; clicking with an empty cursor (or right-clicking) empties it. JEI fills them too.
 /// The core slots: left-click with items adds them (the same item) or puts them; right-click with items adds one;
 /// right-click with an empty cursor takes one away, left-click empties it.
-/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id.
+/// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
+/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int GRID_SLOTS = Pattern.SIZE;
     public static final int RESULT_SLOT = GRID_SLOTS;
@@ -68,6 +69,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     public static final int CORE_SCROLL = 20;
     public static final int REMOVE = 100;
     public static final int CANCEL_JOB = 10_000;
+    /// PICK + slot * 2 (+ 1 = the other way): the mouse wheel on a slot of the grid with many items.
+    public static final int PICK = 1_000_000;
 
     public final BlockPos pos;
     public final TerminalLayout layout;
@@ -79,6 +82,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     /// each slot of the grid, and the machines that make it.
     private ItemStack machineOutput = ItemStack.EMPTY;
     private final int[] amounts = new int[GRID_SLOTS];
+    /// Server: the item picked with the mouse wheel in each slot of the grid (-1 = none: every item can be used).
+    private final int[] picked = new int[GRID_SLOTS];
     private List<ItemStackTemplate> machines = List.of();
     /// Server: the Gravity Core recipe the core slots make (null = none).
     private RecipeHolder<GravityCoreRecipe> coreRecipe;
@@ -100,6 +105,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         int left = TerminalLayout.craftLeft();
         for (int i = 0; i < GRID_SLOTS; i++) choices.add(List.of());
         java.util.Arrays.fill(amounts, 1);
+        java.util.Arrays.fill(picked, -1);
         for (int i = 0; i < GRID_SLOTS; i++) {
             addSlot(new PictureSlot(i, left + (i % 3) * 18 + 1, top + (i / 3) * 18 + 1, TAB_CRAFTING));
         }
@@ -253,6 +259,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             pictures.setItem(slot, picture);
             choices.set(slot, picture.isEmpty() ? List.of() : List.of(ItemStackTemplate.fromNonEmptyStack(picture)));
             amounts[slot] = 1;
+            picked[slot] = -1;
         } else if (slot >= CORE_START && slot < CORE_START + CORE_VIEW) {
             if (coreIndex(slot) < CORE_SLOTS) clickCore(slot, picture.isEmpty() ? 0 : 1, picture);
             return;
@@ -277,6 +284,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             // The picture shows the amount (up to the most a stack can show)
             pictures.setItem(i, items.isEmpty() || items.get(0).isEmpty() ? ItemStack.EMPTY : items.get(0).copyWithCount(Math.min(amounts[i], 99)));
             choices.set(i, slotChoices);
+            picked[i] = -1;
         }
         machineOutput = fill.output().copy();
         List<ItemStackTemplate> list = new ArrayList<>();
@@ -285,6 +293,16 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         }
         machines = machineOutput.isEmpty() ? List.of() : list;
         if (machines.isEmpty()) machineOutput = ItemStack.EMPTY;
+        updateResult();
+    }
+
+    /// The mouse wheel on a slot of the grid: shows the next (or the last) of its items, and only that one is saved.
+    private void pick(int slot, int step) {
+        List<ItemStackTemplate> slotChoices = choices.get(slot);
+        if (slotChoices.size() < 2 || pictures.getItem(slot).isEmpty()) return;
+        int current = picked[slot] >= 0 ? picked[slot] : 0;
+        picked[slot] = Math.floorMod(current + step, slotChoices.size());
+        pictures.setItem(slot, slotChoices.get(picked[slot]).create().copyWithCount(Math.min(amounts[slot], 99)));
         updateResult();
     }
 
@@ -361,6 +379,10 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             updateResult();
             return true;
         }
+        if (id >= PICK && id < PICK + GRID_SLOTS * 2) {
+            pick((id - PICK) / 2, (id - PICK) % 2 == 0 ? -1 : 1);
+            return true;
+        }
         if (id >= CORE_SCROLL && id < CORE_SCROLL + CORE_SLOTS) {
             scrollCores(id - CORE_SCROLL);
             return true;
@@ -382,6 +404,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
                     ItemStack stack = pictures.getItem(i);
                     if (stack.isEmpty()) inputs.add(List.of());
                     else if (choices.get(i).isEmpty()) inputs.add(List.of(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))));
+                    else if (picked[i] >= 0) inputs.add(List.of(choices.get(i).get(picked[i])));
                     else inputs.add(choices.get(i));
                     slotAmounts.add(stack.isEmpty() ? 1 : amounts[i]);
                 }
@@ -397,7 +420,10 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             for (int i = 0; i < INVENTORY_START; i++) {
                 if (i == RESULT_SLOT) continue;
                 pictures.setItem(i, ItemStack.EMPTY);
-                if (i < GRID_SLOTS) choices.set(i, List.of());
+                if (i < GRID_SLOTS) {
+                    choices.set(i, List.of());
+                    picked[i] = -1;
+                }
             }
             machineOutput = ItemStack.EMPTY;
             machines = List.of();

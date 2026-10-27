@@ -170,6 +170,17 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
 
     @Override
     protected boolean scrollTopLeft(double x, double y, int step) {
+        // On a slot of the grid: picks one of its items
+        if (menu.tab == QuasarMenu.TAB_CRAFTING) {
+            for (int i = 0; i < QuasarMenu.GRID_SLOTS; i++) {
+                net.minecraft.world.inventory.Slot slot = menu.slots.get(i);
+                int slotX = leftPos + slot.x, slotY = topPos + slot.y;
+                if (slot.hasItem() && x >= slotX && x < slotX + 16 && y >= slotY && y < slotY + 16) {
+                    button(QuasarMenu.PICK + i * 2 + (step > 0 ? 1 : 0));
+                    return true;
+                }
+            }
+        }
         if (isOverCores(x, y)) {
             int row = Mth.clamp(menu.coreScroll + step, 0, menu.maxCoreScroll());
             if (row != menu.coreScroll) {

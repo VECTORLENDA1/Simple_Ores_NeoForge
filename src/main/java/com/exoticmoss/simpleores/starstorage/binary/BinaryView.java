@@ -136,8 +136,8 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 }
             }
             List<Integer> roles = new ArrayList<>();
-            if (items != null) roles.addAll(StarAccess.itemRoles(items, slots.size(), itemProbes));
-            if (fluids != null) roles.addAll(StarAccess.fluidRoles(fluids, tanks.size(), fluidProbes));
+            if (items != null) roles.addAll(StarAccess.itemRoles(items, StarAccess.itemSides(player.level(), blockPos), slots.size(), itemProbes));
+            if (fluids != null) roles.addAll(StarAccess.fluidRoles(fluids, StarAccess.fluidSides(player.level(), blockPos), tanks.size(), fluidProbes));
             Map<Integer, SlotRule> rules = binary.rulesOf(blockPos);
             blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles));
         });

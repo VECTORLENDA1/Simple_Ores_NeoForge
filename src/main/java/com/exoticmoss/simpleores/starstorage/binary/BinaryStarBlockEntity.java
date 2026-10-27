@@ -121,33 +121,38 @@ public class BinaryStarBlockEntity extends BlockEntity {
             if (!inReach(pos) || !level.isLoaded(pos)) continue;
             ResourceHandler<ItemResource> items = StarAccess.items(level, pos);
             ResourceHandler<FluidResource> fluids = StarAccess.fluids(level, pos);
+            // Some mods (Mekanism...) only let things in and out through the sides of the block
+            List<ResourceHandler<ItemResource>> itemSides = items == null ? List.of() : StarAccess.itemSides(level, pos);
+            List<ResourceHandler<FluidResource>> fluidSides = fluids == null ? List.of() : StarAccess.fluidSides(level, pos);
             for (SlotRule rule : entry.getValue().values()) {
                 if (rule.slot() >= TANKS) {
                     int tank = rule.slot() - TANKS;
-                    if (fluids != null && tank < fluids.size()) workTank(network, fluids, tank, rule);
+                    if (fluids != null && tank < fluids.size()) workTank(network, fluids, fluidSides, tank, rule);
                 } else if (items != null && rule.slot() < items.size()) {
-                    workSlot(network, items, rule.slot(), rule);
+                    workSlot(network, items, itemSides, rule.slot(), rule);
                 }
             }
         }
     }
 
-    private static void workSlot(StarNetwork network, ResourceHandler<ItemResource> items, int slot, SlotRule rule) {
+    private static void workSlot(StarNetwork network, ResourceHandler<ItemResource> items, List<ResourceHandler<ItemResource>> sides,
+                                 int slot, SlotRule rule) {
         if (rule.keeps()) {
             // BOTH: what is not one of the items of the slot goes out first
             ItemStack inside = StarAccess.stack(items, slot);
             if (rule.takes() && !inside.isEmpty() && rule.items().stream().noneMatch(item -> ItemStack.isSameItemSameComponents(inside, item.create()))) {
-                StarAccess.takeItems(network, items, slot);
+                StarAccess.takeItems(network, items, sides, slot);
             }
             // Each item (a normal slot takes only the first that fits; a trash can takes them all)
-            for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) StarAccess.keepItems(network, items, slot, item.create());
+            for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) StarAccess.keepItems(network, items, sides, slot, item.create());
         } else if (rule.takes()) {
-            StarAccess.takeItems(network, items, slot);
+            StarAccess.takeItems(network, items, sides, slot);
         }
     }
 
     /// A tank: the same as a slot, with the liquid of the bucket of the rule.
-    private static void workTank(StarNetwork network, ResourceHandler<FluidResource> fluids, int tank, SlotRule rule) {
+    private static void workTank(StarNetwork network, ResourceHandler<FluidResource> fluids, List<ResourceHandler<FluidResource>> sides,
+                                 int tank, SlotRule rule) {
         List<Fluid> kept = new ArrayList<>();
         if (rule.keeps()) {
             for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) {
@@ -157,10 +162,10 @@ public class BinaryStarBlockEntity extends BlockEntity {
         }
         if (!kept.isEmpty()) {
             FluidResource current = fluids.getResource(tank);
-            if (rule.takes() && !current.isEmpty() && !kept.contains(current.getFluid())) StarAccess.takeFluid(network, fluids, tank);
-            for (Fluid fluid : kept) StarAccess.keepFluid(network, fluids, tank, fluid);
+            if (rule.takes() && !current.isEmpty() && !kept.contains(current.getFluid())) StarAccess.takeFluid(network, fluids, sides, tank);
+            for (Fluid fluid : kept) StarAccess.keepFluid(network, fluids, sides, tank, fluid);
         } else if (rule.takes()) {
-            StarAccess.takeFluid(network, fluids, tank);
+            StarAccess.takeFluid(network, fluids, sides, tank);
         }
     }
 

@@ -83,8 +83,8 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
                 case TAKE_ALL -> {
                     // Only the outputs of the machine (all the slots of a chest: they all take items)
                     StarNetwork network = StarNetwork.at(player.level(), pos);
-                    List<Integer> slotRoles = slotCount == 0 ? List.of() : StarAccess.itemRoles(items, slotCount, StarAccess.itemProbes(player, network));
-                    List<Integer> tankRoles = tankCount == 0 ? List.of() : StarAccess.fluidRoles(fluids, tankCount, StarAccess.fluidProbes(network));
+                    List<Integer> slotRoles = slotCount == 0 ? List.of() : StarAccess.itemRoles(items, StarAccess.itemSides(player.level(), block), slotCount, StarAccess.itemProbes(player, network));
+                    List<Integer> tankRoles = tankCount == 0 ? List.of() : StarAccess.fluidRoles(fluids, StarAccess.fluidSides(player.level(), block), tankCount, StarAccess.fluidProbes(network));
                     boolean slotOutputs = slotRoles.contains(StarAccess.OUTPUT), tankOutputs = tankRoles.contains(StarAccess.OUTPUT);
                     for (int i = 0; i < slotCount; i++) {
                         if (!slotOutputs || slotRoles.get(i) == StarAccess.OUTPUT) takeAll(binary, block, i);

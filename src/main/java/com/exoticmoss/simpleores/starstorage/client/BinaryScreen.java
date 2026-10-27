@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /// The screen of the Binary Star: every block with an inventory around it (chests, furnaces...),
-/// one card per block with all its slots. Mouse wheel scrolls the cards.
+/// one card per block with all its slots. Mouse wheel (or the bar on the right) scrolls the cards.
 ///  - Left-click on a slot: next mode: take (orange) -> keep full (green) -> input and output (light purple) -> nothing.
 ///    With an item in the mouse cursor (taken from the inventory below): the slot keeps that item.
 ///  - Right-click on a slot: no rule.
@@ -204,6 +204,61 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     // ---------------------------------------------------------------- mouse
 
+    // ---------------------------------------------------------------- the bar
+
+    private static final int BAR_WIDTH = 4;
+    /// True while the bar is being dragged with the mouse.
+    private boolean dragging;
+
+    private int barX() {
+        return left + WIDTH - 8;
+    }
+
+    private int maxScroll() {
+        return Math.max(0, view.blocks().size() - 1);
+    }
+
+    /// The bar is shown when some cards don't fit.
+    private boolean hasBar() {
+        List<Card> cards = cards();
+        return scroll > 0 || !cards.isEmpty() && cards.get(cards.size() - 1).index() < view.blocks().size() - 1;
+    }
+
+    /// The part of the bar that is moved: {top, height}.
+    private int[] thumb() {
+        int height = areaBottom() - areaTop();
+        int size = Math.max(10, height / Math.max(1, view.blocks().size()));
+        int max = maxScroll();
+        int y = areaTop() + (max == 0 ? 0 : (height - size) * scroll / max);
+        return new int[]{y, size};
+    }
+
+    /// Moves the cards to where the mouse is on the bar.
+    private void dragTo(double mouseY) {
+        int[] thumb = thumb();
+        int height = areaBottom() - areaTop() - thumb[1];
+        double part = height <= 0 ? 0 : (mouseY - areaTop() - thumb[1] / 2.0) / height;
+        scroll = Mth.clamp((int) Math.round(part * maxScroll()), 0, maxScroll());
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (dragging) {
+            dragTo(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (dragging) {
+            dragging = false;
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (scrollY != 0) scroll = Mth.clamp(scroll + (scrollY > 0 ? -1 : 1), 0, Math.max(0, view.blocks().size() - 1));
@@ -213,6 +268,13 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (NetworkTabs.click(event.x(), event.y(), left, top, WIDTH, 0, menu.pos)) return true;
+        // The bar: jumps to where it was clicked, and can be dragged
+        if (event.button() == 0 && hasBar() && event.x() >= barX() - 2 && event.x() < barX() + BAR_WIDTH + 2
+                && event.y() >= areaTop() && event.y() < areaBottom()) {
+            dragging = true;
+            dragTo(event.y());
+            return true;
+        }
         boolean right = event.button() == 1;
         for (Card card : cards()) {
             BinaryView.Block block = view.blocks().get(card.index());
@@ -318,9 +380,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 }
             }
         }
-        // More cards below / above
-        if (!cards.isEmpty() && cards.get(cards.size() - 1).index() < view.blocks().size() - 1) {
-            graphics.centeredText(font, Component.literal("..."), left + WIDTH / 2, areaBottom() - 2, TEXT_DIM);
+        // The bar on the right (when not every card fits)
+        if (hasBar()) {
+            int[] thumb = thumb();
+            graphics.fill(barX(), areaTop(), barX() + BAR_WIDTH, areaBottom(), SLOT_COLOR);
+            graphics.fill(barX(), thumb[0], barX() + BAR_WIDTH, thumb[0] + thumb[1], dragging ? RANGE_COLOR : PANEL_BORDER);
         }
 
         // Inventory (its items are drawn by the screen itself)

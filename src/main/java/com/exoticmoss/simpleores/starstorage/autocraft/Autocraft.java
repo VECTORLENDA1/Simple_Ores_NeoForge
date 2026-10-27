@@ -248,6 +248,54 @@ public final class Autocraft {
         /// The index of the step being worked on now (inside work).
         private int stepNow;
 
+        /// A machine works on one recipe at a time (of one job), until it is empty again: two recipes in the same
+        /// machine can get stuck (e.g. the Metallurgic Infuser keeps only one kind of infusion: redstone left in
+        /// it stops the recipes that need diamond).
+        private record LockKey(ResourceKey<Level> dimension, BlockPos pos) {
+        }
+
+        private record Lock(Job job, int step) {
+        }
+
+        private static final Map<LockKey, Lock> LOCKS = new HashMap<>();
+        /// True when the job was finished or cancelled (its machines are free).
+        private boolean ended;
+
+        /// The job is finished or cancelled: its machines are free for the other jobs.
+        public void end() {
+            ended = true;
+            LOCKS.values().removeIf(lock -> lock.job() == this);
+        }
+
+        /// True if the machine can be used by step "step" of this job now.
+        private boolean free(BlockPos machinePos, int step) {
+            Lock lock = LOCKS.get(new LockKey(dimension, machinePos));
+            return lock == null || lock.job().ended || lock.job() == this && lock.step() == step;
+        }
+
+        /// Frees the machines of this job that are empty again: everything sent made whole crafts, and all their
+        /// results came out.
+        private void freeMachines() {
+            LOCKS.entrySet().removeIf(entry -> {
+                Lock lock = entry.getValue();
+                if (lock.job() != this) return lock.job().ended;
+                Step step = steps.get(lock.step());
+                BlockPos machinePos = entry.getKey().pos();
+                if (machines.containsKey(new MachineKey(machinePos, step.pattern().output()))) return false;
+                long[] sent = sentToMachines.get(new SentKey(machinePos, lock.step()));
+                if (sent == null) return true;
+                List<Integer> amounts = new ArrayList<>();
+                for (int i = 0; i < step.items().size(); i++) {
+                    if (step.items().get(i) != null) amounts.add(Math.max(1, step.pattern().amount(i)));
+                }
+                long sets = sets(sent, amounts);
+                for (int k = 0; k < sent.length; k++) {
+                    if (sent[k] != sets * amounts.get(k)) return false;
+                }
+                return true;
+            });
+        }
+
         /// Every machine (and item) used by this job: what comes out of them is always taken, so nothing stays
         /// in their outputs.
         private final java.util.Set<MachineKey> usedMachines = new java.util.HashSet<>();
@@ -348,6 +396,7 @@ public final class Autocraft {
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
             boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | arrivedNow;
+            freeMachines();
             arrivedNow = false;
             // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:
             // what has its ingredients is made). The steps are in order (the sub-crafts first), so what one makes
@@ -663,6 +712,8 @@ public final class Autocraft {
             boolean progress = false;
             for (BlockPos machinePos : list) {
                 if (done >= target) break;
+                // A machine making another recipe is left alone until it is empty
+                if (!free(machinePos, stepNow)) continue;
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
                 if (handler == null) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
@@ -684,6 +735,7 @@ public final class Autocraft {
                     if (put > 0) {
                         sent[k] += put;
                         progress = true;
+                        LOCKS.put(new LockKey(dimension, machinePos), new Lock(this, stepNow));
                     }
                 }
                 long given = sets(sent, amounts) - setsBefore;

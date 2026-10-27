@@ -87,11 +87,18 @@ public class MagnetarBlock extends BaseEntityBlock {
     /// Right-click: opens the screen of the upgrades and of how the network is (drives, cells, items, liquids).
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar) {
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new MagnetarMenu(id, inventory, pos, magnetar.getUpgrades()),
-                    Component.translatable("block.simpleores.magnetar_core")), pos);
-            MagnetarInfo.send(serverPlayer, magnetar);
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof MagnetarBlockEntity) {
+            open(serverPlayer, pos);
+            com.exoticmoss.simpleores.starstorage.network.StarTabs.send(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /// Opens the screen of the Magnetar (also from a tab of another screen of the network).
+    public static void open(ServerPlayer player, BlockPos pos) {
+        if (!(player.level().getBlockEntity(pos) instanceof MagnetarBlockEntity magnetar)) return;
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new MagnetarMenu(id, inventory, pos, magnetar.getUpgrades()),
+                Component.translatable("block.simpleores.magnetar_core")), pos);
+        MagnetarInfo.send(player, magnetar);
     }
 }

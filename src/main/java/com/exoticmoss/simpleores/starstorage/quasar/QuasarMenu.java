@@ -19,7 +19,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +47,26 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// adds or takes away one), and shift + click on the result changes how many it makes.
 /// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
 /// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
-public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
+public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, com.exoticmoss.simpleores.starstorage.network.StarTabs.Anchored {
+    /// The block the player is next to (this one, or the one whose screen opened this one with a tab).
+    private BlockPos anchor;
+
+    @Override
+    public BlockPos menuPos() {
+        return pos;
+    }
+
+    @Override
+    public BlockPos anchor() {
+        return anchor == null ? pos : anchor;
+    }
+
+    @Override
+    public void setAnchor(BlockPos anchor) {
+        this.anchor = anchor;
+    }
+
+
     public static final int GRID_SLOTS = Pattern.SIZE;
     public static final int RESULT_SLOT = GRID_SLOTS;
     public static final int CORE_START = RESULT_SLOT + 1;
@@ -515,6 +533,6 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     @Override
     public boolean stillValid(Player player) {
         return player.level().getBlockState(pos).getBlock() instanceof QuasarBlock
-                && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= TerminalAction.RANGE * TerminalAction.RANGE;
+                && com.exoticmoss.simpleores.starstorage.network.StarTabs.near(player, anchor(), TerminalAction.RANGE);
     }
 }

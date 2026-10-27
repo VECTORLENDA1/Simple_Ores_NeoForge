@@ -9,13 +9,31 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
 
 /// The menu of the Binary Star: the slot of its Magnetic Field Upgrades and the player's inventory (the blocks around
 /// it are drawn by BinaryScreen from BinaryView). With the inventory, an item can be taken with the mouse and put as
 /// the item a slot keeps.
-public class BinaryMenu extends AbstractContainerMenu {
+public class BinaryMenu extends AbstractContainerMenu implements com.exoticmoss.simpleores.starstorage.network.StarTabs.Anchored {
+    /// The block the player is next to (this one, or the one whose screen opened this one with a tab).
+    private BlockPos anchor;
+
+    @Override
+    public BlockPos menuPos() {
+        return pos;
+    }
+
+    @Override
+    public BlockPos anchor() {
+        return anchor == null ? pos : anchor;
+    }
+
+    @Override
+    public void setAnchor(BlockPos anchor) {
+        this.anchor = anchor;
+    }
+
+
     public static final int WIDTH = 220;
     /// Height of the inventory part at the bottom of the panel.
     public static final int INVENTORY_HEIGHT = 3 * 18 + 4 + 18 + 22;
@@ -62,6 +80,6 @@ public class BinaryMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) {
         return player.level().getBlockState(pos).getBlock() instanceof BinaryStarBlock
-                && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= BinaryAction.RANGE * BinaryAction.RANGE;
+                && com.exoticmoss.simpleores.starstorage.network.StarTabs.near(player, anchor(), BinaryAction.RANGE);
     }
 }

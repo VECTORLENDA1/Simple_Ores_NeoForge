@@ -122,6 +122,11 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         return leftPos + 4 + which * (TAB + 2);
     }
 
+    @Override
+    protected int tabsReserved() {
+        return 4 + TABS * (TAB + 2) + 4;
+    }
+
     private int tabY() {
         return topPos - TAB + 2;
     }

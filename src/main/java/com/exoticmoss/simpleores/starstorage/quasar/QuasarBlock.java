@@ -62,11 +62,18 @@ public class QuasarBlock extends BaseEntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof QuasarBlockEntity) {
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new QuasarMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
-                    Component.translatable("screen.simpleores.quasar.title")), pos);
-            QuasarPatterns.send(serverPlayer, pos);
-            TerminalContents.send(serverPlayer, pos);
+            open(serverPlayer, pos);
+            com.exoticmoss.simpleores.starstorage.network.StarTabs.send(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /// Opens the screen of the Quasar (also from a tab of another screen of the network).
+    public static void open(ServerPlayer player, BlockPos pos) {
+        if (!(player.level().getBlockEntity(pos) instanceof QuasarBlockEntity)) return;
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new QuasarMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
+                Component.translatable("screen.simpleores.quasar.title")), pos);
+        QuasarPatterns.send(player, pos);
+        TerminalContents.send(player, pos);
     }
 }

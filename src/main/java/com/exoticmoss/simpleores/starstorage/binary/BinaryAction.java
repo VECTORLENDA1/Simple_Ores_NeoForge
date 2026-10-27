@@ -13,7 +13,6 @@ import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
@@ -54,9 +53,9 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
     }
 
     public static void handle(BinaryAction message, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player) || !(player.containerMenu instanceof BinaryMenu)) return;
+        if (!(context.player() instanceof ServerPlayer player) || !(player.containerMenu instanceof BinaryMenu menu)) return;
         BlockPos pos = message.binary();
-        if (player.position().distanceToSqr(Vec3.atCenterOf(pos)) > RANGE * RANGE) return;
+        if (!menu.pos.equals(pos) || !menu.stillValid(player)) return;
         if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
 
         BlockPos block = message.block();

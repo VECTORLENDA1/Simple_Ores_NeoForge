@@ -206,6 +206,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (NetworkTabs.click(event.x(), event.y(), left, top, WIDTH, 0, menu.pos)) return true;
         boolean right = event.button() == 1;
         for (Card card : cards()) {
             BinaryView.Block block = view.blocks().get(card.index());
@@ -232,6 +233,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        NetworkTabs.draw(graphics, font, left, top, WIDTH, 0, menu.pos, mouseX, mouseY);
         graphics.fill(left, top, left + WIDTH, top + height2, PANEL);
         graphics.outline(left, top, WIDTH, height2, PANEL_BORDER);
         graphics.centeredText(font, title, left + WIDTH / 2, top + 7, TEXT);

@@ -35,6 +35,7 @@ public class MagnetarScreen extends AbstractContainerScreen<MagnetarMenu> {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        NetworkTabs.draw(graphics, font, leftPos, topPos, imageWidth, 0, menu.pos, mouseX, mouseY);
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL);
         graphics.outline(leftPos, topPos, imageWidth, imageHeight, PANEL_BORDER);
         graphics.centeredText(font, title, leftPos + imageWidth / 2, topPos + 7, TEXT);
@@ -57,6 +58,12 @@ public class MagnetarScreen extends AbstractContainerScreen<MagnetarMenu> {
                     : hoveredEmpty.index == MagnetarBlockEntity.RANGE_SLOT ? ModItems.MAGNETIC_FIELD_UPGRADE.get() : ModItems.WORMHOLE_LINK.get();
             graphics.setTooltipForNextFrame(font, List.of(item.getDefaultInstance().getHoverName()), Optional.empty(), mouseX, mouseY);
         }
+    }
+
+    @Override
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        if (NetworkTabs.click(event.x(), event.y(), leftPos, topPos, imageWidth, 0, menu.pos)) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override

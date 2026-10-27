@@ -56,12 +56,19 @@ public class BinaryStarBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof BinaryStarBlockEntity binary) {
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new BinaryMenu(id, inventory, pos, 240, binary.getUpgrades()),
-                    Component.translatable("screen.simpleores.binary.title")), pos);
-            BinaryView.send(serverPlayer, pos, false);
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof BinaryStarBlockEntity) {
+            open(serverPlayer, pos);
+            com.exoticmoss.simpleores.starstorage.network.StarTabs.send(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /// Opens the screen of the Binary Star (also from a tab of another screen of the network).
+    public static void open(ServerPlayer player, BlockPos pos) {
+        if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new BinaryMenu(id, inventory, pos, 240, binary.getUpgrades()),
+                Component.translatable("screen.simpleores.binary.title")), pos);
+        BinaryView.send(player, pos, false);
     }
 
     @Override

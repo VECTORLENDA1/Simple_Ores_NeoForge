@@ -159,6 +159,12 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     }
 
     /// The part of the top border that is not drawn {from x, to x} (where a tab joins the panel), or null.
+    /// The space at the left of the top of the panel used by the tabs of the screen (the tabs of the network are
+    /// on the right).
+    protected int tabsReserved() {
+        return 0;
+    }
+
     protected int @Nullable [] topGap() {
         return null;
     }
@@ -494,6 +500,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (NetworkTabs.click(event.x(), event.y(), leftPos, topPos, imageWidth, tabsReserved(), menu.networkPos())) return true;
         // Right-click on the search box: clears it
         if (searchBox != null && event.button() == 1 && searchBox.isMouseOver(event.x(), event.y())) {
             searchBox.setValue("");
@@ -671,6 +678,8 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         scroll = Mth.clamp(scroll, 0, maxScroll());
+        // The tabs of the other blocks of the network (top right)
+        NetworkTabs.draw(graphics, font, leftPos, topPos, imageWidth, tabsReserved(), menu.networkPos(), mouseX, mouseY);
 
         // Panel
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL);

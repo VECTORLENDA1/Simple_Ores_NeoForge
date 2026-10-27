@@ -59,11 +59,18 @@ public class StellarTerminalBlock extends BaseEntityBlock {
                 player.sendOverlayMessage(Component.translatable("message.simpleores.terminal.no_magnetar", StarNetwork.FIELD_RADIUS)
                         .withStyle(ChatFormatting.RED));
             } else {
-                serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new TerminalMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
-                        state.getBlock().getName()), pos);
-                TerminalContents.send(serverPlayer, pos);
+                open(serverPlayer, pos);
+                com.exoticmoss.simpleores.starstorage.network.StarTabs.send(serverPlayer, pos);
             }
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /// Opens the screen of the terminal (also from a tab of another screen of the network).
+    public static void open(ServerPlayer player, BlockPos pos) {
+        BlockState state = player.level().getBlockState(pos);
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new TerminalMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
+                state.getBlock().getName()), pos);
+        TerminalContents.send(player, pos);
     }
 }

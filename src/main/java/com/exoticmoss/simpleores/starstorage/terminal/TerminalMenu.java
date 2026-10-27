@@ -17,7 +17,6 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +30,26 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// The items of the network are not slots: the screen shows them and asks the server (TerminalAction).
 ///  - Shift + click on an item of the inventory stores it in the network.
 ///  - Closing the screen gives back the items left in the crafting grid.
-public class TerminalMenu extends AbstractContainerMenu implements NetworkMenu {
+public class TerminalMenu extends AbstractContainerMenu implements NetworkMenu, com.exoticmoss.simpleores.starstorage.network.StarTabs.Anchored {
+    /// The block the player is next to (this one, or the one whose screen opened this one with a tab).
+    private BlockPos anchor;
+
+    @Override
+    public BlockPos menuPos() {
+        return pos;
+    }
+
+    @Override
+    public BlockPos anchor() {
+        return anchor == null ? pos : anchor;
+    }
+
+    @Override
+    public void setAnchor(BlockPos anchor) {
+        this.anchor = anchor;
+    }
+
+
     public static final int RESULT_SLOT = 0;
     public static final int CRAFT_START = 1;
     public static final int CRAFT_END = 10;
@@ -153,7 +171,7 @@ public class TerminalMenu extends AbstractContainerMenu implements NetworkMenu {
     @Override
     public boolean stillValid(Player player) {
         return player.level().getBlockState(pos).getBlock() instanceof StellarTerminalBlock
-                && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= TerminalAction.RANGE * TerminalAction.RANGE;
+                && com.exoticmoss.simpleores.starstorage.network.StarTabs.near(player, anchor(), TerminalAction.RANGE);
     }
 
     // ---------------------------------------------------------------- shift + click

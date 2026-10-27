@@ -100,6 +100,10 @@ public class SimpleOres {
         // Quasar: the recipes saved in it (server -> client), JEI filled its grid (client -> server)
                 .playToClient(QuasarPatterns.TYPE, QuasarPatterns.STREAM_CODEC, QuasarPatterns::handle)
                 .playToServer(QuasarFill.TYPE, QuasarFill.STREAM_CODEC, QuasarFill::handle)
+                .playToClient(com.exoticmoss.simpleores.starstorage.network.StarTabs.TYPE, com.exoticmoss.simpleores.starstorage.network.StarTabs.STREAM_CODEC,
+                        com.exoticmoss.simpleores.starstorage.network.StarTabs::handle)
+                .playToServer(com.exoticmoss.simpleores.starstorage.network.StarTabs.Open.TYPE, com.exoticmoss.simpleores.starstorage.network.StarTabs.Open.STREAM_CODEC,
+                        com.exoticmoss.simpleores.starstorage.network.StarTabs.Open::handle)
                 .playToServer(QuasarSlot.TYPE, QuasarSlot.STREAM_CODEC, QuasarSlot::handle)
                 .playToServer(QuasarCore.TYPE, QuasarCore.STREAM_CODEC, QuasarCore::handle)
                 .playToClient(QuasarJobs.TYPE, QuasarJobs.STREAM_CODEC, QuasarJobs::handle)

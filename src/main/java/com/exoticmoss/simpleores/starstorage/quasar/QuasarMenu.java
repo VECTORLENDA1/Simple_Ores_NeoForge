@@ -257,14 +257,15 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         ItemStack current = pictures.getItem(slot);
         if (shift) {
             if (current.isEmpty()) return;
-            carried = ItemStack.EMPTY;
-            if (button == 0) {
-                amounts[slot] = Math.min(amounts[slot] + 1, MAX_AMOUNT);
-                pictures.setItem(slot, current.copyWithCount(Math.min(amounts[slot], 99)));
-                updateResult();
+            int count = amounts[slot] + (button == 0 ? 1 : -1);
+            if (count <= 0) {
+                setPicture(slot, ItemStack.EMPTY);
                 return;
             }
-            button = 1;
+            amounts[slot] = Math.min(count, MAX_AMOUNT);
+            pictures.setItem(slot, current.copyWithCount(Math.min(amounts[slot], 99)));
+            updateResult();
+            return;
         }
         boolean same = !current.isEmpty() && !carried.isEmpty() && (ItemStack.isSameItemSameComponents(current, carried)
                 || choices.get(slot).stream().anyMatch(choice -> ItemStack.isSameItemSameComponents(choice.create(), carried)));

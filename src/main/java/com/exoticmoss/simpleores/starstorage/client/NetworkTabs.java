@@ -1,11 +1,9 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.starstorage.network.StarTabs;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import java.util.List;
@@ -70,10 +68,7 @@ public final class NetworkTabs {
             graphics.outline(x, y, TAB, top - y, on ? BORDER_ON : BORDER);
             graphics.item(tab.icon(), x + 3, y + 2);
             if (mouseX >= x && mouseX < x + TAB && mouseY >= y && mouseY < top) {
-                BlockPos pos = tab.pos();
-                graphics.setTooltipForNextFrame(font, List.of(tab.icon().getHoverName(),
-                        Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ()).withStyle(ChatFormatting.GRAY)),
-                        Optional.empty(), mouseX, mouseY);
+                graphics.setTooltipForNextFrame(font, List.of(tab.icon().getHoverName()), Optional.empty(), mouseX, mouseY);
             }
         }
     }

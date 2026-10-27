@@ -106,6 +106,11 @@ public record StarTabs(List<Tab> tabs) implements CustomPacketPayload {
     /// the player is next to. Returns false if the block is not one of them.
     public static boolean open(ServerPlayer player, BlockPos pos, BlockPos anchor) {
         Block block = player.level().getBlockState(pos).getBlock();
+        if (!(block instanceof StellarTerminalBlock || block instanceof MagnetarBlock || block instanceof QuasarBlock
+                || block instanceof BinaryStarBlock)) return false;
+        // The screen open now is closed without telling the client: then the client goes straight to the new screen
+        // (closing it first would put the mouse cursor back in the middle of the window)
+        player.doCloseContainer();
         if (block instanceof StellarTerminalBlock) StellarTerminalBlock.open(player, pos);
         else if (block instanceof MagnetarBlock) MagnetarBlock.open(player, pos);
         else if (block instanceof QuasarBlock) QuasarBlock.open(player, pos);

@@ -66,6 +66,25 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         return QuasarClient.jobs(menu.pos);
     }
 
+    /// The auto-crafts whose sub-crafts are shown (the small arrow on the left).
+    private static final java.util.Set<Integer> expanded = new java.util.HashSet<>();
+
+    /// A row of the jobs tab: an auto-craft (sub = null) or one of its sub-crafts.
+    private record Row(QuasarJobs.View job, QuasarJobs.Sub sub) {
+    }
+
+    /// The rows of the jobs tab: each auto-craft, and under it its sub-crafts if they are shown.
+    private List<Row> rows() {
+        List<Row> rows = new ArrayList<>();
+        for (QuasarJobs.View job : jobs()) {
+            rows.add(new Row(job, null));
+            if (expanded.contains(job.id())) {
+                for (QuasarJobs.Sub sub : job.subs()) rows.add(new Row(job, sub));
+            }
+        }
+        return rows;
+    }
+
     private void button(int id) {
         minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id);
     }
@@ -191,7 +210,7 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         }
         if (!isOverCells(x, y)) {
             if (menu.tab == QuasarMenu.TAB_JOBS && y >= networkTopY()) {
-                jobScroll = Mth.clamp(jobScroll + step, 0, Math.max(0, jobs().size() - jobRows()));
+                jobScroll = Mth.clamp(jobScroll + step, 0, Math.max(0, rows().size() - jobRows()));
                 return true;
             }
             return false;
@@ -214,11 +233,12 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
             return JeiTarget.of(patterns().get(index).outputStack().copyWithCount(1), patternX(i) + 1, patternY(i) + 1);
         }
         if (menu.tab == QuasarMenu.TAB_JOBS) {
-            List<QuasarJobs.View> jobs = jobs();
-            for (int row = 0; row < jobRows() && jobScroll + row < jobs.size(); row++) {
-                int x = leftPos + 14, y = networkTopY() + row * JOB_H + 5;
+            List<Row> rows = rows();
+            for (int row = 0; row < jobRows() && jobScroll + row < rows.size(); row++) {
+                Row line = rows.get(jobScroll + row);
+                int x = itemX(line), y = networkTopY() + row * JOB_H + 5;
                 if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16) {
-                    return JeiTarget.of(jobs.get(jobScroll + row).output().copyWithCount(1), x, y);
+                    return JeiTarget.of(itemOf(line).copyWithCount(1), x, y);
                 }
             }
         }
@@ -235,19 +255,39 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         return new int[]{leftPos + imageWidth - 10 - 14, y + 6, 12};
     }
 
+    /// The X of the item of a row (the sub-crafts are a little to the right).
+    private int itemX(Row row) {
+        return leftPos + 10 + (row.sub() == null ? 9 : 18);
+    }
+
+    private static ItemStack itemOf(Row row) {
+        return row.sub() == null ? row.job().output() : row.sub().output();
+    }
+
     @Override
     protected boolean clickMiddle(MouseButtonEvent event) {
-        List<QuasarJobs.View> jobs = jobs();
-        for (int row = 0; row < jobRows() && jobScroll + row < jobs.size(); row++) {
-            int[] box = cancelBox(row);
-            // (a little bigger than the X, so it is easy to hit)
-            if (event.x() >= box[0] - 3 && event.x() < box[0] + box[2] + 3 && event.y() >= box[1] - 3 && event.y() < box[1] + box[2] + 3) {
-                button(QuasarMenu.CANCEL_JOB + jobs.get(jobScroll + row).id());
-                return true;
-            }
+        List<Row> rows = rows();
+        for (int row = 0; row < jobRows() && jobScroll + row < rows.size(); row++) {
+            Row line = rows.get(jobScroll + row);
             int y = networkTopY() + row * JOB_H;
-            if (event.button() == 0 && event.x() >= leftPos + 14 && event.x() < leftPos + 30 && event.y() >= y + 5 && event.y() < y + 21) {
-                showRecipes.accept(jobs.get(jobScroll + row).output());
+            if (event.y() < y || event.y() >= y + JOB_H) continue;
+            if (line.sub() == null) {
+                int[] box = cancelBox(row);
+                // (a little bigger than the X, so it is easy to hit)
+                if (event.x() >= box[0] - 3 && event.x() < box[0] + box[2] + 3 && event.y() >= box[1] - 3 && event.y() < box[1] + box[2] + 3) {
+                    button(QuasarMenu.CANCEL_JOB + line.job().id());
+                    return true;
+                }
+                // The arrow: shows or hides the sub-crafts
+                if (!line.job().subs().isEmpty() && event.x() >= leftPos + 10 && event.x() < itemX(line)) {
+                    if (!expanded.remove(line.job().id())) expanded.add(line.job().id());
+                    jobScroll = Mth.clamp(jobScroll, 0, Math.max(0, rows().size() - jobRows()));
+                    return true;
+                }
+            }
+            int x = itemX(line);
+            if (event.button() == 0 && event.x() >= x && event.x() < x + 16 && event.y() >= y + 5 && event.y() < y + 21) {
+                showRecipes.accept(itemOf(line));
                 return true;
             }
         }
@@ -256,32 +296,56 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
 
     @Override
     protected void drawMiddle(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        List<QuasarJobs.View> jobs = jobs();
+        List<Row> rows = rows();
         int left = leftPos + 10, width = imageWidth - 20;
-        if (jobs.isEmpty()) {
+        if (rows.isEmpty()) {
             graphics.centeredText(font, Component.translatable("screen.simpleores.quasar.no_jobs"), leftPos + imageWidth / 2, networkTopY() + 10, TEXT_DIM);
             return;
         }
-        for (int row = 0; row < jobRows() && jobScroll + row < jobs.size(); row++) {
-            QuasarJobs.View job = jobs.get(jobScroll + row);
+        for (int row = 0; row < jobRows() && jobScroll + row < rows.size(); row++) {
+            Row line = rows.get(jobScroll + row);
+            QuasarJobs.Sub sub = line.sub();
             int y = networkTopY() + row * JOB_H;
-            graphics.fill(left, y + 1, left + width, y + JOB_H - 1, 0xFF1C1C28);
+            int itemX = itemX(line);
+            graphics.fill(left, y + 1, left + width, y + JOB_H - 1, sub == null ? 0xFF1C1C28 : 0xFF15151F);
+            long amount, made;
+            Component status;
+            int statusColor = TEXT_DIM;
+            if (sub == null) {
+                QuasarJobs.View job = line.job();
+                amount = job.amount();
+                made = job.made();
+                status = Component.translatable(job.status());
+                // The small arrow (right = hidden, down = shown)
+                if (!job.subs().isEmpty()) drawArrow(graphics, left + 2, y + 9, expanded.contains(job.id()));
+            } else {
+                amount = sub.amount();
+                made = sub.made();
+                boolean finished = made >= amount;
+                status = Component.translatable(finished ? "screen.simpleores.quasar.step.done"
+                        : sub.current() ? "screen.simpleores.quasar.job.working" : "screen.simpleores.quasar.step.waiting");
+                if (finished) statusColor = 0xFF7FE8A0;
+                // A line on the left joins the sub-crafts to their auto-craft
+                graphics.fill(left + 4, y, left + 5, y + JOB_H, 0xFF3A3A50);
+            }
             // Left: the item, how many and what it does now
-            graphics.item(job.output(), left + 4, y + 5);
-            int textWidth = 104;
-            String name = StarNetwork.format(job.amount()) + " x " + job.output().getHoverName().getString();
-            graphics.text(font, Component.literal(font.plainSubstrByWidth(name, textWidth)), left + 24, y + 4, TEXT);
-            graphics.text(font, Component.translatable(job.status()), left + 24, y + 14, TEXT_DIM);
+            graphics.item(itemOf(line), itemX, y + 5);
+            int textLeft = itemX + 20;
+            int barLeft = left + 24 + 104 + 6 + 9, barRight = left + width - 24;
+            int textWidth = barLeft - 6 - textLeft;
+            String name = StarNetwork.format(amount) + " x " + itemOf(line).getHoverName().getString();
+            graphics.text(font, Component.literal(font.plainSubstrByWidth(name, textWidth)), textLeft, y + 4, TEXT);
+            graphics.text(font, status, textLeft, y + 14, statusColor);
             // Middle: the bar (items made / items asked for)
-            int barLeft = left + 24 + textWidth + 6, barRight = left + width - 24;
             graphics.fill(barLeft - 1, y + 4, barRight + 1, y + 12, 0xFF0C0C12);
             graphics.fill(barLeft, y + 5, barRight, y + 11, 0xFF15151E);
-            int fill = barLeft + (int) ((barRight - barLeft) * Math.min(job.made(), job.amount()) / Math.max(1, job.amount()));
+            int fill = barLeft + (int) ((barRight - barLeft) * Math.min(made, amount) / Math.max(1, amount));
             if (fill > barLeft) {
                 graphics.fill(barLeft, y + 5, fill, y + 11, 0xFF3FB86A);
                 graphics.fill(barLeft, y + 5, fill, y + 6, 0xFF7FE8A0);
             }
-            graphics.centeredText(font, Component.literal(job.made() + "/" + job.amount()), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
+            graphics.centeredText(font, Component.literal(Math.min(made, amount) + "/" + amount), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
+            if (sub != null) continue;
             // Cancel X
             int[] box = cancelBox(row);
             graphics.fill(box[0], box[1], box[0] + box[2], box[1] + box[2], 0xFFC02030);
@@ -289,6 +353,14 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 graphics.fill(box[0] + 3 + i, box[1] + 3 + i, box[0] + 4 + i, box[1] + 4 + i, TEXT);
                 graphics.fill(box[0] + 8 - i, box[1] + 3 + i, box[0] + 9 - i, box[1] + 4 + i, TEXT);
             }
+        }
+    }
+
+    /// A small triangle: pointing right (closed) or down (open).
+    private static void drawArrow(GuiGraphicsExtractor graphics, int x, int y, boolean open) {
+        for (int i = 0; i < 4; i++) {
+            if (open) graphics.fill(x + i, y + i, x + 7 - i, y + i + 1, TEXT_DIM);
+            else graphics.fill(x + i, y - 3 + i, x + i + 1, y + 4 - i, TEXT_DIM);
         }
     }
 

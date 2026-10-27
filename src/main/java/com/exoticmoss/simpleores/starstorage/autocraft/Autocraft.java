@@ -259,6 +259,26 @@ public final class Autocraft {
             return status;
         }
 
+        /// One sub-craft of the job (for the jobs tab): what it makes, how many, how many are made, and if it is
+        /// being made now.
+        public record SubCraft(ItemStackTemplate output, long amount, long made, boolean current) {
+        }
+
+        /// The sub-crafts: every step but the last one (the last one makes what was asked for), the steps that make
+        /// the same item together, in the order they are made.
+        public List<SubCraft> subCrafts() {
+            Map<ItemStackTemplate, SubCraft> merged = new LinkedHashMap<>();
+            for (int i = 0; i < steps.size() - 1; i++) {
+                Step step = steps.get(i);
+                long count = step.pattern().count();
+                long stepMade = i < index ? step.times() : i == index ? done : 0;
+                SubCraft one = new SubCraft(step.pattern().output(), step.times() * count, stepMade * count, i == index);
+                merged.merge(one.output(), one, (a, b) -> new SubCraft(a.output(), a.amount() + b.amount(),
+                        a.made() + b.made(), a.current() || b.current()));
+            }
+            return new ArrayList<>(merged.values());
+        }
+
         /// How many of the items asked for are made: every craft of every step counts the same
         /// (with one step, it is just the items made).
         public long made() {

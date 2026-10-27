@@ -94,6 +94,8 @@
   "item.simpleores.fluid_cell.amount": "Líquidos: %s / %s",
   "screen.simpleores.quasar.job.waiting_results": "À espera dos resultados",
   "screen.simpleores.quasar.job.waiting_machines": "À espera das máquinas",
+  "screen.simpleores.quasar.step.done": "Feito",
+  "screen.simpleores.quasar.step.waiting": "À espera",
   "screen.simpleores.quasar.machine": "Máquina: %s",
   "screen.simpleores.quasar.machine.none": "Nenhuma máquina faz esta receita",
   "screen.simpleores.quasar.machine.no_items": "Esta receita não tem items",

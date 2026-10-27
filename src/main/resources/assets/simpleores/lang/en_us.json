@@ -131,6 +131,8 @@
   "item.simpleores.fluid_cell.amount": "Liquids: %s / %s",
   "screen.simpleores.quasar.job.waiting_results": "Waiting for the results",
   "screen.simpleores.quasar.job.waiting_machines": "Waiting for the machines",
+  "screen.simpleores.quasar.step.done": "Done",
+  "screen.simpleores.quasar.step.waiting": "Waiting",
   "screen.simpleores.quasar.machine": "Machine: %s",
   "screen.simpleores.quasar.machine.none": "No machine makes this recipe",
   "screen.simpleores.quasar.machine.no_items": "This recipe has no items",

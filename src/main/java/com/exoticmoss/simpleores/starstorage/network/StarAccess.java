@@ -4,12 +4,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /// Moves items and liquids between the Magnetar network and the blocks around (chests, furnaces, tanks, and the
 /// machines of other mods), with the transfer API of NeoForge (ResourceHandler): it works with every block that
@@ -35,6 +40,94 @@ public final class StarAccess {
         int amount = handler.getAmountAsInt(slot);
         return resource.isEmpty() || amount <= 0 ? ItemStack.EMPTY : resource.toStack(amount);
     }
+
+    // ---------------------------------------------------------------- inputs and outputs
+
+    /// What a slot (or tank) of a machine is for, found by trying (nothing is really moved):
+    ///  - INPUT: it takes something (its own item, an item of the player, or of the network);
+    ///  - OUTPUT: it takes nothing (things only come out of it).
+    public static final int UNKNOWN = 0;
+    public static final int INPUT = 1;
+    public static final int OUTPUT = 2;
+
+    /// The role of every slot (up to "count"). "probes" = the items tried (the player's and the network's).
+    public static List<Integer> itemRoles(ResourceHandler<ItemResource> handler, int count, List<ItemResource> probes) {
+        List<Integer> roles = new ArrayList<>();
+        for (int slot = 0; slot < count; slot++) {
+            ItemResource current = handler.getResource(slot);
+            boolean input = false;
+            try (Transaction test = Transaction.openRoot()) {
+                if (!current.isEmpty()) {
+                    // A full slot can't take more: then only "can this item go here" is asked
+                    input = handler.getAmountAsLong(slot) >= handler.getCapacityAsLong(slot, current)
+                            ? handler.isValid(slot, current) : handler.insert(slot, current, 1, test) > 0;
+                } else {
+                    for (ItemResource probe : probes) {
+                        if (handler.insert(slot, probe, 1, test) > 0) {
+                            input = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            roles.add(input ? INPUT : OUTPUT);
+        }
+        return roles;
+    }
+
+    /// The same for tanks. "probes" = the liquids tried.
+    public static List<Integer> fluidRoles(ResourceHandler<FluidResource> handler, int count, List<FluidResource> probes) {
+        List<Integer> roles = new ArrayList<>();
+        for (int tank = 0; tank < count; tank++) {
+            FluidResource current = handler.getResource(tank);
+            boolean input = false;
+            try (Transaction test = Transaction.openRoot()) {
+                List<FluidResource> tries = current.isEmpty() ? probes : List.of(current);
+                for (FluidResource probe : tries) {
+                    if (handler.isValid(tank, probe) && (handler.insert(tank, probe, 1, test) > 0
+                            || handler.getAmountAsLong(tank) >= handler.getCapacityAsLong(tank, probe))) {
+                        input = true;
+                        break;
+                    }
+                }
+            }
+            roles.add(input ? INPUT : OUTPUT);
+        }
+        return roles;
+    }
+
+    /// The items tried to find the inputs: the ones in the player's inventory and the most of the network.
+    public static List<ItemResource> itemProbes(net.minecraft.world.entity.player.Player player, StarNetwork network) {
+        List<ItemResource> probes = new ArrayList<>();
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (!stack.isEmpty()) {
+                ItemResource resource = ItemResource.of(stack);
+                if (!probes.contains(resource)) probes.add(resource);
+            }
+        }
+        var contents = network.contents();
+        for (int i = 0; i < Math.min(MAX_NETWORK_PROBES, contents.size()); i++) {
+            ItemResource resource = ItemResource.of(contents.get(i).getKey());
+            if (!probes.contains(resource)) probes.add(resource);
+        }
+        return probes;
+    }
+
+    /// The liquids tried: water, lava and the ones of the network.
+    public static List<FluidResource> fluidProbes(StarNetwork network) {
+        List<FluidResource> probes = new ArrayList<>();
+        probes.add(FluidResource.of(Fluids.WATER));
+        probes.add(FluidResource.of(Fluids.LAVA));
+        for (FluidContents.Entry entry : network.fluids()) {
+            FluidResource resource = FluidResource.of(entry.fluid());
+            if (!probes.contains(resource)) probes.add(resource);
+        }
+        return probes;
+    }
+
+    /// At most this many kinds of items of the network are tried (the ones with the most items).
+    private static final int MAX_NETWORK_PROBES = 32;
 
     // ---------------------------------------------------------------- items
 

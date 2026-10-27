@@ -1,6 +1,7 @@
 package com.exoticmoss.simpleores.starstorage.binary;
 
 import com.exoticmoss.simpleores.SimpleOres;
+import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -80,8 +81,17 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
                 }
                 case REMOVE -> binary.setRule(block, slot, null);
                 case TAKE_ALL -> {
-                    for (int i = 0; i < slotCount; i++) takeAll(binary, block, i);
-                    for (int t = 0; t < tankCount; t++) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
+                    // Only the outputs of the machine (all the slots of a chest: they all take items)
+                    StarNetwork network = StarNetwork.at(player.level(), pos);
+                    List<Integer> slotRoles = slotCount == 0 ? List.of() : StarAccess.itemRoles(items, slotCount, StarAccess.itemProbes(player, network));
+                    List<Integer> tankRoles = tankCount == 0 ? List.of() : StarAccess.fluidRoles(fluids, tankCount, StarAccess.fluidProbes(network));
+                    boolean slotOutputs = slotRoles.contains(StarAccess.OUTPUT), tankOutputs = tankRoles.contains(StarAccess.OUTPUT);
+                    for (int i = 0; i < slotCount; i++) {
+                        if (!slotOutputs || slotRoles.get(i) == StarAccess.OUTPUT) takeAll(binary, block, i);
+                    }
+                    for (int t = 0; t < tankCount; t++) {
+                        if (!tankOutputs || tankRoles.get(t) == StarAccess.OUTPUT) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
+                    }
                 }
                 case CLEAR -> binary.clearRules(block);
                 default -> {

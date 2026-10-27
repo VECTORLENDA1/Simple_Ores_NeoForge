@@ -55,8 +55,8 @@ public class BinaryStarBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new BinaryMenu(id, inventory, pos, 240),
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof BinaryStarBlockEntity binary) {
+            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new BinaryMenu(id, inventory, pos, 240, binary.getUpgrades()),
                     Component.translatable("screen.simpleores.binary.title")), pos);
             BinaryView.send(serverPlayer, pos, false);
         }

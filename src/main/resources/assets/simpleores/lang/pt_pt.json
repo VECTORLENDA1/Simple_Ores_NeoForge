@@ -84,7 +84,7 @@
   "item.simpleores.magnetic_field_upgrade": "Upgrade de Campo Magnético",
   "item.simpleores.wormhole_link": "Ligação de Buraco de Minhoca",
   "tooltip.simpleores.solar_wind_upgrade": "Magnetar: o auto-craft dá os items aos Gravity Cores mais depressa (até 4)",
-  "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocos de campo (até 4)",
+  "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocos de campo; Binary Star: +8 blocos (até 4)",
   "tooltip.simpleores.wormhole_link": "Clica num Magnetar e põe-na noutro: as redes juntam-se (qualquer dimensão)",
   "tooltip.simpleores.wormhole_link.target": "Magnetar em %s %s %s (%s)",
   "message.simpleores.magnetar.linked": "A Ligação aponta para o Magnetar em %s %s %s",
@@ -109,5 +109,7 @@
   "item.simpleores.quark_cell": "Célula de Quark",
   "item.simpleores.quark_fluid_cell": "Célula de Líquidos de Quark",
   "item.simpleores.preon_cell": "Célula de Preão",
-  "item.simpleores.preon_fluid_cell": "Célula de Líquidos de Preão"
+  "item.simpleores.preon_fluid_cell": "Célula de Líquidos de Preão",
+  "screen.simpleores.area.show": "Ver área",
+  "screen.simpleores.area.hide": "Esconder área"
 }

@@ -22,7 +22,7 @@ import java.util.Map;
 
 /// Sent by the server to the player using a Binary Star: every block with an inventory around it
 /// (its slots and the rules of each slot). "open" = open the Binary Star screen.
-public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks)
+public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks, int radius)
         implements CustomPacketPayload {
     /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks and the rules
     /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank).
@@ -43,6 +43,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 buf.writeVarInt(message.cells());
                 buf.writeVarLong(message.used());
                 buf.writeVarLong(message.capacity());
+                buf.writeVarInt(message.radius());
                 buf.writeVarInt(message.blocks().size());
                 for (Block block : message.blocks()) {
                     BlockPos.STREAM_CODEC.encode(buf, block.pos());
@@ -66,6 +67,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 int cells = buf.readVarInt();
                 long used = buf.readVarLong();
                 long capacity = buf.readVarLong();
+                int radius = buf.readVarInt();
                 int count = buf.readVarInt();
                 List<Block> blocks = new ArrayList<>(count);
                 for (int i = 0; i < count; i++) {
@@ -84,7 +86,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     for (int r = 0; r < ruleCount; r++) rules.add(SlotRule.STREAM_CODEC.decode(buf));
                     blocks.add(new Block(blockPos, icon, slots, tanks, rules));
                 }
-                return new BinaryView(pos, open, drives, cells, used, capacity, blocks);
+                return new BinaryView(pos, open, drives, cells, used, capacity, blocks, radius);
             });
 
     @Override
@@ -100,7 +102,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
         if (!(player.level().getBlockEntity(pos) instanceof BinaryStarBlockEntity binary)) return;
         StarNetwork network = StarNetwork.at(player.level(), pos);
         List<Block> blocks = new ArrayList<>();
-        StarNetwork.forEachBlockEntity(player.level(), pos, BinaryStarBlockEntity.RADIUS, blockEntity -> {
+        StarNetwork.forEachBlockEntity(player.level(), pos, binary.radius(), blockEntity -> {
             if (blockEntity.isRemoved() || blockEntity instanceof BinaryStarBlockEntity) return;
             BlockPos blockPos = blockEntity.getBlockPos();
             // Any block that has slots or tanks (also of other mods)
@@ -127,7 +129,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
         // The closest blocks first
         blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));
         PacketDistributor.sendToPlayer(player, new BinaryView(pos, open, network.drives().size(), network.cellCount(),
-                network.usedItems(), network.capacity(), blocks));
+                network.usedItems(), network.capacity(), blocks, binary.radius()));
     }
 
     /// Runs on the client: opens or updates the Binary Star screen.

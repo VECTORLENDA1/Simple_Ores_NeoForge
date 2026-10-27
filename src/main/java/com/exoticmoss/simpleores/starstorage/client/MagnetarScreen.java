@@ -7,6 +7,7 @@ import com.exoticmoss.simpleores.starstorage.MagnetarMenu;
 import com.exoticmoss.simpleores.starstorage.StarFluids;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -58,10 +59,26 @@ public class MagnetarScreen extends AbstractContainerScreen<MagnetarMenu> {
         }
     }
 
+    @Override
+    protected void init() {
+        super.init();
+        // Shows (or hides) the area of the field, around the Magnetar in the world
+        addRenderableWidget(Button.builder(areaLabel(), b -> {
+            MagnetarInfo info = MagnetarInfo.last(menu.pos);
+            AreaDisplay.toggle(menu.pos, info == null ? StarNetwork.FIELD_RADIUS : info.radius());
+            b.setMessage(areaLabel());
+        }).bounds(leftPos + imageWidth - 68, topPos + MagnetarMenu.INFO_TOP - 2, 60, 14).build());
+    }
+
+    private Component areaLabel() {
+        return Component.translatable(AreaDisplay.isShown(menu.pos) ? "screen.simpleores.area.hide" : "screen.simpleores.area.show");
+    }
+
     /// How the network is (sent by the server every second).
     private void drawInfo(GuiGraphicsExtractor graphics) {
         MagnetarInfo info = MagnetarInfo.last(menu.pos);
         if (info == null) return;
+        AreaDisplay.update(menu.pos, info.radius());
         int x = leftPos + 8, y = topPos + MagnetarMenu.INFO_TOP;
         graphics.text(font, Component.translatable("screen.simpleores.magnetar.field", info.radius()), x, y, TEXT);
         graphics.text(font, Component.translatable("screen.simpleores.magnetar.drives", info.drives(), info.cells()), x, y + 11, TEXT_DIM);

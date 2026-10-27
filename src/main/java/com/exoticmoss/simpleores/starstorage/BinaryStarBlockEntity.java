@@ -4,6 +4,8 @@ import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.Containers;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -38,12 +40,23 @@ public class BinaryStarBlockEntity extends BlockEntity {
     public static final int WORK_TICKS = 10;
     /// The rules of the tanks (liquids) use the slot numbers TANKS + tank (their item is a bucket of the liquid).
     public static final int TANKS = 10_000;
-    /// How far (blocks in every direction) the blocks it takes care of can be.
+    /// How far (blocks in every direction) the blocks it takes care of can be, without upgrades;
+    /// each Magnetic Field Upgrade (up to MAX_UPGRADES, in the slot of its screen) adds RANGE_PER_UPGRADE.
     public static final int RADIUS = 8;
+    public static final int RANGE_PER_UPGRADE = 8;
+    public static final int MAX_UPGRADES = 4;
 
     /// The rules of each block (position -> slot -> rule).
     private final Map<BlockPos, Map<Integer, SlotRule>> rules = new HashMap<>();
     private int ticks;
+    /// The slot of the Magnetic Field Upgrades.
+    private final SimpleContainer upgrades = new SimpleContainer(1) {
+        @Override
+        public void setChanged() {
+            super.setChanged();
+            BinaryStarBlockEntity.this.setChanged();
+        }
+    };
 
     public BinaryStarBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BINARY_STAR_BE.get(), pos, state);
@@ -70,10 +83,27 @@ public class BinaryStarBlockEntity extends BlockEntity {
         if (rules.remove(pos) != null) setChanged();
     }
 
+    public SimpleContainer getUpgrades() {
+        return upgrades;
+    }
+
+    /// How far (blocks in every direction) the blocks it takes care of can be.
+    public int radius() {
+        return RADIUS + Math.min(MAX_UPGRADES, upgrades.getItem(0).getCount()) * RANGE_PER_UPGRADE;
+    }
+
     /// True if the block at "pos" is close enough to this Binary Star.
     public boolean inReach(BlockPos pos) {
-        return Math.abs(pos.getX() - worldPosition.getX()) <= RADIUS && Math.abs(pos.getY() - worldPosition.getY()) <= RADIUS
-                && Math.abs(pos.getZ() - worldPosition.getZ()) <= RADIUS;
+        int radius = radius();
+        return Math.abs(pos.getX() - worldPosition.getX()) <= radius && Math.abs(pos.getY() - worldPosition.getY()) <= radius
+                && Math.abs(pos.getZ() - worldPosition.getZ()) <= radius;
+    }
+
+    /// When the Binary Star is broken, its upgrades drop on the ground.
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (level != null) Containers.dropContents(level, pos, upgrades);
     }
 
     // ---------------------------------------------------------------- the work
@@ -170,11 +200,13 @@ public class BinaryStarBlockEntity extends BlockEntity {
         List<BlockRules> list = new ArrayList<>();
         rules.forEach((pos, slots) -> list.add(new BlockRules(pos, new ArrayList<>(slots.values()))));
         output.store("rules", BlockRules.CODEC.listOf(), list);
+        output.store("upgrades", ItemStack.OPTIONAL_CODEC, upgrades.getItem(0));
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+        upgrades.setItem(0, input.read("upgrades", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
         rules.clear();
         for (BlockRules block : input.read("rules", BlockRules.CODEC.listOf()).orElse(List.of())) {
             Map<Integer, SlotRule> slots = new TreeMap<>();

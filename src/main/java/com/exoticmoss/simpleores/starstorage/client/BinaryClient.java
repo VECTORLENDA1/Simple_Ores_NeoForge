@@ -23,7 +23,7 @@ public final class BinaryClient {
 
     /// The last view of the Binary Star at "pos" (empty if none came yet).
     public static BinaryView last(BlockPos pos) {
-        return last != null && last.pos().equals(pos) ? last : new BinaryView(pos, false, 0, 0, 0, 0, List.of());
+        return last != null && last.pos().equals(pos) ? last : new BinaryView(pos, false, 0, 0, 0, 0, List.of(), com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity.RADIUS);
     }
 
     /// Height of the panel: as tall as fits in the window (at most 300 pixels).

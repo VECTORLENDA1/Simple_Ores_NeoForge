@@ -174,6 +174,45 @@ public class CoreDrawing {
     }
 
     /// Adds one corner (vertex) to the shape being drawn.
+    /// A see-through box (seen from inside and outside), from "min" to "max" on every axis (block coordinates),
+    /// with stronger edges: the area reached by a Magnetar or a Binary Star.
+    public static void drawArea(PoseStack pose, SubmitNodeCollector collector, float min, float max, int faceColor, int edgeColor) {
+        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> {
+            box(p, v, min, min, min, max, max, max, faceColor);
+            float e = 0.05f;
+            for (float a : new float[]{min, max}) {
+                for (float b : new float[]{min, max}) {
+                    box(p, v, min, a - e, b - e, max, a + e, b + e, edgeColor);   // along x
+                    box(p, v, a - e, min, b - e, a + e, max, b + e, edgeColor);   // along y
+                    box(p, v, a - e, b - e, min, a + e, b + e, max, edgeColor);   // along z
+                }
+            }
+        });
+    }
+
+    /// The 6 faces of a box, each one seen from both sides.
+    private static void box(PoseStack.Pose p, VertexConsumer v, float x0, float y0, float z0, float x1, float y1, float z1, int color) {
+        face(p, v, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1, 0, -1, 0, color);
+        face(p, v, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0, 0, 1, 0, color);
+        face(p, v, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0, 0, 0, -1, color);
+        face(p, v, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1, 0, 0, 1, color);
+        face(p, v, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0, -1, 0, 0, color);
+        face(p, v, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1, 1, 0, 0, color);
+    }
+
+    /// A quad with its two sides.
+    private static void face(PoseStack.Pose p, VertexConsumer v, float ax, float ay, float az, float bx, float by, float bz,
+                             float cx, float cy, float cz, float dx, float dy, float dz, float nx, float ny, float nz, int color) {
+        vertex(p, v, ax, ay, az, nx, ny, nz, color);
+        vertex(p, v, bx, by, bz, nx, ny, nz, color);
+        vertex(p, v, cx, cy, cz, nx, ny, nz, color);
+        vertex(p, v, dx, dy, dz, nx, ny, nz, color);
+        vertex(p, v, dx, dy, dz, -nx, -ny, -nz, color);
+        vertex(p, v, cx, cy, cz, -nx, -ny, -nz, color);
+        vertex(p, v, bx, by, bz, -nx, -ny, -nz, color);
+        vertex(p, v, ax, ay, az, -nx, -ny, -nz, color);
+    }
+
     private static void vertex(PoseStack.Pose pose, VertexConsumer v, float x, float y, float z,
                                float nx, float ny, float nz, int color) {
         v.addVertex(pose, x, y, z)

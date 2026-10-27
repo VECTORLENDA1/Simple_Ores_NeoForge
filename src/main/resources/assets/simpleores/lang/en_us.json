@@ -121,7 +121,7 @@
   "item.simpleores.magnetic_field_upgrade": "Magnetic Field Upgrade",
   "item.simpleores.wormhole_link": "Wormhole Link",
   "tooltip.simpleores.solar_wind_upgrade": "Magnetar: the auto-craft gives items to the Gravity Cores faster (up to 4)",
-  "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocks of field (up to 4)",
+  "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocks of field; Binary Star: +8 blocks (up to 4)",
   "tooltip.simpleores.wormhole_link": "Right-click a Magnetar, then put it in another one: their networks join (any dimension)",
   "tooltip.simpleores.wormhole_link.target": "Magnetar at %s %s %s (%s)",
   "message.simpleores.magnetar.linked": "Wormhole Link points to the Magnetar at %s %s %s",
@@ -146,5 +146,7 @@
   "item.simpleores.quark_cell": "Quark Cell",
   "item.simpleores.quark_fluid_cell": "Quark Fluid Cell",
   "item.simpleores.preon_cell": "Preon Cell",
-  "item.simpleores.preon_fluid_cell": "Preon Fluid Cell"
+  "item.simpleores.preon_fluid_cell": "Preon Fluid Cell",
+  "screen.simpleores.area.show": "Show area",
+  "screen.simpleores.area.hide": "Hide area"
 }

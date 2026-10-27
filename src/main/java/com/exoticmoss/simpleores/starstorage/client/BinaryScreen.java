@@ -9,6 +9,7 @@ import com.exoticmoss.simpleores.starstorage.StarFluids;
 import com.exoticmoss.simpleores.starstorage.StarNetwork;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -77,12 +78,19 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         this.view = BinaryClient.last(menu.pos);
     }
 
+    private Button areaButton;
+
+    private Component areaLabel() {
+        return Component.translatable(AreaDisplay.isShown(pos) ? "screen.simpleores.area.hide" : "screen.simpleores.area.show");
+    }
+
     public BlockPos pos() {
         return pos;
     }
 
     public void update(BinaryView view) {
         this.view = view;
+        AreaDisplay.update(pos, view.radius());
         scroll = Mth.clamp(scroll, 0, Math.max(0, view.blocks().size() - 1));
     }
 
@@ -96,6 +104,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         height2 = imageHeight;
         left = leftPos;
         top = topPos;
+        // Shows (or hides) the area the Binary Star reaches, around it in the world
+        areaButton = addRenderableWidget(Button.builder(areaLabel(), b -> {
+            AreaDisplay.toggle(pos, view.radius());
+            b.setMessage(areaLabel());
+        }).bounds(left + WIDTH - 66, top + 4, 60, 14).build());
     }
 
     @Override
@@ -221,7 +234,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         graphics.centeredText(font, title, left + WIDTH / 2, top + 7, TEXT);
 
         if (view.blocks().isEmpty()) {
-            graphics.centeredText(font, Component.translatable("screen.simpleores.binary.no_blocks", BinaryStarBlockEntity.RADIUS),
+            graphics.centeredText(font, Component.translatable("screen.simpleores.binary.no_blocks", view.radius()),
                     left + WIDTH / 2, areaTop() + 10, TEXT_DIM);
         }
 

@@ -245,8 +245,9 @@ public class BinaryStarBlockEntity extends BlockEntity {
             if (blockEntity.isRemoved() || blockEntity instanceof BinaryStarBlockEntity) return;
             BlockPos pos = blockEntity.getBlockPos().immutable();
             ResourceHandler<ItemResource> items = StarAccess.items(level, pos);
+            // (also the blocks with only tanks: they stay in the order of the screen)
+            if (items != null || StarAccess.fluids(level, pos) != null) seen.add(pos);
             if (items == null) return;
-            seen.add(pos);
             if (!configured.add(pos)) return;
             List<Integer> roles = SlotRoles.items(level, pos, items);
             Map<Integer, SlotRule> slots = rulesOf(pos);

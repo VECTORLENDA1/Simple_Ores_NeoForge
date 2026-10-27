@@ -238,6 +238,16 @@ public final class Autocraft {
         private record MachineKey(BlockPos pos, ItemStackTemplate output) {
         }
 
+        /// How many of each ingredient of a step were put in a machine.
+        private record SentKey(BlockPos pos, int step) {
+        }
+
+        private final Map<SentKey, long[]> sentToMachines = new HashMap<>();
+        /// At most this many of one ingredient are sent to one machine each time the job works.
+        private static final int MAX_SEND = 1024;
+        /// The index of the step being worked on now (inside work).
+        private int stepNow;
+
         /// Every machine (and item) used by this job: what comes out of them is always taken, so nothing stays
         /// in their outputs.
         private final java.util.Set<MachineKey> usedMachines = new java.util.HashSet<>();
@@ -371,6 +381,7 @@ public final class Autocraft {
                     target = Math.min(step.times(), doneSteps[i] + (deficit + count - 1) / count);
                 }
                 done = doneSteps[i];
+                stepNow = i;
                 status = "screen.simpleores.quasar.job.working";
                 boolean stepProgress;
                 if (step.pattern().isCore()) stepProgress = workCore(level, network, step);
@@ -638,11 +649,16 @@ public final class Autocraft {
                 if (step.pattern().madeBy(blockEntity.getBlockState())) list.add(blockEntity.getBlockPos());
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_machines" : "screen.simpleores.quasar.job.working";
-            List<ItemStack> set = new ArrayList<>();
+            // The ingredients of one craft and how many of each
+            List<ItemStack> items = new ArrayList<>();
+            List<Integer> amounts = new ArrayList<>();
             for (int i = 0; i < step.items().size(); i++) {
                 ItemStackTemplate item = step.items().get(i);
-                if (item != null) set.add(item.create().copyWithCount(step.pattern().amount(i)));
+                if (item == null) continue;
+                items.add(item.create());
+                amounts.add(Math.max(1, step.pattern().amount(i)));
             }
+            if (items.isEmpty()) return false;
             int speed = magnetar.speed();
             boolean progress = false;
             for (BlockPos machinePos : list) {
@@ -650,38 +666,42 @@ public final class Autocraft {
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
                 if (handler == null) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
-                long sets = Math.min(SETS[speed], target - done);
-                int given = 0;
-                while (given < sets) {
-                    // The whole set from the network, then all of it into the machine (else everything goes back)
-                    List<ItemStack> got = new ArrayList<>();
-                    boolean all = true;
-                    for (ItemStack one : set) {
-                        ItemStack taken = network.extract(one, one.getCount());
-                        if (!taken.isEmpty()) got.add(taken);
-                        if (taken.getCount() < one.getCount()) all = false;
-                    }
-                    if (!all) {
-                        giveBack(network, got);
+                // Each ingredient goes in by itself, as much as fits (one doesn't wait for room for the others):
+                // the crafts given to a machine are the whole sets it got
+                long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
+                long setsBefore = sets(sent, amounts);
+                long goal = setsBefore + Math.min(SETS[speed], target - done);
+                for (int k = 0; k < items.size(); k++) {
+                    long want = Math.min(goal * amounts.get(k) - sent[k], MAX_SEND);
+                    if (want <= 0) continue;
+                    ItemStack got = network.extract(items.get(k).copyWithCount(1), (int) want);
+                    if (got.isEmpty()) {
                         status = "screen.simpleores.quasar.job.waiting_items";
-                        break;
+                        continue;
                     }
-                    if (!com.exoticmoss.simpleores.starstorage.network.StarAccess.insertAll(handler, sides, got)) {
-                        giveBack(network, got);
-                        break;
+                    int put = com.exoticmoss.simpleores.starstorage.network.StarAccess.insertSome(handler, sides, got);
+                    if (put < got.getCount()) network.insert(got.copyWithCount(got.getCount() - put));
+                    if (put > 0) {
+                        sent[k] += put;
+                        progress = true;
                     }
-                    given++;
                 }
+                long given = sets(sent, amounts) - setsBefore;
                 if (given <= 0) continue;
                 done += given;
                 usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
                 machines.merge(new MachineKey(machinePos, step.pattern().output()),
-                        new FurnaceWait(step.pattern().output(), (long) given * step.pattern().count()),
+                        new FurnaceWait(step.pattern().output(), given * step.pattern().count()),
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
-                progress = true;
-                if (status.equals("screen.simpleores.quasar.job.waiting_items")) break;
             }
             return progress;
+        }
+
+        /// The whole sets in what was sent to a machine.
+        private static long sets(long[] sent, List<Integer> amounts) {
+            long sets = Long.MAX_VALUE;
+            for (int k = 0; k < sent.length; k++) sets = Math.min(sets, sent[k] / amounts.get(k));
+            return sets;
         }
 
         /// Takes the results out of the machines used by this job to the network: all of that item that is in the

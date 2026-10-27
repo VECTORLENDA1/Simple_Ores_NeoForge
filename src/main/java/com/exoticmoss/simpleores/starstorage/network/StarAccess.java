@@ -124,6 +124,15 @@ public final class StarAccess {
         }
     }
 
+    /// Puts as many of the items as fit in the machine (the machine chooses the slots). Returns how many went in.
+    public static int insertSome(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, ItemStack item) {
+        try (Transaction transaction = Transaction.openRoot()) {
+            int put = insertAny(handler, sides, ItemResource.of(item), item.getCount(), transaction);
+            transaction.commit();
+            return put;
+        }
+    }
+
     /// Takes up to "max" of the item out of the machine to the network (what doesn't fit stays). Returns how many went.
     public static int takeOut(StarNetwork network, ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides,
                               ItemStack item, int max) {

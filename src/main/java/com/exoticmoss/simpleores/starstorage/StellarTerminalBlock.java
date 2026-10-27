@@ -58,7 +58,7 @@ public class StellarTerminalBlock extends BaseEntityBlock {
                         .withStyle(ChatFormatting.RED));
             } else {
                 serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new TerminalMenu(id, inventory, pos, TerminalLayout.MIN_ROWS),
-                        Component.translatable("screen.simpleores.terminal.title")), pos);
+                        state.getBlock().getName()), pos);
                 TerminalContents.send(serverPlayer, pos);
             }
         }

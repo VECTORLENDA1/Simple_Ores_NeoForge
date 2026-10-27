@@ -156,8 +156,11 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
             for (Pattern option : options) linked.add(links.contains(option));
             blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles, options, linked));
         });
-        // The closest blocks first
-        blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));
+        // In groups: first the machines (blocks with inputs or outputs), then the others (chests...); each kind of
+        // block together (by name), and the closest first
+        blocks.sort(Comparator.comparing((Block block) -> block.roles().stream().allMatch(role -> role == SlotRoles.UNKNOWN))
+                .thenComparing(block -> block.icon().getHoverName().getString())
+                .thenComparingDouble(block -> block.pos().distSqr(pos)));
         PacketDistributor.sendToPlayer(player, new BinaryView(pos, open, network.drives().size(), network.cellCount(),
                 network.usedItems(), network.capacity(), blocks, binary.radius()));
     }

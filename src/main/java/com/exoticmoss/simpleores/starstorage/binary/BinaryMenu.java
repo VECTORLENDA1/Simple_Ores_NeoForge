@@ -34,7 +34,7 @@ public class BinaryMenu extends AbstractContainerMenu implements com.exoticmoss.
     }
 
 
-    public static final int WIDTH = 220;
+    public static final int WIDTH = 260;
     /// Height of the inventory part at the bottom of the panel.
     public static final int INVENTORY_HEIGHT = 3 * 18 + 4 + 18 + 22;
 

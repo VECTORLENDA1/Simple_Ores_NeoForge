@@ -26,8 +26,8 @@ public final class BinaryClient {
         return last != null && last.pos().equals(pos) ? last : new BinaryView(pos, false, 0, 0, 0, 0, List.of(), com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity.RADIUS);
     }
 
-    /// Height of the panel: as tall as fits in the window (at most 300 pixels).
+    /// Height of the panel: as tall as fits in the window (at most 360 pixels).
     public static int height() {
-        return Math.min(Minecraft.getInstance().getWindow().getGuiScaledHeight() - 20, 300);
+        return Math.min(Minecraft.getInstance().getWindow().getGuiScaledHeight() - 20, 360);
     }
 }

@@ -39,9 +39,9 @@ import java.util.Optional;
 ///  - "Take all": every slot of the block is TAKE. "Clear": no rules for the block.
 /// The screen only asks the server (BinaryAction); the server changes the rules and sends back the view.
 public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements JeiTarget.Source {
-    private static final int WIDTH = 220;
+    private static final int WIDTH = BinaryMenu.WIDTH;
     private static final int SLOT = 18;
-    private static final int COLUMNS = 9;
+    private static final int COLUMNS = 12;
     private static final int CARD_HEADER = 20;
     private static final int CARD_GAP = 4;
     /// The screen asks for the view again every this many ticks (the slots change all the time).
@@ -72,7 +72,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     private BinaryView view;
     /// First card shown.
-    private int scroll;
+    /// How far the cards are scrolled (pixels): where they are now, and where they go (they slide there).
+    private double scroll;
+    private double scrollTarget;
+    /// Pixels moved by one turn of the mouse wheel.
+    private static final int WHEEL_STEP = 30;
     private int ticks;
     private int left, top, height2;
     private final BlockPos pos;
@@ -100,7 +104,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     public void update(BinaryView view) {
         this.view = view;
         AreaDisplay.update(pos, view.radius());
-        scroll = Mth.clamp(scroll, 0, Math.max(0, view.blocks().size() - 1));
+        scrollTarget = Mth.clamp(scrollTarget, 0, maxScroll());
+        scroll = Mth.clamp(scroll, 0, maxScroll());
     }
 
     private void send(BlockPos block, int action, int slot) {
@@ -153,6 +158,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     /// JEI: the block of a card, the items of its slots and the liquids of its tanks.
     @Override
     public @Nullable JeiTarget jeiTargetAt(double mouseX, double mouseY) {
+        if (mouseY < areaTop() || mouseY >= areaBottom()) return null;
         for (Card card : cards()) {
             BinaryView.Block block = view.blocks().get(card.index());
             if (mouseX >= card.x() + 2 && mouseX < card.x() + 18 && mouseY >= card.y() + 2 && mouseY < card.y() + 18) {
@@ -172,11 +178,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     private List<Card> cards() {
         List<Card> cards = new ArrayList<>();
-        int y = areaTop();
-        for (int i = scroll; i < view.blocks().size(); i++) {
-            int cardHeight = CARD_HEADER + rows(view.blocks().get(i)) * SLOT + 6;
-            if (!cards.isEmpty() && y + cardHeight > areaBottom()) break;
-            cards.add(new Card(i, left + 10, y, cardHeight));
+        int y = areaTop() - (int) Math.round(scroll);
+        for (int i = 0; i < view.blocks().size(); i++) {
+            int cardHeight = cardHeight(i);
+            // Only the cards that can be seen (a card cut by the top or the bottom too)
+            if (y + cardHeight > areaTop() && y < areaBottom()) cards.add(new Card(i, left + 10, y, cardHeight));
             y += cardHeight + CARD_GAP;
         }
         return cards;
@@ -214,31 +220,41 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         return left + WIDTH - 8;
     }
 
+    private int cardHeight(int index) {
+        return CARD_HEADER + rows(view.blocks().get(index)) * SLOT + 6;
+    }
+
+    /// The height of all the cards together.
+    private int contentHeight() {
+        int height = 0;
+        for (int i = 0; i < view.blocks().size(); i++) height += cardHeight(i) + CARD_GAP;
+        return Math.max(0, height - CARD_GAP);
+    }
+
     private int maxScroll() {
-        return Math.max(0, view.blocks().size() - 1);
+        return Math.max(0, contentHeight() - (areaBottom() - areaTop()));
     }
 
     /// The bar is shown when some cards don't fit.
     private boolean hasBar() {
-        List<Card> cards = cards();
-        return scroll > 0 || !cards.isEmpty() && cards.get(cards.size() - 1).index() < view.blocks().size() - 1;
+        return maxScroll() > 0;
     }
 
     /// The part of the bar that is moved: {top, height}.
     private int[] thumb() {
         int height = areaBottom() - areaTop();
-        int size = Math.max(10, height / Math.max(1, view.blocks().size()));
+        int size = Math.max(10, height * height / Math.max(1, contentHeight()));
         int max = maxScroll();
-        int y = areaTop() + (max == 0 ? 0 : (height - size) * scroll / max);
+        int y = areaTop() + (int) (max == 0 ? 0 : (height - size) * scroll / max);
         return new int[]{y, size};
     }
 
-    /// Moves the cards to where the mouse is on the bar.
+    /// Moves the cards to where the mouse is on the bar (they slide there).
     private void dragTo(double mouseY) {
         int[] thumb = thumb();
         int height = areaBottom() - areaTop() - thumb[1];
         double part = height <= 0 ? 0 : (mouseY - areaTop() - thumb[1] / 2.0) / height;
-        scroll = Mth.clamp((int) Math.round(part * maxScroll()), 0, maxScroll());
+        scrollTarget = Mth.clamp(part * maxScroll(), 0, maxScroll());
     }
 
     @Override
@@ -261,7 +277,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
-        if (scrollY != 0) scroll = Mth.clamp(scroll + (scrollY > 0 ? -1 : 1), 0, Math.max(0, view.blocks().size() - 1));
+        if (scrollY != 0) scrollTarget = Mth.clamp(scrollTarget - scrollY * WHEEL_STEP, 0, maxScroll());
         return true;
     }
 
@@ -276,7 +292,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             return true;
         }
         boolean right = event.button() == 1;
-        for (Card card : cards()) {
+        boolean inArea = event.y() >= areaTop() && event.y() < areaBottom();
+        for (Card card : inArea ? cards() : List.<Card>of()) {
             BinaryView.Block block = view.blocks().get(card.index());
             if (inside(button(card, 0), event.x(), event.y())) {
                 send(block.pos(), BinaryAction.TAKE_ALL, 0);
@@ -311,6 +328,13 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     left + WIDTH / 2, areaTop() + 10, TEXT_DIM);
         }
 
+        // The cards slide to where they were scrolled
+        scrollTarget = Mth.clamp(scrollTarget, 0, maxScroll());
+        scroll += (scrollTarget - scroll) * 0.35;
+        if (Math.abs(scrollTarget - scroll) < 0.5) scroll = scrollTarget;
+        // Only what is inside the area of the cards is drawn (and can be pointed at)
+        int cardMouseY = mouseY >= areaTop() && mouseY < areaBottom() ? mouseY : -10_000;
+        graphics.enableScissor(left + 1, areaTop(), left + WIDTH - 1, areaBottom());
         List<Component> tooltip = null;
         List<Card> cards = cards();
         for (Card card : cards) {
@@ -323,12 +347,12 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             int nameRight = button(card, 0)[0] - 4;
             graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - card.x() - 22)),
                     card.x() + 22, card.y() + 6, TEXT);
-            drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, mouseY);
-            drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, mouseY);
+            drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, cardMouseY);
+            drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
 
             for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
-                boolean hovered = mouseX >= x && mouseX < x + SLOT && mouseY >= y && mouseY < y + SLOT;
+                boolean hovered = mouseX >= x && mouseX < x + SLOT && cardMouseY >= y && cardMouseY < y + SLOT;
                 SlotRule rule = rules.get(slotId(block, slot));
                 if (slot >= block.slots().size()) {
                     // A tank: blue square, the bucket of its liquid and the buckets inside
@@ -380,6 +404,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 }
             }
         }
+        graphics.disableScissor();
         // The bar on the right (when not every card fits)
         if (hasBar()) {
             int[] thumb = thumb();

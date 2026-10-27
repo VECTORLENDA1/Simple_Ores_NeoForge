@@ -57,7 +57,10 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
         // The ingredients (one slot of the grid each, up to 9) and the result
         List<List<ItemStack>> slots = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
-        for (IRecipeSlotView view : recipeSlots.getSlotViews(RecipeIngredientRole.INPUT)) {
+        // Every slot that is not a result: some mods show an extra ingredient (e.g. the redstone of the Metallurgic
+        // Infuser of Mekanism) as a slot of another kind
+        for (IRecipeSlotView view : recipeSlots.getSlotViews()) {
+            if (view.getRole() == RecipeIngredientRole.OUTPUT) continue;
             List<ItemStack> items = view.getItemStacks().filter(stack -> !stack.isEmpty()).limit(QuasarFill.MAX_CHOICES).toList();
             if (items.isEmpty() || slots.size() >= Pattern.SIZE) continue;
             slots.add(items.stream().map(stack -> stack.copyWithCount(1)).toList());

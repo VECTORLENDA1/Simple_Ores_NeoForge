@@ -27,9 +27,10 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// (its slots and the rules of each slot). "open" = open the Binary Star screen.
 public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long used, long capacity, List<Block> blocks, int radius)
         implements CustomPacketPayload {
-    /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks and the rules
-    /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank).
-    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules) {
+    /// One block with an inventory: where it is, its item (icon and name), its slots, its tanks, the rules
+    /// (the rules of the tanks have the slot numbers BinaryStarBlockEntity.TANKS + tank) and what each slot is
+    /// for (SlotRoles: input / output).
+    public record Block(BlockPos pos, ItemStack icon, List<ItemStack> slots, List<Tank> tanks, List<SlotRule> rules, List<Integer> roles) {
     }
 
     /// One tank: a bucket of its liquid (EMPTY = empty tank or a liquid without bucket), the mB and how many fit.
@@ -61,6 +62,8 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     }
                     buf.writeVarInt(block.rules().size());
                     for (SlotRule rule : block.rules()) SlotRule.STREAM_CODEC.encode(buf, rule);
+                    buf.writeVarInt(block.roles().size());
+                    for (int role : block.roles()) buf.writeByte(role);
                 }
             },
             buf -> {
@@ -87,7 +90,10 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     int ruleCount = buf.readVarInt();
                     List<SlotRule> rules = new ArrayList<>(ruleCount);
                     for (int r = 0; r < ruleCount; r++) rules.add(SlotRule.STREAM_CODEC.decode(buf));
-                    blocks.add(new Block(blockPos, icon, slots, tanks, rules));
+                    int roleCount = buf.readVarInt();
+                    List<Integer> roles = new ArrayList<>(roleCount);
+                    for (int r = 0; r < roleCount; r++) roles.add((int) buf.readByte());
+                    blocks.add(new Block(blockPos, icon, slots, tanks, rules, roles));
                 }
                 return new BinaryView(pos, open, drives, cells, used, capacity, blocks, radius);
             });
@@ -127,7 +133,8 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 }
             }
             Map<Integer, SlotRule> rules = binary.rulesOf(blockPos);
-            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values())));
+            List<Integer> roles = items == null ? List.of() : SlotRoles.items(player.level(), blockPos, items);
+            blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles));
         });
         // The closest blocks first
         blocks.sort(Comparator.comparingDouble(block -> block.pos().distSqr(pos)));

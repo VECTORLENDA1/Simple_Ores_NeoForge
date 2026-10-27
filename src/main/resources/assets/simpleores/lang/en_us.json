@@ -77,6 +77,8 @@
   "screen.simpleores.binary.take_all": "Take all",
   "screen.simpleores.binary.clear": "Clear",
   "screen.simpleores.binary.empty": "Empty",
+  "screen.simpleores.binary.input": "Input",
+  "screen.simpleores.binary.output": "Output",
   "screen.simpleores.binary.taking": "Taking out to the network",
   "screen.simpleores.binary.keeping": "Keeping full of: %s",
   "screen.simpleores.binary.both": "Input and output: %s (anything else goes to the network)",

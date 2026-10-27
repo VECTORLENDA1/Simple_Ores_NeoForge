@@ -40,6 +40,8 @@
   "screen.simpleores.binary.take_all": "Tirar tudo",
   "screen.simpleores.binary.clear": "Limpar",
   "screen.simpleores.binary.empty": "Vazio",
+  "screen.simpleores.binary.input": "Entrada",
+  "screen.simpleores.binary.output": "Saída",
   "screen.simpleores.binary.taking": "A tirar para a rede",
   "screen.simpleores.binary.keeping": "A manter cheio de: %s",
   "screen.simpleores.binary.both": "Entrada e saída: %s (o resto vai para a rede)",

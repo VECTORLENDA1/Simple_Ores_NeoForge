@@ -4,6 +4,7 @@ import com.exoticmoss.simpleores.starstorage.binary.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
 import com.exoticmoss.simpleores.starstorage.binary.SlotRule;
+import com.exoticmoss.simpleores.starstorage.binary.SlotRoles;
 import com.exoticmoss.simpleores.item.ModItems;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.network.StarFluids;
@@ -53,6 +54,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private static final int SLOT_HOVER = 0xFF5A3A80;
     /// The outline of the upgrade slot (like the range slot of the Magnetar).
     private static final int RANGE_COLOR = 0xFFC060E0;
+    /// Inputs and outputs of the machines (the background and the line at the bottom of the slots).
+    private static final int INPUT_BACK = 0xFF223A28;
+    private static final int OUTPUT_BACK = 0xFF3C2228;
+    private static final int INPUT_LINE = 0xFF48C060;
+    private static final int OUTPUT_LINE = 0xFFD04848;
     private static final int TANK_COLOR = 0xFF1E3048;
     private static final int TANK_TEXT = 0xFF8FD0FF;
     private static final int TAKE_COLOR = 0xFFE08A30;
@@ -286,7 +292,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     }
                     continue;
                 }
-                graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : SLOT_COLOR);
+                graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : roleColor(block, slot));
+                drawRole(graphics, block, slot, x, y);
                 ItemStack stack = block.slots().get(slot);
                 if (!stack.isEmpty()) {
                     graphics.item(stack, x + 1, y + 1);
@@ -300,6 +307,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 if (hovered) {
                     tooltip = new ArrayList<>();
                     tooltip.add(stack.isEmpty() ? Component.translatable("screen.simpleores.binary.empty") : stack.getHoverName());
+                    addRole(tooltip, block, slot);
                     if (rule != null && rule.takes() && rule.keeps()) {
                         tooltip.add(Component.translatable("screen.simpleores.binary.both", keptNames(rule)).withColor(BOTH_COLOR));
                     } else if (rule != null && rule.keeps()) {
@@ -342,6 +350,30 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             names.append(fluid != null ? StarFluids.name(fluid) : item.getHoverName());
         }
         return names;
+    }
+
+    /// What slot "slot" of a block is for (SlotRoles: input / output; unknown if the server didn't say).
+    private static int role(BinaryView.Block block, int slot) {
+        return slot < block.roles().size() ? block.roles().get(slot) : SlotRoles.UNKNOWN;
+    }
+
+    /// The background of a slot: greenish for an input, reddish for an output.
+    private static int roleColor(BinaryView.Block block, int slot) {
+        int role = role(block, slot);
+        return role == SlotRoles.INPUT ? INPUT_BACK : role == SlotRoles.OUTPUT ? OUTPUT_BACK : SLOT_COLOR;
+    }
+
+    /// A line at the bottom of the slot: green = input, red = output.
+    private static void drawRole(GuiGraphicsExtractor graphics, BinaryView.Block block, int slot, int x, int y) {
+        int role = role(block, slot);
+        if (role == SlotRoles.UNKNOWN) return;
+        graphics.fill(x + 1, y + SLOT - 3, x + SLOT - 1, y + SLOT - 1, role == SlotRoles.INPUT ? INPUT_LINE : OUTPUT_LINE);
+    }
+
+    private static void addRole(List<Component> tooltip, BinaryView.Block block, int slot) {
+        int role = role(block, slot);
+        if (role == SlotRoles.INPUT) tooltip.add(Component.translatable("screen.simpleores.binary.input").withColor(INPUT_LINE));
+        else if (role == SlotRoles.OUTPUT) tooltip.add(Component.translatable("screen.simpleores.binary.output").withColor(OUTPUT_LINE));
     }
 
     private static int color(SlotRule rule) {

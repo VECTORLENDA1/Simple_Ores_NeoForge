@@ -66,6 +66,33 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.GRAVITY_CORE_PULSAR.get());
                     output.accept(ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
+                    //STAR STORAGE//
+                    output.accept(ModBlocks.MAGNETAR_CORE.get());
+                    output.accept(ModBlocks.STELLAR_DRIVE.get());
+                    output.accept(ModBlocks.STELLAR_TERMINAL.get());
+                    output.accept(ModBlocks.ADVANCED_TERMINAL.get());
+                    output.accept(ModBlocks.BINARY_STAR.get());
+                    output.accept(ModBlocks.QUASAR.get());
+                    output.accept(ModItems.RED_DWARF_CELL.get());
+                    output.accept(ModItems.WHITE_DWARF_CELL.get());
+                    output.accept(ModItems.BLUE_DWARF_CELL.get());
+                    output.accept(ModItems.PULSAR_CELL.get());
+                    output.accept(ModItems.NEUTRON_CELL.get());
+                    output.accept(ModItems.QUARK_CELL.get());
+                    output.accept(ModItems.PREON_CELL.get());
+                    output.accept(ModItems.SINGULARITY_CELL.get());
+                    output.accept(ModItems.RED_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.WHITE_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.BLUE_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.PULSAR_FLUID_CELL.get());
+                    output.accept(ModItems.NEUTRON_FLUID_CELL.get());
+                    output.accept(ModItems.QUARK_FLUID_CELL.get());
+                    output.accept(ModItems.PREON_FLUID_CELL.get());
+                    output.accept(ModItems.SINGULARITY_FLUID_CELL.get());
+                    output.accept(ModItems.SOLAR_WIND_UPGRADE.get());
+                    output.accept(ModItems.MAGNETIC_FIELD_UPGRADE.get());
+                    output.accept(ModItems.WORMHOLE_LINK.get());
+
 
             })
                 .build());

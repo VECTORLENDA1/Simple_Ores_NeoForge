@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:pulsar_fluid_cell",
+      "count": 3
+    },
+    {
+      "item": "simpleores:nexalite",
+      "count": 4
+    },
+    {
+      "item": "simpleores:zenithra",
+      "count": 4
+    },
+    {
+      "item": "minecraft:glass",
+      "count": 6
+    }
+  ],
+  "result": {
+    "id": "simpleores:neutron_fluid_cell"
+  }
+}

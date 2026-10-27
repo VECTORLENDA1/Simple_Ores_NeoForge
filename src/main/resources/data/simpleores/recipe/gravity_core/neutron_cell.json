@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 2,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:pulsar_cell",
+      "count": 3
+    },
+    {
+      "item": "simpleores:astralite",
+      "count": 4
+    },
+    {
+      "item": "simpleores:celestine",
+      "count": 4
+    },
+    {
+      "item": "minecraft:glass",
+      "count": 6
+    }
+  ],
+  "result": {
+    "id": "simpleores:neutron_cell"
+  }
+}

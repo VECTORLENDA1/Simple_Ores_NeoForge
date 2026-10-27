@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:neutron_cell",
+      "count": 3
+    },
+    {
+      "item": "simpleores:astralite",
+      "count": 5
+    },
+    {
+      "item": "simpleores:celestine",
+      "count": 5
+    },
+    {
+      "item": "minecraft:glass",
+      "count": 6
+    }
+  ],
+  "result": {
+    "id": "simpleores:quark_cell"
+  }
+}

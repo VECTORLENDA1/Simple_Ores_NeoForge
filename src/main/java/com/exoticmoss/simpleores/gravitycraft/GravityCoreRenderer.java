@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.screen.CoreSelectionBar;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -22,6 +23,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -46,6 +49,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     private static final int SLOT_PICKED = 0xC0E09018;    // the recipe the player picked
     private static final int SLOT_HOVERED = 0xFFFFFFFF;   // border of the slot the player is looking at
     private static final int BAR_DOTS = 0xE0FFFFFF;       // "..." = more recipes (mouse wheel)
+    /// Light shell around the sphere while the player looks at it.
+    private static final int LOOKED_COLOR = 0x14FFFFFF;
     /// Size of the items inside the slots.
     private static final float BAR_ITEM_SCALE = 0.36f;
 
@@ -72,6 +77,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         boolean barMoreLeft;
         boolean barMoreRight;
         float barHeight;
+        /// The player is looking at the core.
+        boolean looked;
     }
 
     private final ItemModelResolver itemModelResolver;
@@ -92,6 +99,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         state.time = (core.getLevel().getGameTime() % 100000) + partialTick;
         state.progress = core.getCraftProgress(partialTick);
         state.orbitAngle = core.getOrbitAngle(partialTick);
+        state.looked = Minecraft.getInstance().hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK
+                && hit.getBlockPos().equals(core.getBlockPos());
 
         /// During an upgrade the core slowly turns into the next tier: "blend" goes from 0 (old) to 1 (new).
         /// When not upgrading, "from" and "to" are the same tier, so nothing changes.
@@ -153,6 +162,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         /// ---- The star (sphere, glow, disk, beams)
         CoreDrawing.drawStar(pose, collector, radius, time, state.coreColor, state.spotColor, state.glowColor,
                 state.diskColor, state.beamColor, BEAM_LENGTH, shading);
+        // Looked at: a light shell around the sphere (instead of the box outline)
+        if (state.looked) CoreDrawing.drawShell(pose, collector, radius * 1.18f, LOOKED_COLOR);
 
         /// ---- Orbiting items, on a slightly tilted ring.
         /// During a collapse they spiral into the center (the speed is handled in GravityCoreBlockEntity).

@@ -1,7 +1,8 @@
 {
   "simpleores:gravity_core": {
     "entrypoints": {
-      "common": "com.exoticmoss.simpleores.compat.wthit.SimpleOresWthitPlugin"
+      "common": "com.exoticmoss.simpleores.compat.wthit.SimpleOresWthitPlugin",
+      "client": "com.exoticmoss.simpleores.compat.wthit.SimpleOresWthitClientPlugin"
     },
     "side": "*"
   }

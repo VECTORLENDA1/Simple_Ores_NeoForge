@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "simpleores:item/white_dwarf_cell"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "cells=0": {
+      "model": "simpleores:block/stellar_drive"
+    },
+    "cells=1": {
+      "model": "simpleores:block/stellar_drive"
+    },
+    "cells=2": {
+      "model": "simpleores:block/stellar_drive"
+    },
+    "cells=3": {
+      "model": "simpleores:block/stellar_drive"
+    },
+    "cells=4": {
+      "model": "simpleores:block/stellar_drive"
+    }
+  }
+}

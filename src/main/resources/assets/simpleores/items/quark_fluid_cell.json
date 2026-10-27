@@ -1,0 +1,35 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "simpleores:item/quark_fluid_cell",
+    "model": {
+      "type": "simpleores:star_cell",
+      "tier": "quark",
+      "fluid": true
+    },
+    "transformation": {
+      "left_rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "right_rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "translation": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    }
+  }
+}

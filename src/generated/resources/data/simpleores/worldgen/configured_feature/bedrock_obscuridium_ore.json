@@ -9,8 +9,8 @@
           "Name": "simpleores:bedrock_obscuridium_ore"
         },
         "target": {
-          "predicate_type": "minecraft:block_match",
-          "block": "minecraft:bedrock"
+          "block": "minecraft:bedrock",
+          "predicate_type": "minecraft:block_match"
         }
       }
     ]

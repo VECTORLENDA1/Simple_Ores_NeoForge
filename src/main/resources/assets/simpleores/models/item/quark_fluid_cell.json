@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "simpleores:item/quark_fluid_cell"
+  }
+}

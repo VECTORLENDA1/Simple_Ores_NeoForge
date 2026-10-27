@@ -39,6 +39,7 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// other mods...) and with tanks of liquids (TAKE: the liquid goes to the Fluid Cells; KEEP: the tank is kept full of
 /// the liquid). It uses the transfer API of NeoForge (see StarAccess).
 /// It is also the door of the network for other mods: their pipes can put in and take out items and liquids.
+/// The output slots of the machines around are set to TAKE by themselves (see scanOutputs).
 public class BinaryStarBlockEntity extends BlockEntity {
     /// Every how many ticks the Binary Star moves the items (10 ticks = half a second).
     public static final int WORK_TICKS = 10;
@@ -52,6 +53,11 @@ public class BinaryStarBlockEntity extends BlockEntity {
 
     /// The rules of each block (position -> slot -> rule).
     private final Map<BlockPos, Map<Integer, SlotRule>> rules = new HashMap<>();
+    /// Every how many ticks the blocks around are looked at for new machines (5 seconds).
+    public static final int SCAN_TICKS = 100;
+    /// The blocks whose output slots were already set to TAKE by themselves (see scanOutputs): a rule the player
+    /// removes later is not put back.
+    private final java.util.Set<BlockPos> configured = new java.util.HashSet<>();
     private int ticks;
     /// The slot of the Magnetic Field Upgrades.
     private final SimpleContainer upgrades = new SimpleContainer(1) {
@@ -113,6 +119,7 @@ public class BinaryStarBlockEntity extends BlockEntity {
     // ---------------------------------------------------------------- the work
 
     public void serverTick() {
+        if (level != null && ticks % SCAN_TICKS == 0) scanOutputs();
         if (++ticks % WORK_TICKS != 0 || rules.isEmpty() || level == null) return;
         StarNetwork network = StarNetwork.at(level, worldPosition);
         if (network.drives().isEmpty()) return;
@@ -193,6 +200,28 @@ public class BinaryStarBlockEntity extends BlockEntity {
         return fluidHandler;
     }
 
+    /// The output slots (SlotRoles: the ones the screen of the machine shows as outputs) of every new block in reach
+    /// get a TAKE rule by themselves, so the results of the machines go to the network without clicking each slot.
+    private void scanOutputs() {
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        StarNetwork.forEachBlockEntity(level, worldPosition, radius(), blockEntity -> {
+            if (blockEntity.isRemoved() || blockEntity instanceof BinaryStarBlockEntity) return;
+            BlockPos pos = blockEntity.getBlockPos().immutable();
+            ResourceHandler<ItemResource> items = StarAccess.items(level, pos);
+            if (items == null) return;
+            seen.add(pos);
+            if (!configured.add(pos)) return;
+            List<Integer> roles = SlotRoles.items(level, pos, items);
+            Map<Integer, SlotRule> slots = rulesOf(pos);
+            for (int slot = 0; slot < roles.size(); slot++) {
+                if (roles.get(slot) == SlotRoles.OUTPUT && !slots.containsKey(slot)) setRule(pos, slot, new SlotRule(slot, SlotRule.TAKE, List.of()));
+            }
+            setChanged();
+        });
+        // A block that is gone (or out of reach): if a machine is put there again, it is set again
+        if (configured.retainAll(seen)) setChanged();
+    }
+
     // ---------------------------------------------------------------- saving
 
     /// The rules of one block, as they are saved.
@@ -210,12 +239,15 @@ public class BinaryStarBlockEntity extends BlockEntity {
         rules.forEach((pos, slots) -> list.add(new BlockRules(pos, new ArrayList<>(slots.values()))));
         output.store("rules", BlockRules.CODEC.listOf(), list);
         output.store("upgrades", ItemStack.OPTIONAL_CODEC, upgrades.getItem(0));
+        output.store("configured", BlockPos.CODEC.listOf(), new ArrayList<>(configured));
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         upgrades.setItem(0, input.read("upgrades", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
+        configured.clear();
+        configured.addAll(input.read("configured", BlockPos.CODEC.listOf()).orElse(List.of()));
         rules.clear();
         for (BlockRules block : input.read("rules", BlockRules.CODEC.listOf()).orElse(List.of())) {
             Map<Integer, SlotRule> slots = new TreeMap<>();

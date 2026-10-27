@@ -221,20 +221,27 @@ public final class Autocraft {
         private boolean arrivedNow;
         /// True while a Gravity Core of the field still works for this network (after every step was given out).
         private boolean coresWorking;
+        /// How many times each step was made (or given out, for the steps that take time).
+        private final long[] doneSteps;
+        /// The step being worked on now (inside work), and how many times it was made.
         private long done;
         private int idle;
         /// What the job waits for now (a message key, for the jobs tab of the Quasar).
         private String status = "screen.simpleores.quasar.job.working";
         /// Furnace results still to be collected: furnace -> item and how many.
         private final Map<BlockPos, FurnaceWait> furnaces = new HashMap<>();
-        /// The same for the machines of other mods.
-        private final Map<BlockPos, FurnaceWait> machines = new HashMap<>();
+        /// The same for the machines of other mods (a machine can make more than one item of the job).
+        private final Map<MachineKey, FurnaceWait> machines = new HashMap<>();
+
+        private record MachineKey(BlockPos pos, ItemStackTemplate output) {
+        }
 
         private record FurnaceWait(ItemStackTemplate output, long expected) {
         }
 
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
             this.steps = steps;
+            this.doneSteps = new long[steps.size()];
             this.pos = pos.immutable();
             this.dimension = level.dimension();
             this.output = output;
@@ -271,8 +278,9 @@ public final class Autocraft {
             for (int i = 0; i < steps.size() - 1; i++) {
                 Step step = steps.get(i);
                 long count = step.pattern().count();
-                long stepMade = i < index ? step.times() : i == index ? done : 0;
-                SubCraft one = new SubCraft(step.pattern().output(), step.times() * count, stepMade * count, i == index);
+                long stepMade = doneSteps[i];
+                SubCraft one = new SubCraft(step.pattern().output(), step.times() * count, stepMade * count,
+                        stepMade > 0 && stepMade < step.times());
                 merged.merge(one.output(), one, (a, b) -> new SubCraft(a.output(), a.amount() + b.amount(),
                         a.made() + b.made(), a.current() || b.current()));
             }
@@ -325,22 +333,34 @@ public final class Autocraft {
         boolean work(ServerLevel level, StarNetwork network) {
             boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | arrivedNow;
             arrivedNow = false;
-            while (index < steps.size()) {
-                Step step = steps.get(index);
+            // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:
+            // what has its ingredients is made). The steps are in order (the sub-crafts first), so what one makes
+            // can be used by the next ones in the same work.
+            String firstStatus = null;
+            index = steps.size();
+            for (int i = 0; i < steps.size(); i++) {
+                Step step = steps.get(i);
                 // The last step stops when enough came back (some recipes give more than planned)
-                if (index == steps.size() - 1 && made >= amount) {
-                    index++;
-                    break;
-                }
+                if (i == steps.size() - 1 && made >= amount) doneSteps[i] = step.times();
+                if (doneSteps[i] >= step.times()) continue;
+                done = doneSteps[i];
+                status = "screen.simpleores.quasar.job.working";
                 boolean stepProgress;
                 if (step.pattern().isCore()) stepProgress = workCore(level, network, step);
                 else if (step.pattern().furnace()) stepProgress = workFurnace(level, network, step);
                 else if (step.pattern().isMachine()) stepProgress = workMachine(level, network, step);
                 else stepProgress = workCrafting(level, network, step);
+                doneSteps[i] = done;
                 progress |= stepProgress;
-                if (done < step.times()) return progress;
-                index++;
-                done = 0;
+                if (done < step.times()) {
+                    index = Math.min(index, i);
+                    if (firstStatus == null && !stepProgress) firstStatus = status;
+                    if (stepProgress) firstStatus = "screen.simpleores.quasar.job.working";
+                }
+            }
+            if (index < steps.size()) {
+                if (firstStatus != null) status = firstStatus;
+                return progress;
             }
             coresWorking = index >= steps.size() && made < amount && coresWorkingFor(level);
             if (!furnaces.isEmpty()) status = "screen.simpleores.quasar.job.waiting_furnaces";
@@ -591,7 +611,8 @@ public final class Autocraft {
                 }
                 if (given <= 0) continue;
                 done += given;
-                machines.merge(machinePos, new FurnaceWait(step.pattern().output(), (long) given * step.pattern().count()),
+                machines.merge(new MachineKey(machinePos, step.pattern().output()),
+                        new FurnaceWait(step.pattern().output(), (long) given * step.pattern().count()),
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
                 progress = true;
                 if (status.equals("screen.simpleores.quasar.job.waiting_items")) break;
@@ -599,26 +620,26 @@ public final class Autocraft {
             return progress;
         }
 
-        /// Takes the results out of the machines used by this job to the network.
+        /// Takes the results out of the machines used by this job to the network: all of that item that is in the
+        /// machine (also when the recipe gives more than it said), until what was expected came out.
         private boolean collectMachines(ServerLevel level, StarNetwork network) {
             boolean progress = false;
-            for (Map.Entry<BlockPos, FurnaceWait> entry : new ArrayList<>(machines.entrySet())) {
-                BlockPos machinePos = entry.getKey();
+            for (Map.Entry<MachineKey, FurnaceWait> entry : new ArrayList<>(machines.entrySet())) {
+                MachineKey key = entry.getKey();
                 FurnaceWait wait = entry.getValue();
-                var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
+                var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, key.pos());
                 if (handler == null) {
-                    machines.remove(machinePos);
+                    machines.remove(key);
                     continue;
                 }
-                var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
+                var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, key.pos());
                 ItemStack output = wait.output().create();
-                int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.takeOut(network, handler, sides, output,
-                        (int) Math.min(Integer.MAX_VALUE, wait.expected()));
+                int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.takeOut(network, handler, sides, output, Integer.MAX_VALUE);
                 if (taken <= 0) continue;
                 arrived(output.copyWithCount(taken));
                 long expected = wait.expected() - taken;
-                if (expected <= 0) machines.remove(machinePos);
-                else machines.put(machinePos, new FurnaceWait(wait.output(), expected));
+                if (expected <= 0) machines.remove(key);
+                else machines.put(key, new FurnaceWait(wait.output(), expected));
                 progress = true;
             }
             return progress;

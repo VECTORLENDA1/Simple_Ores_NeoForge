@@ -44,7 +44,8 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// puts a picture of it there; clicking with an empty cursor (or right-clicking) empties it. JEI fills them too.
 /// The core slots: left-click with items adds them (the same item) or puts them; right-click with items adds one;
 /// right-click with an empty cursor takes one away, left-click empties it.
-/// With the recipe of a machine, the slots of the grid keep an amount too (clicks like the core slots).
+/// With the recipe of a machine, the slots of the grid keep an amount too (clicks like the core slots; shift + click
+/// adds or takes away one), and shift + click on the result changes how many it makes.
 /// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
 /// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
@@ -224,6 +225,12 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     @Override
     public void clicked(int slotId, int button, ContainerInput input, Player player) {
         if (slotId >= 0 && slotId < INVENTORY_START) {
+            // The result of the recipe of a machine: shift + click changes how many it makes
+            if (slotId == RESULT_SLOT && isMachine() && input == ContainerInput.QUICK_MOVE && tab == TAB_CRAFTING) {
+                machineOutput.setCount(Math.max(1, Math.min(MAX_AMOUNT, machineOutput.getCount() + (button == 0 ? 1 : -1))));
+                updateResult();
+                return;
+            }
             if (slotId != RESULT_SLOT && slots.get(slotId).isActive()) {
                 ItemStack carried = getCarried();
                 if (slotId >= CORE_START && slotId < CORE_START + CORE_VIEW) clickCore(slotId, button, carried);

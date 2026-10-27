@@ -441,11 +441,11 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         }
     }
 
-    /// A slot of the grid with the recipe of a machine: its tooltip also says how to change the amount.
+    /// A slot of the grid (or the result) with the recipe of a machine: its tooltip also says how to change the amount.
     @Override
     protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
         List<Component> lines = new ArrayList<>(super.getTooltipFromContainerItem(stack));
-        if (hoveredSlot != null && hoveredSlot.index < QuasarMenu.GRID_SLOTS && menu.tab == QuasarMenu.TAB_CRAFTING && menu.isMachine()) {
+        if (hoveredSlot != null && (hoveredSlot.index < QuasarMenu.GRID_SLOTS || hoveredSlot.index == QuasarMenu.RESULT_SLOT) && menu.tab == QuasarMenu.TAB_CRAFTING && menu.isMachine()) {
             lines.add(Component.translatable("screen.simpleores.quasar.amount.more").withStyle(net.minecraft.ChatFormatting.GRAY));
             lines.add(Component.translatable("screen.simpleores.quasar.amount.less").withStyle(net.minecraft.ChatFormatting.GRAY));
         }

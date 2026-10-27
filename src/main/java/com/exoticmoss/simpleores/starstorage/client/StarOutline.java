@@ -2,10 +2,10 @@ package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
-import com.exoticmoss.simpleores.starstorage.BinaryStarBlock;
-import com.exoticmoss.simpleores.starstorage.MagnetarBlock;
-import com.exoticmoss.simpleores.starstorage.QuasarBlock;
-import com.exoticmoss.simpleores.starstorage.StellarTerminalBlock;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlock;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlock;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlock;
+import com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlock;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;

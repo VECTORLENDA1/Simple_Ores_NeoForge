@@ -9,10 +9,10 @@ import mcp.mobius.waila.api.IServerAccessor;
 import mcp.mobius.waila.api.IWailaCommonPlugin;
 import mcp.mobius.waila.api.data.ItemData;
 import mcp.mobius.waila.api.data.ProgressData;
-import com.exoticmoss.simpleores.starstorage.FluidCellItem;
-import com.exoticmoss.simpleores.starstorage.FluidContents;
-import com.exoticmoss.simpleores.starstorage.StarCellItem;
-import com.exoticmoss.simpleores.starstorage.StellarDriveBlockEntity;
+import com.exoticmoss.simpleores.starstorage.cell.FluidCellItem;
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+import com.exoticmoss.simpleores.starstorage.cell.StarCellItem;
+import com.exoticmoss.simpleores.starstorage.drive.StellarDriveBlockEntity;
 import mcp.mobius.waila.api.data.EnergyData;
 import mcp.mobius.waila.api.data.FluidData;
 import net.minecraft.core.component.DataComponentPatch;
@@ -35,11 +35,11 @@ public class SimpleOresWthitPlugin implements IWailaCommonPlugin {
         registrar.blockData(GravityCoreDataProvider.INSTANCE, GravityCoreBlockEntity.class);
         registrar.blockData(DriveDataProvider.INSTANCE, StellarDriveBlockEntity.class);
         // The other blocks of the star storage see the whole network: WTHIT would show all its items
-        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.StellarTerminalBlockEntity.class, 0);
-        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.AdvancedTerminalBlockEntity.class, 0);
-        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.QuasarBlockEntity.class, 0);
-        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity.class, 0);
-        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.terminal.AdvancedTerminalBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.quasar.QuasarBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity.class, 0);
+        registrar.blockData(HideContentsProvider.INSTANCE, com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity.class, 0);
         // The drive: only its bars (DriveDataProvider), not the items
         registrar.blockData(HideItemsProvider.INSTANCE, StellarDriveBlockEntity.class, 0);
     }

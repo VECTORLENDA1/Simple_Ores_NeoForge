@@ -1,15 +1,15 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
-import com.exoticmoss.simpleores.starstorage.CellTier;
-import com.exoticmoss.simpleores.starstorage.CraftRequest;
-import com.exoticmoss.simpleores.starstorage.FluidContents;
-import com.exoticmoss.simpleores.starstorage.StarFluids;
-import com.exoticmoss.simpleores.starstorage.StarNetwork;
-import com.exoticmoss.simpleores.starstorage.TerminalAction;
-import com.exoticmoss.simpleores.starstorage.TerminalContents;
-import com.exoticmoss.simpleores.starstorage.TerminalLayout;
-import com.exoticmoss.simpleores.starstorage.NetworkMenu;
-import com.exoticmoss.simpleores.starstorage.Pattern;
+import com.exoticmoss.simpleores.starstorage.cell.CellTier;
+import com.exoticmoss.simpleores.starstorage.terminal.CraftRequest;
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+import com.exoticmoss.simpleores.starstorage.network.StarFluids;
+import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalAction;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalContents;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
+import com.exoticmoss.simpleores.starstorage.network.NetworkMenu;
+import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;

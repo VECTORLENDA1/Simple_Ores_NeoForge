@@ -1,11 +1,11 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
-import com.exoticmoss.simpleores.starstorage.Pattern;
-import com.exoticmoss.simpleores.starstorage.QuasarJobs;
-import com.exoticmoss.simpleores.starstorage.QuasarMenu;
-import com.exoticmoss.simpleores.starstorage.StarNetwork;
-import com.exoticmoss.simpleores.starstorage.TerminalLayout;
+import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarJobs;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarMenu;
+import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.input.MouseButtonEvent;

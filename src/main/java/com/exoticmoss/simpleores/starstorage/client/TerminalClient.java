@@ -1,8 +1,8 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
-import com.exoticmoss.simpleores.starstorage.CraftRequest;
-import com.exoticmoss.simpleores.starstorage.TerminalContents;
-import com.exoticmoss.simpleores.starstorage.TerminalLayout;
+import com.exoticmoss.simpleores.starstorage.terminal.CraftRequest;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalContents;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;

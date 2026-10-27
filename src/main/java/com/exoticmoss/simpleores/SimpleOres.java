@@ -7,24 +7,24 @@ import com.exoticmoss.simpleores.gravitycraft.GravityCoreItemRenderer;
 import com.exoticmoss.simpleores.gravitycraft.MoveItemsToCore;
 import com.exoticmoss.simpleores.gravitycraft.SelectCoreRecipe;
 import com.exoticmoss.simpleores.recipe.ModRecipes;
-import com.exoticmoss.simpleores.starstorage.CellItemRenderer;
-import com.exoticmoss.simpleores.starstorage.StarBlockRenderer;
-import com.exoticmoss.simpleores.starstorage.StarItemRenderer;
-import com.exoticmoss.simpleores.starstorage.StarLook;
-import com.exoticmoss.simpleores.starstorage.StellarDriveRenderer;
+import com.exoticmoss.simpleores.starstorage.render.CellItemRenderer;
+import com.exoticmoss.simpleores.starstorage.render.StarBlockRenderer;
+import com.exoticmoss.simpleores.starstorage.render.StarItemRenderer;
+import com.exoticmoss.simpleores.starstorage.render.StarLook;
+import com.exoticmoss.simpleores.starstorage.drive.StellarDriveRenderer;
 import com.exoticmoss.simpleores.starstorage.ModDataComponents;
-import com.exoticmoss.simpleores.starstorage.TerminalAction;
-import com.exoticmoss.simpleores.starstorage.TerminalContents;
-import com.exoticmoss.simpleores.starstorage.BinaryAction;
-import com.exoticmoss.simpleores.starstorage.BinaryView;
-import com.exoticmoss.simpleores.starstorage.CraftRequest;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalAction;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalContents;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryAction;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
+import com.exoticmoss.simpleores.starstorage.terminal.CraftRequest;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
-import com.exoticmoss.simpleores.starstorage.TerminalMenu;
-import com.exoticmoss.simpleores.starstorage.QuasarFill;
-import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
-import com.exoticmoss.simpleores.starstorage.QuasarCore;
-import com.exoticmoss.simpleores.starstorage.QuasarJobs;
-import com.exoticmoss.simpleores.starstorage.QuasarSlot;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalMenu;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarFill;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarPatterns;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarCore;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarJobs;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarSlot;
 import com.exoticmoss.simpleores.starstorage.client.BinaryScreen;
 import com.exoticmoss.simpleores.starstorage.client.QuasarScreen;
 import com.exoticmoss.simpleores.starstorage.client.TerminalScreen;
@@ -76,8 +76,8 @@ public class SimpleOres {
 
         modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::registerPayloads);
-        modEventBus.addListener(com.exoticmoss.simpleores.starstorage.StarChunks::register);
-        modEventBus.addListener(com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity::registerCapabilities);
+        modEventBus.addListener(com.exoticmoss.simpleores.starstorage.network.StarChunks::register);
+        modEventBus.addListener(com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity::registerCapabilities);
         // Milk is a liquid too (it can be kept in the Fluid Cells)
         net.neoforged.neoforge.common.NeoForgeMod.enableMilkFluid();
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
@@ -107,8 +107,8 @@ public class SimpleOres {
                 .playToServer(CraftRequest.TYPE, CraftRequest.STREAM_CODEC, CraftRequest::handle)
                 .playToClient(CraftRequest.Reply.TYPE, CraftRequest.Reply.STREAM_CODEC, CraftRequest.Reply::handle)
         // Magnetar screen: how the network is (server -> client)
-                .playToClient(com.exoticmoss.simpleores.starstorage.MagnetarInfo.TYPE, com.exoticmoss.simpleores.starstorage.MagnetarInfo.STREAM_CODEC,
-                        com.exoticmoss.simpleores.starstorage.MagnetarInfo::handle);
+                .playToClient(com.exoticmoss.simpleores.starstorage.magnetar.MagnetarInfo.TYPE, com.exoticmoss.simpleores.starstorage.magnetar.MagnetarInfo.STREAM_CODEC,
+                        com.exoticmoss.simpleores.starstorage.magnetar.MagnetarInfo::handle);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

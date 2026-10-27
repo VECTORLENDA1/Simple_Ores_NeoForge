@@ -10,6 +10,10 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryMenu;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarMenu;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarMenu;
+import com.exoticmoss.simpleores.starstorage.terminal.TerminalMenu;
 
 public class ModMenus {
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, MODID);

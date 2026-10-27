@@ -5,9 +5,9 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import com.exoticmoss.simpleores.item.custom.*;
-import com.exoticmoss.simpleores.starstorage.CellTier;
-import com.exoticmoss.simpleores.starstorage.StarCellItem;
-import com.exoticmoss.simpleores.starstorage.FluidCellItem;
+import com.exoticmoss.simpleores.starstorage.cell.CellTier;
+import com.exoticmoss.simpleores.starstorage.cell.StarCellItem;
+import com.exoticmoss.simpleores.starstorage.cell.FluidCellItem;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
 

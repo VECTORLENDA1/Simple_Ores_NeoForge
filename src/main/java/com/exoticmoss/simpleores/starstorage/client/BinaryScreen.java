@@ -1,13 +1,13 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
-import com.exoticmoss.simpleores.starstorage.BinaryAction;
-import com.exoticmoss.simpleores.starstorage.BinaryMenu;
-import com.exoticmoss.simpleores.starstorage.BinaryView;
-import com.exoticmoss.simpleores.starstorage.SlotRule;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryAction;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryMenu;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
+import com.exoticmoss.simpleores.starstorage.binary.SlotRule;
 import com.exoticmoss.simpleores.item.ModItems;
-import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.StarFluids;
-import com.exoticmoss.simpleores.starstorage.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.network.StarFluids;
+import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;

@@ -2,12 +2,12 @@ package com.exoticmoss.simpleores.block.entity;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
-import com.exoticmoss.simpleores.starstorage.AdvancedTerminalBlockEntity;
-import com.exoticmoss.simpleores.starstorage.BinaryStarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.QuasarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.StellarDriveBlockEntity;
-import com.exoticmoss.simpleores.starstorage.StellarTerminalBlockEntity;
+import com.exoticmoss.simpleores.starstorage.terminal.AdvancedTerminalBlockEntity;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.drive.StellarDriveBlockEntity;
+import com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;

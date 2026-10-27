@@ -2,8 +2,8 @@ package com.exoticmoss.simpleores.compat;
 
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreRecipe;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
-import com.exoticmoss.simpleores.starstorage.QuasarCore;
-import com.exoticmoss.simpleores.starstorage.QuasarMenu;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarCore;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarMenu;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;

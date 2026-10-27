@@ -8,6 +8,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import static com.exoticmoss.simpleores.SimpleOres.MODID;
+import com.exoticmoss.simpleores.starstorage.cell.CellContents;
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
 
 public class ModDataComponents {
     public static final DeferredRegister.DataComponents DATA_COMPONENTS =

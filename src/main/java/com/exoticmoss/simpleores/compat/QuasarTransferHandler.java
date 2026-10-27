@@ -1,9 +1,9 @@
 package com.exoticmoss.simpleores.compat;
 
 import com.exoticmoss.simpleores.starstorage.ModMenus;
-import com.exoticmoss.simpleores.starstorage.Pattern;
-import com.exoticmoss.simpleores.starstorage.QuasarFill;
-import com.exoticmoss.simpleores.starstorage.QuasarMenu;
+import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarFill;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarMenu;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;

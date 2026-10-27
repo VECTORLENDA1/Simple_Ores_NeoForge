@@ -1,11 +1,11 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
 import com.exoticmoss.simpleores.item.ModItems;
-import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.MagnetarInfo;
-import com.exoticmoss.simpleores.starstorage.MagnetarMenu;
-import com.exoticmoss.simpleores.starstorage.StarFluids;
-import com.exoticmoss.simpleores.starstorage.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarInfo;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarMenu;
+import com.exoticmoss.simpleores.starstorage.network.StarFluids;
+import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;

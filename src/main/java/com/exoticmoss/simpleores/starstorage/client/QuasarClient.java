@@ -1,8 +1,8 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
-import com.exoticmoss.simpleores.starstorage.Pattern;
-import com.exoticmoss.simpleores.starstorage.QuasarJobs;
-import com.exoticmoss.simpleores.starstorage.QuasarPatterns;
+import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarJobs;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarPatterns;
 import net.minecraft.core.BlockPos;
 
 import java.util.List;

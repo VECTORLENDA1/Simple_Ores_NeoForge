@@ -536,16 +536,16 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     /// Making a bigger Star Cell (or Fluid Cell) from smaller ones: the items (or liquids) of all of them go to the new cell.
     private static void keepCellContents(List<ItemStack> used, ItemStack result) {
-        if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.StarCellItem) {
-            var merged = com.exoticmoss.simpleores.starstorage.CellContents.EMPTY;
+        if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.cell.StarCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.cell.CellContents.EMPTY;
             for (ItemStack old : used) {
                 var items = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get());
                 if (items == null) continue;
                 for (var entry : items.entries()) merged = merged.plus(entry.create(1), entry.count());
             }
             if (!merged.isEmpty()) result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get(), merged);
-        } else if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.FluidCellItem) {
-            var merged = com.exoticmoss.simpleores.starstorage.FluidContents.EMPTY;
+        } else if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.cell.FluidCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.cell.FluidContents.EMPTY;
             for (ItemStack old : used) {
                 var fluids = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get());
                 if (fluids == null) continue;
@@ -645,9 +645,9 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Auto-craft: to the network (what doesn't fit pops out of the core)
         if (networkPos != null) {
             if (level instanceof ServerLevel serverLevel) {
-                com.exoticmoss.simpleores.starstorage.Autocraft.Job.arrived(serverLevel, networkPos, result.copy());
+                com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.arrived(serverLevel, networkPos, result.copy());
             }
-            result = com.exoticmoss.simpleores.starstorage.StarNetwork.at(level, networkPos).insert(result);
+            result = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, networkPos).insert(result);
             if (!result.isEmpty()) {
                 Vec3 c = center();
                 spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));
@@ -676,7 +676,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         if (amount <= 0) return;
         // Auto-craft: the experience is kept by the Magnetar of the network (taken in the Stellar Terminal)
         if (networkPos != null) {
-            var magnetar = com.exoticmoss.simpleores.starstorage.StarNetwork.findMagnetar(level, networkPos);
+            var magnetar = com.exoticmoss.simpleores.starstorage.network.StarNetwork.findMagnetar(level, networkPos);
             if (magnetar != null) {
                 magnetar.addExperience(amount);
                 return;

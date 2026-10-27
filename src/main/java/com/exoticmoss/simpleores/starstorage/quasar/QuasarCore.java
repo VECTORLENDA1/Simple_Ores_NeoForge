@@ -51,7 +51,7 @@ public record QuasarCore(ResourceKey<Recipe<?>> recipe) implements CustomPacketP
         }
         ItemStack result = recipe.createResult(tier);
         return new Pattern(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(),
-                inputs, amounts, Optional.of(holder.id()), tier, false);
+                inputs, amounts, Optional.of(holder.id()), tier, false, List.of());
     }
 
     @SuppressWarnings("unchecked")

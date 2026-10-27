@@ -89,6 +89,61 @@ public final class StarAccess {
         return taken;
     }
 
+    /// Puts up to "amount" in the block: in any slot that takes it, then through the sides.
+    private static <T extends Resource> int insertAny(ResourceHandler<T> handler, List<ResourceHandler<T>> sides,
+                                                      T resource, int amount, TransactionContext transaction) {
+        int put = handler.insert(resource, amount, transaction);
+        for (ResourceHandler<T> side : sides) {
+            if (put >= amount) break;
+            put += side.insert(resource, amount - put, transaction);
+        }
+        return put;
+    }
+
+    /// Takes up to "amount" out of the block: from any slot that gives it, then through the sides.
+    private static <T extends Resource> int extractAny(ResourceHandler<T> handler, List<ResourceHandler<T>> sides,
+                                                       T resource, int amount, TransactionContext transaction) {
+        int taken = handler.extract(resource, amount, transaction);
+        for (ResourceHandler<T> side : sides) {
+            if (taken >= amount) break;
+            taken += side.extract(resource, amount - taken, transaction);
+        }
+        return taken;
+    }
+
+    // ---------------------------------------------------------------- machines (auto-craft)
+
+    /// Puts all these items in the machine (the machine chooses the slots), or nothing if one of them doesn't fit.
+    public static boolean insertAll(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, List<ItemStack> items) {
+        try (Transaction transaction = Transaction.openRoot()) {
+            for (ItemStack item : items) {
+                if (insertAny(handler, sides, ItemResource.of(item), item.getCount(), transaction) < item.getCount()) return false;
+            }
+            transaction.commit();
+            return true;
+        }
+    }
+
+    /// Takes up to "max" of the item out of the machine to the network (what doesn't fit stays). Returns how many went.
+    public static int takeOut(StarNetwork network, ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides,
+                              ItemStack item, int max) {
+        ItemResource resource = ItemResource.of(item);
+        int canTake;
+        try (Transaction test = Transaction.openRoot()) {
+            canTake = extractAny(handler, sides, resource, max, test);
+        }
+        if (canTake <= 0) return 0;
+        ItemStack left = network.insert(resource.toStack(canTake));
+        int moved = canTake - left.getCount();
+        if (moved <= 0) return 0;
+        try (Transaction transaction = Transaction.openRoot()) {
+            int taken = extractAny(handler, sides, resource, moved, transaction);
+            transaction.commit();
+            if (taken < moved) network.extract(resource.toStack(1), moved - taken);
+            return taken;
+        }
+    }
+
     // ---------------------------------------------------------------- items
 
     /// The items of the slot go to the network (what doesn't fit stays).

@@ -69,11 +69,14 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarCoreTransferHandler(), GravityCoreRecipeCategory.RECIPE_TYPE);
         // "+" on furnace recipes with the Quasar screen open: puts the input in the furnace tab
         registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        // "+" on the recipes of the machines of other mods with the Quasar screen open: puts the recipe in its grid
+        registration.addUniversalRecipeTransferHandler(new QuasarMachineTransferHandler(helper));
     }
 
     // The Quasar screen shows recipes in JEI (left-click on a saved recipe or on an item of the JEI list)
     @Override
     public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
+        QuasarMachineTransferHandler.runtime = runtime;
         com.exoticmoss.simpleores.starstorage.client.QuasarScreen.showRecipes = stack -> {
             if (!stack.isEmpty()) runtime.getRecipesGui().show(runtime.getJeiHelpers().getFocusFactory()
                     .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack));

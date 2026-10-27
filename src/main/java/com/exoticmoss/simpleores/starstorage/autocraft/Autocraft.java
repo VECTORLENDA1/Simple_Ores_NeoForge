@@ -227,6 +227,8 @@ public final class Autocraft {
         private String status = "screen.simpleores.quasar.job.working";
         /// Furnace results still to be collected: furnace -> item and how many.
         private final Map<BlockPos, FurnaceWait> furnaces = new HashMap<>();
+        /// The same for the machines of other mods.
+        private final Map<BlockPos, FurnaceWait> machines = new HashMap<>();
 
         private record FurnaceWait(ItemStackTemplate output, long expected) {
         }
@@ -242,7 +244,7 @@ public final class Autocraft {
         /// Done when every step was given out and the results came back to the network
         /// (or no Gravity Core is still working for it: a recipe can give fewer items than planned).
         public boolean done() {
-            return index >= steps.size() && furnaces.isEmpty() && (made >= amount || !coresWorking);
+            return index >= steps.size() && furnaces.isEmpty() && machines.isEmpty() && (made >= amount || !coresWorking);
         }
 
         public int stepIndex() {
@@ -301,7 +303,7 @@ public final class Autocraft {
 
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
-            boolean progress = collectFurnaces(level, network) | arrivedNow;
+            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | arrivedNow;
             arrivedNow = false;
             while (index < steps.size()) {
                 Step step = steps.get(index);
@@ -313,6 +315,7 @@ public final class Autocraft {
                 boolean stepProgress;
                 if (step.pattern().isCore()) stepProgress = workCore(level, network, step);
                 else if (step.pattern().furnace()) stepProgress = workFurnace(level, network, step);
+                else if (step.pattern().isMachine()) stepProgress = workMachine(level, network, step);
                 else stepProgress = workCrafting(level, network, step);
                 progress |= stepProgress;
                 if (done < step.times()) return progress;
@@ -321,8 +324,8 @@ public final class Autocraft {
             }
             coresWorking = index >= steps.size() && made < amount && coresWorkingFor(level);
             if (!furnaces.isEmpty()) status = "screen.simpleores.quasar.job.waiting_furnaces";
-            else if (coresWorking) status = "screen.simpleores.quasar.job.waiting_results";
-            return progress || furnaces.isEmpty() && !coresWorking;
+            else if (coresWorking || !machines.isEmpty()) status = "screen.simpleores.quasar.job.waiting_results";
+            return progress || furnaces.isEmpty() && machines.isEmpty() && !coresWorking;
         }
 
         /// True if a Gravity Core of the field still has items for the network of this job.
@@ -515,6 +518,88 @@ public final class Autocraft {
                 boolean nothingLeft = furnace.getItem(0).isEmpty() && furnace.getItem(2).isEmpty();
                 if (expected <= 0 || nothingLeft) furnaces.remove(furnacePos);
                 else furnaces.put(furnacePos, new FurnaceWait(wait.output(), expected));
+            }
+            return progress;
+        }
+
+        // ---------------------------------------------------------------- machines of other mods
+
+        /// Machine: puts sets of ingredients in the machines of the recipe in the field (the machine chooses the
+        /// slots; with Mekanism, through the sides set as inputs). One set at a time, or more with Solar Wind
+        /// Upgrades. The results are taken out by collectMachines.
+        private boolean workMachine(ServerLevel level, StarNetwork network, Step step) {
+            MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
+            if (magnetar == null) return false;
+            List<BlockPos> list = new ArrayList<>();
+            StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
+                if (step.pattern().madeBy(blockEntity.getBlockState())) list.add(blockEntity.getBlockPos());
+            });
+            status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_machines" : "screen.simpleores.quasar.job.working";
+            List<ItemStack> set = new ArrayList<>();
+            for (int i = 0; i < step.items().size(); i++) {
+                ItemStackTemplate item = step.items().get(i);
+                if (item != null) set.add(item.create().copyWithCount(step.pattern().amount(i)));
+            }
+            int speed = magnetar.speed();
+            boolean progress = false;
+            for (BlockPos machinePos : list) {
+                if (done >= step.times()) break;
+                var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
+                if (handler == null) continue;
+                var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
+                long sets = Math.min(SETS[speed], step.times() - done);
+                int given = 0;
+                while (given < sets) {
+                    // The whole set from the network, then all of it into the machine (else everything goes back)
+                    List<ItemStack> got = new ArrayList<>();
+                    boolean all = true;
+                    for (ItemStack one : set) {
+                        ItemStack taken = network.extract(one, one.getCount());
+                        if (!taken.isEmpty()) got.add(taken);
+                        if (taken.getCount() < one.getCount()) all = false;
+                    }
+                    if (!all) {
+                        giveBack(network, got);
+                        status = "screen.simpleores.quasar.job.waiting_items";
+                        break;
+                    }
+                    if (!com.exoticmoss.simpleores.starstorage.network.StarAccess.insertAll(handler, sides, got)) {
+                        giveBack(network, got);
+                        break;
+                    }
+                    given++;
+                }
+                if (given <= 0) continue;
+                done += given;
+                machines.merge(machinePos, new FurnaceWait(step.pattern().output(), (long) given * step.pattern().count()),
+                        (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
+                progress = true;
+                if (status.equals("screen.simpleores.quasar.job.waiting_items")) break;
+            }
+            return progress;
+        }
+
+        /// Takes the results out of the machines used by this job to the network.
+        private boolean collectMachines(ServerLevel level, StarNetwork network) {
+            boolean progress = false;
+            for (Map.Entry<BlockPos, FurnaceWait> entry : new ArrayList<>(machines.entrySet())) {
+                BlockPos machinePos = entry.getKey();
+                FurnaceWait wait = entry.getValue();
+                var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
+                if (handler == null) {
+                    machines.remove(machinePos);
+                    continue;
+                }
+                var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
+                ItemStack output = wait.output().create();
+                int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.takeOut(network, handler, sides, output,
+                        (int) Math.min(Integer.MAX_VALUE, wait.expected()));
+                if (taken <= 0) continue;
+                arrived(output.copyWithCount(taken));
+                long expected = wait.expected() - taken;
+                if (expected <= 0) machines.remove(machinePos);
+                else machines.put(machinePos, new FurnaceWait(wait.output(), expected));
+                progress = true;
             }
             return progress;
         }

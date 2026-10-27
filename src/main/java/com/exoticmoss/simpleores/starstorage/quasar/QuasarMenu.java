@@ -33,7 +33,8 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 
 /// The menu of the Quasar: like the Stellar Terminal (the items of the network can be taken and stored,
 /// see TerminalScreen), but at the bottom right it makes the recipes that the Quasar keeps (one tab each):
-///  - TAB_CRAFTING: a crafting table grid (3x3);
+///  - TAB_CRAFTING: a crafting table grid (3x3). JEI's "+" on the recipe of a machine of another mod also puts it
+///    here: the ingredients with their amounts, and the result of the recipe (saved as the recipe of that machine);
 ///  - TAB_CORE: the ingredients of a Gravity Core recipe (one slot more appears for each item, up to CORE_SLOTS).
 ///    Only 3x3 of them are shown (CORE_VIEW): the mouse wheel moves them up and down. A core slot keeps an amount
 ///    too (up to a stack): the amounts of a tier of the recipe save the recipe with that tier;
@@ -74,6 +75,11 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     private final SimpleContainer pictures = new SimpleContainer(INVENTORY_START);
     /// Server: the items that can go in each slot of the crafting grid (from JEI, or just the item put there).
     private final List<List<ItemStackTemplate>> choices = new ArrayList<>();
+    /// Server: for the recipe of a machine (from JEI): what it makes (EMPTY = a crafting table recipe), how many of
+    /// each slot of the grid, and the machines that make it.
+    private ItemStack machineOutput = ItemStack.EMPTY;
+    private final int[] amounts = new int[GRID_SLOTS];
+    private List<ItemStackTemplate> machines = List.of();
     /// Server: the Gravity Core recipe the core slots make (null = none).
     private RecipeHolder<GravityCoreRecipe> coreRecipe;
     /// Server: the items of all the core slots (the shown ones are copied to the pictures).
@@ -93,6 +99,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         int top = layout.inventoryTop();
         int left = TerminalLayout.craftLeft();
         for (int i = 0; i < GRID_SLOTS; i++) choices.add(List.of());
+        java.util.Arrays.fill(amounts, 1);
         for (int i = 0; i < GRID_SLOTS; i++) {
             addSlot(new PictureSlot(i, left + (i % 3) * 18 + 1, top + (i / 3) * 18 + 1, TAB_CRAFTING));
         }
@@ -245,6 +252,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         if (slot < GRID_SLOTS) {
             pictures.setItem(slot, picture);
             choices.set(slot, picture.isEmpty() ? List.of() : List.of(ItemStackTemplate.fromNonEmptyStack(picture)));
+            amounts[slot] = 1;
         } else if (slot >= CORE_START && slot < CORE_START + CORE_VIEW) {
             if (coreIndex(slot) < CORE_SLOTS) clickCore(slot, picture.isEmpty() ? 0 : 1, picture);
             return;
@@ -255,18 +263,34 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
     }
 
     /// JEI: fills the crafting grid with the items of a recipe (for each slot, the items that can go there).
-    public void fill(List<List<ItemStack>> slots) {
+    /// The recipe of a machine also has the amounts, its result and the machines.
+    public void fill(QuasarFill fill) {
         tab = TAB_CRAFTING;
+        List<List<ItemStack>> slots = fill.slots();
         for (int i = 0; i < GRID_SLOTS; i++) {
             List<ItemStack> items = i < slots.size() ? slots.get(i) : List.of();
             List<ItemStackTemplate> slotChoices = new ArrayList<>();
             for (ItemStack item : items) {
                 if (!item.isEmpty()) slotChoices.add(ItemStackTemplate.fromNonEmptyStack(item.copyWithCount(1)));
             }
-            pictures.setItem(i, items.isEmpty() || items.get(0).isEmpty() ? ItemStack.EMPTY : items.get(0).copyWithCount(1));
+            amounts[i] = Math.max(1, i < fill.amounts().size() ? fill.amounts().get(i) : 1);
+            // The picture shows the amount (up to the most a stack can show)
+            pictures.setItem(i, items.isEmpty() || items.get(0).isEmpty() ? ItemStack.EMPTY : items.get(0).copyWithCount(Math.min(amounts[i], 99)));
             choices.set(i, slotChoices);
         }
+        machineOutput = fill.output().copy();
+        List<ItemStackTemplate> list = new ArrayList<>();
+        for (ItemStack machine : fill.machines()) {
+            if (!machine.isEmpty()) list.add(ItemStackTemplate.fromNonEmptyStack(machine.copyWithCount(1)));
+        }
+        machines = machineOutput.isEmpty() ? List.of() : list;
+        if (machines.isEmpty()) machineOutput = ItemStack.EMPTY;
         updateResult();
+    }
+
+    /// True while the grid has the recipe of a machine.
+    private boolean isMachine() {
+        return !machineOutput.isEmpty();
     }
 
     /// The server works out what the slots of the tab shown make.
@@ -274,7 +298,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
         if (!(player.level() instanceof ServerLevel level)) return;
         ItemStack result = ItemStack.EMPTY;
         coreRecipe = null;
-        if (tab == TAB_CRAFTING) {
+        if (tab == TAB_CRAFTING && isMachine()) {
+            result = machineOutput.copyWithCount(Math.min(machineOutput.getCount(), 99));
+        } else if (tab == TAB_CRAFTING) {
             List<ItemStack> items = new ArrayList<>();
             for (int i = 0; i < GRID_SLOTS; i++) items.add(pictures.getItem(i).copy());
             CraftingInput input = CraftingInput.of(3, 3, items);
@@ -351,13 +377,16 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
             ItemStackTemplate output = ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1));
             if (tab == TAB_CRAFTING) {
                 List<List<ItemStackTemplate>> inputs = new ArrayList<>();
+                List<Integer> slotAmounts = new ArrayList<>();
                 for (int i = 0; i < GRID_SLOTS; i++) {
                     ItemStack stack = pictures.getItem(i);
                     if (stack.isEmpty()) inputs.add(List.of());
                     else if (choices.get(i).isEmpty()) inputs.add(List.of(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))));
                     else inputs.add(choices.get(i));
+                    slotAmounts.add(stack.isEmpty() ? 1 : amounts[i]);
                 }
-                quasar.addPattern(Pattern.crafting(output, result.getCount(), inputs));
+                if (isMachine()) quasar.addPattern(Pattern.machine(output, machineOutput.getCount(), inputs, slotAmounts, machines));
+                else quasar.addPattern(Pattern.crafting(output, result.getCount(), inputs));
             } else if (tab == TAB_CORE && coreRecipe != null) {
                 quasar.addPattern(QuasarCore.pattern(coreRecipe, coreTier(coreRecipe.value())));
             } else if (tab == TAB_FURNACE) {
@@ -370,6 +399,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu {
                 pictures.setItem(i, ItemStack.EMPTY);
                 if (i < GRID_SLOTS) choices.set(i, List.of());
             }
+            machineOutput = ItemStack.EMPTY;
+            machines = List.of();
             for (int i = 0; i < CORE_SLOTS; i++) cores.set(i, ItemStack.EMPTY);
             coreScroll = 0;
             updateResult();

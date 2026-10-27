@@ -343,6 +343,9 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                     lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
                 }
             }
+            if (pattern.isMachine()) {
+                lines.add(Component.translatable("screen.simpleores.quasar.machine", pattern.machines().get(0).create().getHoverName()));
+            }
             graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
         }
         // Tab names

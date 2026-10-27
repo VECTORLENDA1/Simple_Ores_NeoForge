@@ -29,7 +29,8 @@ import java.util.*;
 ///
 /// Rules for all of them:
 ///  - they work from the first tier (Sun);
-///  - they all take the same time (VANILLA_TIME), except in the Black Hole, where they are instant;
+///  - crafting table recipes take 10 s in the Sun, 6 s in the Red Giant, 3 s in the Pulsar and are instant in
+///    the Black Hole (CRAFTING_TIMES); furnace recipes take VANILLA_TIME (instant in the Black Hole);
 ///  - they give the same amount as the crafting table (no bonus in higher tiers);
 ///  - items that stay behind in the crafting table (e.g. the empty buckets of a cake) are given back.
 ///
@@ -38,8 +39,10 @@ import java.util.*;
 public class VanillaCoreRecipe extends GravityCoreRecipe {
     /// Craft time (in ticks, 20 = 1 second) of every vanilla recipe in the Sun, Red Giant and Pulsar.
     public static final int VANILLA_TIME = 40;
-    /// Time per tier: the same for the first 3 tiers, instant (0) in the Black Hole.
+    /// Time per tier of the furnace recipes: the same for the first 3 tiers, instant (0) in the Black Hole.
     private static final List<Integer> TIME_PER_TIER = List.of(VANILLA_TIME, VANILLA_TIME, VANILLA_TIME, 0);
+    /// Time per tier of the crafting table recipes (ticks): Sun 10 s, Red Giant 6 s, Pulsar 3 s, Black Hole instant.
+    private static final List<Integer> CRAFTING_TIMES = List.of(200, 120, 60, 0);
 
     /// The crafting table recipe this came from. null for furnace (cooking) recipes.
     private final @Nullable CraftingRecipe original;
@@ -47,7 +50,7 @@ public class VanillaCoreRecipe extends GravityCoreRecipe {
 
     private VanillaCoreRecipe(@Nullable CraftingRecipe original, List<Part> parts, ItemStack result) {
         // No result template: the result is a ready ItemStack (see createResult / getUpgradeTier below)
-        super(1, VANILLA_TIME, parts, null, List.of(), TIME_PER_TIER);
+        super(1, original == null ? VANILLA_TIME : CRAFTING_TIMES.get(0), parts, null, List.of(), original == null ? TIME_PER_TIER : CRAFTING_TIMES);
         this.original = original;
         this.result = result;
     }

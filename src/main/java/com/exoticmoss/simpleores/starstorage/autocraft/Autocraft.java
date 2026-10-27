@@ -223,6 +223,8 @@ public final class Autocraft {
         private boolean coresWorking;
         /// How many times each step was made (or given out, for the steps that take time).
         private final long[] doneSteps;
+        /// How many items each step made (came back to the network).
+        private final long[] madeSteps;
         /// The step being worked on now (inside work): how many times it was made, and up to how many times it
         /// can be made now.
         private long done;
@@ -258,6 +260,7 @@ public final class Autocraft {
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
             this.steps = steps;
             this.doneSteps = new long[steps.size()];
+            this.madeSteps = new long[steps.size()];
             this.pos = pos.immutable();
             this.dimension = level.dimension();
             this.output = output;
@@ -289,14 +292,29 @@ public final class Autocraft {
 
         /// The sub-crafts: every step but the last one (the last one makes what was asked for), the steps that make
         /// the same item together, in the order they are made.
+        /// Items that came back to the network: they count for the sub-crafts that make that item (their bar only
+        /// grows with what is really made, not with what was sent to the machines).
+        private void madeBySteps(ItemStack stack) {
+            long left = stack.getCount();
+            for (int i = 0; i < steps.size() - 1 && left > 0; i++) {
+                Step step = steps.get(i);
+                if (!ItemStack.isSameItemSameComponents(stack, step.pattern().output().create())) continue;
+                long room = step.times() * step.pattern().count() - madeSteps[i];
+                long counted = Math.min(left, room);
+                if (counted <= 0) continue;
+                madeSteps[i] += counted;
+                left -= counted;
+            }
+        }
+
         public List<SubCraft> subCrafts() {
             Map<ItemStackTemplate, SubCraft> merged = new LinkedHashMap<>();
             for (int i = 0; i < steps.size() - 1; i++) {
                 Step step = steps.get(i);
                 long count = step.pattern().count();
-                long stepMade = doneSteps[i];
-                SubCraft one = new SubCraft(step.pattern().output(), step.times() * count, stepMade * count,
-                        stepMade > 0 && stepMade < step.times());
+                long total = step.times() * count;
+                SubCraft one = new SubCraft(step.pattern().output(), total, Math.min(madeSteps[i], total),
+                        doneSteps[i] > 0 && madeSteps[i] < total);
                 merged.merge(one.output(), one, (a, b) -> new SubCraft(a.output(), a.amount() + b.amount(),
                         a.made() + b.made(), a.current() || b.current()));
             }
@@ -312,6 +330,7 @@ public final class Autocraft {
         /// Items of the output that came back to the network (from the cores, the furnaces or the crafting
         /// table). Returns how many this job took (the rest can count for another job).
         long arrived(ItemStack stack) {
+            madeBySteps(stack);
             if (made >= amount || !ItemStack.isSameItemSameComponents(stack, output.create())) return 0;
             long counted = Math.min(stack.getCount(), amount - made);
             made += counted;
@@ -368,6 +387,7 @@ public final class Autocraft {
                     if (demand <= 0) {
                         // Nothing uses it any more: this step is done
                         doneSteps[i] = step.times();
+                        madeSteps[i] = Math.max(madeSteps[i], step.times() * step.pattern().count());
                         continue;
                     }
                     if (stock == null) stock = stock(network);

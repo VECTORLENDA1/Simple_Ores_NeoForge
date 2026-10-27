@@ -56,6 +56,8 @@ public class BinaryStarBlockEntity extends BlockEntity {
     /// The recipes of the Quasars (machine recipes) each machine makes (position -> recipes). A recipe linked to
     /// machines is only made in those machines, and a machine with recipes only makes those (see Autocraft).
     private final Map<BlockPos, List<com.exoticmoss.simpleores.starstorage.quasar.Pattern>> links = new HashMap<>();
+    /// The order of the blocks on the screen: in the order they were found (a new block goes to the end).
+    private final List<BlockPos> order = new ArrayList<>();
     /// Every how many ticks the blocks around are looked at for new machines (5 seconds).
     public static final int SCAN_TICKS = 100;
     /// The blocks whose output slots were already set to TAKE by themselves (see scanOutputs): a rule the player
@@ -108,6 +110,19 @@ public class BinaryStarBlockEntity extends BlockEntity {
         if (list.isEmpty()) links.remove(pos);
         else links.put(pos.immutable(), list);
         setChanged();
+    }
+
+    /// Where the block is in the order of the screen (-1 = not in it yet).
+    public int orderOf(BlockPos pos) {
+        return order.indexOf(pos);
+    }
+
+    /// New blocks: they go to the end of the order of the screen.
+    public void addToOrder(List<BlockPos> blocks) {
+        for (BlockPos pos : blocks) {
+            if (!order.contains(pos)) order.add(pos.immutable());
+        }
+        if (!blocks.isEmpty()) setChanged();
     }
 
     /// Removes every rule of the block at "pos".
@@ -242,6 +257,7 @@ public class BinaryStarBlockEntity extends BlockEntity {
         });
         // A block that is gone (or out of reach): if a machine is put there again, it is set again
         if (configured.retainAll(seen)) setChanged();
+        if (order.retainAll(seen)) setChanged();
     }
 
     // ---------------------------------------------------------------- saving
@@ -270,6 +286,7 @@ public class BinaryStarBlockEntity extends BlockEntity {
         output.store("rules", BlockRules.CODEC.listOf(), list);
         output.store("upgrades", ItemStack.OPTIONAL_CODEC, upgrades.getItem(0));
         output.store("configured", BlockPos.CODEC.listOf(), new ArrayList<>(configured));
+        output.store("order", BlockPos.CODEC.listOf(), new ArrayList<>(order));
         List<BlockLinks> linkList = new ArrayList<>();
         links.forEach((pos, recipes) -> linkList.add(new BlockLinks(pos, recipes)));
         output.store("links", BlockLinks.CODEC.listOf(), linkList);
@@ -283,6 +300,8 @@ public class BinaryStarBlockEntity extends BlockEntity {
         for (BlockLinks block : input.read("links", BlockLinks.CODEC.listOf()).orElse(List.of())) {
             if (!block.recipes().isEmpty()) links.put(block.pos(), new ArrayList<>(block.recipes()));
         }
+        order.clear();
+        order.addAll(input.read("order", BlockPos.CODEC.listOf()).orElse(List.of()));
         configured.clear();
         configured.addAll(input.read("configured", BlockPos.CODEC.listOf()).orElse(List.of()));
         rules.clear();

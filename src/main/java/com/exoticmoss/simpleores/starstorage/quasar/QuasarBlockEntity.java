@@ -20,6 +20,17 @@ public class QuasarBlockEntity extends BlockEntity {
     private final List<Pattern> patterns = new ArrayList<>();
     /// Auto-craft jobs with Gravity Core steps (they take time). Not saved: they stop if the world is closed.
     private final List<Autocraft.Job> jobs = new ArrayList<>();
+    /// The items that were in the storage of the jobs when the world was saved (the jobs themselves are not saved):
+    /// they go back to the network as soon as the Quasar works again.
+    private final java.util.Map<net.minecraft.world.item.ItemStackTemplate, Long> toReturn = new java.util.HashMap<>();
+
+    /// An item and how many, as saved.
+    private record Stored(net.minecraft.world.item.ItemStackTemplate item, long count) {
+        static final com.mojang.serialization.Codec<Stored> CODEC = com.mojang.serialization.codecs.RecordCodecBuilder.create(inst -> inst.group(
+                net.minecraft.world.item.ItemStackTemplate.CODEC.fieldOf("item").forGetter(Stored::item),
+                com.mojang.serialization.Codec.LONG.fieldOf("count").forGetter(Stored::count)
+        ).apply(inst, Stored::new));
+    }
 
     public QuasarBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.QUASAR_BE.get(), pos, state);
@@ -65,7 +76,11 @@ public class QuasarBlockEntity extends BlockEntity {
     /// Server: works on the jobs (each one works every few ticks, faster with Solar Wind Upgrades;
     /// the finished and the stuck ones go away).
     public void serverTick() {
-        if (jobs.isEmpty() || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (!toReturn.isEmpty()) returnItems();
+        if (jobs.isEmpty()) return;
+        // (the storage of the jobs changes all the time: it is saved with the Quasar)
+        setChanged();
         jobs.removeIf(job -> {
             if (job.tick(serverLevel) && !job.done()) return false;
             job.finish(serverLevel);
@@ -73,15 +88,40 @@ public class QuasarBlockEntity extends BlockEntity {
         });
     }
 
+    /// The items of the jobs of before the world was loaded go back to the network (what doesn't fit waits).
+    private void returnItems() {
+        var network = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, worldPosition);
+        if (network.drives().isEmpty()) return;
+        for (var entry : new ArrayList<>(toReturn.entrySet())) {
+            long left = entry.getValue();
+            while (left > 0) {
+                int part = (int) Math.min(left, Integer.MAX_VALUE);
+                net.minecraft.world.item.ItemStack rest = network.insert(entry.getKey().create().copyWithCount(part));
+                left -= part - rest.getCount();
+                if (!rest.isEmpty()) break;
+            }
+            if (left <= 0) toReturn.remove(entry.getKey());
+            else toReturn.put(entry.getKey(), left);
+        }
+        setChanged();
+    }
+
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+        java.util.Map<net.minecraft.world.item.ItemStackTemplate, Long> stored = new java.util.HashMap<>(toReturn);
+        for (Autocraft.Job job : jobs) job.stored().forEach((item, count) -> stored.merge(item, count, Long::sum));
+        List<Stored> list = new ArrayList<>();
+        stored.forEach((item, count) -> list.add(new Stored(item, count)));
+        output.store("job_items", Stored.CODEC.listOf(), list);
         output.store("patterns", Pattern.CODEC.listOf(), patterns);
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+        toReturn.clear();
+        for (Stored stored : input.read("job_items", Stored.CODEC.listOf()).orElse(List.of())) toReturn.merge(stored.item(), stored.count(), Long::sum);
         patterns.clear();
         patterns.addAll(input.read("patterns", Pattern.CODEC.listOf()).orElse(List.of()));
     }

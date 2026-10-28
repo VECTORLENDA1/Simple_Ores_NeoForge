@@ -365,6 +365,12 @@ public final class Autocraft {
             arrivedNow = true;
         }
 
+        /// What the storage of the job has now (saved with the Quasar: the jobs are not saved, so when the world
+        /// is loaded again these items go back to the network).
+        public Map<ItemStackTemplate, Long> stored() {
+            return storage;
+        }
+
         /// The job ended (done or cancelled): what is left in its storage goes back to the network.
         public void finish(StarNetwork network) {
             for (Map.Entry<ItemStackTemplate, Long> entry : storage.entrySet()) {

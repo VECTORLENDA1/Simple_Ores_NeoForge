@@ -22,3 +22,5 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: build
+        env:
+          CI: "false"

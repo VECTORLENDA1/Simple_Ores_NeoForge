@@ -385,6 +385,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         int cardMouseY = mouseY >= areaTop() && mouseY < areaBottom() ? mouseY : -10_000;
         graphics.enableScissor(left + 1, areaTop(), left + WIDTH - 1, areaBottom());
         List<Component> tooltip = null;
+        BinaryView.Block recipesPanel = null;
         List<Card> cards = linkingBlock() != null ? List.of() : cards();
         for (Card card : cards) {
             BinaryView.Block block = view.blocks().get(card.index());
@@ -400,18 +401,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
             if (!block.options().isEmpty()) {
                 drawButton(graphics, button(card, 2), Component.translatable("screen.simpleores.binary.recipes"), mouseX, cardMouseY);
-                // Mouse over "Recipes": the recipes linked to this machine
-                if (inside(button(card, 2), mouseX, cardMouseY)) {
-                    tooltip = new ArrayList<>();
-                    tooltip.add(Component.translatable("screen.simpleores.binary.linked_title"));
-                    for (int o = 0; o < block.options().size(); o++) {
-                        if (!block.linked().get(o)) continue;
-                        com.exoticmoss.simpleores.starstorage.quasar.Pattern pattern = block.options().get(o);
-                        tooltip.add(Component.literal(" - ").append(pattern.outputStack().getHoverName()).append(" x" + pattern.count())
-                                .withColor(INPUT_LINE));
-                    }
-                    if (tooltip.size() == 1) tooltip.add(Component.translatable("screen.simpleores.binary.linked_none").withColor(TEXT_DIM));
-                }
+                // Mouse over "Recipes": a small panel with the recipes linked to this machine (drawn at the end)
+                if (inside(button(card, 2), mouseX, cardMouseY)) recipesPanel = block;
             }
 
             for (int slot = 0; slot < cells(block); slot++) {
@@ -493,7 +484,37 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         }
 
         super.extractRenderState(graphics, mouseX, mouseY, a);
-        if (tooltip != null && menu.getCarried().isEmpty()) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
+        if (recipesPanel != null) drawRecipesPanel(graphics, recipesPanel, mouseX, mouseY);
+        else if (tooltip != null && menu.getCarried().isEmpty()) graphics.setTooltipForNextFrame(font, tooltip, Optional.empty(), mouseX, mouseY);
+    }
+
+    /// The panel of the "Recipes" button: the icons of the recipes linked to the machine (or "none").
+    private void drawRecipesPanel(GuiGraphicsExtractor graphics, BinaryView.Block block, int mouseX, int mouseY) {
+        List<ItemStack> icons = new ArrayList<>();
+        for (int o = 0; o < block.options().size(); o++) {
+            if (block.linked().get(o)) icons.add(block.options().get(o).outputStack());
+        }
+        Component title = Component.translatable("screen.simpleores.binary.linked_title");
+        Component none = Component.translatable("screen.simpleores.binary.linked_none");
+        int columns = Math.min(Math.max(1, icons.size()), 8);
+        int rows = (icons.size() + columns - 1) / columns;
+        int width = Math.max(font.width(title), icons.isEmpty() ? font.width(none) : columns * SLOT) + 8;
+        int height = 14 + (icons.isEmpty() ? 10 : rows * SLOT) + 4;
+        int x = Math.min(mouseX + 10, this.width - width - 2);
+        int y = Math.max(2, mouseY - height - 4);
+        graphics.fill(x, y, x + width, y + height, 0xF0100010);
+        graphics.outline(x, y, width, height, PANEL_BORDER);
+        graphics.text(font, title, x + 4, y + 4, TEXT);
+        if (icons.isEmpty()) {
+            graphics.text(font, none, x + 4, y + 16, TEXT_DIM);
+            return;
+        }
+        for (int i = 0; i < icons.size(); i++) {
+            int ix = x + 4 + (i % columns) * SLOT, iy = y + 14 + (i / columns) * SLOT;
+            graphics.fill(ix, iy, ix + SLOT - 2, iy + SLOT - 2, INPUT_BACK);
+            graphics.outline(ix, iy, SLOT - 2, SLOT - 2, INPUT_LINE);
+            graphics.item(icons.get(i), ix, iy);
+        }
     }
 
     /// The names of the items kept by a rule ("Cobblestone, Dirt, Gravel"); liquids by their names.

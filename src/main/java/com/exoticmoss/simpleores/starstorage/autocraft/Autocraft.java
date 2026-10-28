@@ -485,6 +485,20 @@ public final class Autocraft {
             return stack.copyWithCount((int) left);
         }
 
+        /// True if a job of the network takes this item out of the machine at "machinePos" itself (a Binary Star
+        /// leaves it there, so it goes to the storage of the job and counts).
+        public static boolean waitsFor(ServerLevel level, StarNetwork network, BlockPos machinePos, ItemStack stack) {
+            for (QuasarBlockEntity quasar : network.quasars()) {
+                for (Job job : quasar.getJobs()) {
+                    if (job.dimension != level.dimension()) continue;
+                    for (MachineKey key : job.usedMachines) {
+                        if (key.pos().equals(machinePos) && ItemStack.isSameItemSameComponents(stack, key.output().create())) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         /// How many of the item the Gravity Core steps of this job still have to make.
         private long coreRoom(ItemStack stack) {
             long room = 0;

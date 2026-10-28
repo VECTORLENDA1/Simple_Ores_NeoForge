@@ -1,11 +1,10 @@
-// 26.2	2026-10-27T09:25:07.3393244	Tags for minecraft:block mod id simpleores
-0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_copper_tool.json
+// 1.21.1	2026-10-28T10:20:33.3352661	Tags for minecraft:block mod id simpleores
 0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_diamond_tool.json
 0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_gold_tool.json
 0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_iron_tool.json
 0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_stone_tool.json
 0692e8a9709281cceaa08bc3469242135b74abba data/minecraft/tags/block/incorrect_for_wooden_tool.json
-97f0068a4006e8c12f4d2c1096337185e5274061 data/minecraft/tags/block/mineable/pickaxe.json
+c46aa01011c08e4a17c13230b7e9be9300f424e5 data/minecraft/tags/block/mineable/pickaxe.json
 2c0f1b5f156444c365f47e872ba7db21df83e757 data/minecraft/tags/block/needs_diamond_tool.json
-f342a8c1e7a4f82cbfb140f7f202f319abe0c9a2 data/minecraft/tags/block/needs_iron_tool.json
+6029db5b8185770ad99ee3cf4b175181a200aee6 data/minecraft/tags/block/needs_iron_tool.json
 eaabdd543398dce63ced7b63a7d9c3daaee2822c data/minecraft/tags/block/needs_stone_tool.json

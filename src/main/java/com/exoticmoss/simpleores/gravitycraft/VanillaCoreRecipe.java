@@ -1,5 +1,6 @@
 package com.exoticmoss.simpleores.gravitycraft;
 
+import net.minecraft.resources.ResourceLocation;
 import com.exoticmoss.simpleores.SimpleOres;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;

@@ -173,23 +173,26 @@ public class BinaryStarBlockEntity extends BlockEntity {
                     int tank = rule.slot() - TANKS;
                     if (fluids != null && tank < fluids.size()) workTank(network, fluids, fluidSides, tank, rule);
                 } else if (items != null && rule.slot() < items.size()) {
-                    workSlot(network, items, itemSides, rule.slot(), rule);
+                    workSlot(network, items, itemSides, rule.slot(), rule, pos);
                 }
             }
         }
     }
 
-    private static void workSlot(StarNetwork network, ResourceHandler<ItemResource> items, List<ResourceHandler<ItemResource>> sides,
-                                 int slot, SlotRule rule) {
+    private void workSlot(StarNetwork network, ResourceHandler<ItemResource> items, List<ResourceHandler<ItemResource>> sides,
+                          int slot, SlotRule rule, BlockPos pos) {
+        ItemStack inside = StarAccess.stack(items, slot);
+        // The results an auto-craft of a Quasar waits for are taken by the Quasar itself (to the storage of its job)
+        boolean forJob = !inside.isEmpty() && level instanceof net.minecraft.server.level.ServerLevel server
+                && com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.waitsFor(server, network, pos, inside);
         if (rule.keeps()) {
             // BOTH: what is not one of the items of the slot goes out first
-            ItemStack inside = StarAccess.stack(items, slot);
-            if (rule.takes() && !inside.isEmpty() && rule.items().stream().noneMatch(item -> ItemStack.isSameItemSameComponents(inside, item.create()))) {
+            if (rule.takes() && !forJob && !inside.isEmpty() && rule.items().stream().noneMatch(item -> ItemStack.isSameItemSameComponents(inside, item.create()))) {
                 StarAccess.takeItems(network, items, sides, slot);
             }
             // Each item (a normal slot takes only the first that fits; a trash can takes them all)
             for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) StarAccess.keepItems(network, items, sides, slot, item.create());
-        } else if (rule.takes()) {
+        } else if (rule.takes() && !forJob) {
             StarAccess.takeItems(network, items, sides, slot);
         }
     }

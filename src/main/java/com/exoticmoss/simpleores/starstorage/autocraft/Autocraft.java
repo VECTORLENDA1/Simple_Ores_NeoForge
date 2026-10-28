@@ -805,8 +805,8 @@ public final class Autocraft {
         // ---------------------------------------------------------------- machines of other mods
 
         /// Machine: puts sets of ingredients in the machines of the recipe in the field (the machine chooses the
-        /// slots; with Mekanism, through the sides set as inputs). One set at a time, or more with Solar Wind
-        /// Upgrades. The results are taken out by collectMachines.
+        /// slots; with Mekanism, through the sides set as inputs). The crafts are split evenly between the machines
+        /// (each one never gets more than its part). The results are taken out by collectMachines.
         private boolean workMachine(ServerLevel level, StarNetwork network, Step step) {
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             if (magnetar == null) return false;
@@ -835,8 +835,14 @@ public final class Autocraft {
             if (items.isEmpty()) return false;
             int speed = magnetar.speed();
             boolean progress = false;
-            for (BlockPos machinePos : list) {
+            // The crafts of the step are split between the machines: each one gets its part (the first ones one
+            // more when they don't split evenly), with every ingredient in its right amount
+            list.sort(java.util.Comparator.naturalOrder());
+            int machineCount = list.size();
+            for (int m = 0; m < machineCount; m++) {
+                BlockPos machinePos = list.get(m);
                 if (done >= target) break;
+                long share = step.times() / machineCount + (m < step.times() % machineCount ? 1 : 0);
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
                 if (handler == null) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
@@ -845,7 +851,7 @@ public final class Autocraft {
                 long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
                 long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
                 long setsBefore = sets(sent, amounts);
-                long goal = setsBefore + Math.min(SETS[speed], target - done);
+                long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
                 for (int k = 0; k < items.size(); k++) {
                     // (all the machines together never get more of an ingredient than the step needs)
                     long want = Math.min(Math.min(goal * amounts.get(k) - sent[k], MAX_SEND),

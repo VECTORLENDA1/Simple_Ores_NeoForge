@@ -156,7 +156,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
             for (Pattern option : options) linked.add(links.contains(option));
             blocks.add(new Block(blockPos, icon, slots, tanks, new ArrayList<>(rules.values()), roles, options, linked));
         });
-        // In the order the blocks were found: a new block goes to the end. The ones found at the same time (e.g.
+        // In the order the blocks were found. The ones found at the same time (e.g.
         // the first time) in groups: first the machines (blocks with inputs or outputs), then the others (chests...);
         // each kind of block together (by name), and the closest first
         List<Block> found = new ArrayList<>(blocks.stream().filter(block -> binary.orderOf(block.pos()) < 0).toList());
@@ -164,7 +164,12 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 .thenComparing(block -> block.icon().getHoverName().getString())
                 .thenComparingDouble(block -> block.pos().distSqr(pos)));
         binary.addToOrder(found.stream().map(Block::pos).toList());
-        blocks.sort(Comparator.comparingInt(block -> binary.orderOf(block.pos())));
+        // The blocks of the same kind together (where the first one of that kind is), each one in the order it was
+        // found: a new machine goes to the end of the machines of its kind
+        Map<net.minecraft.world.item.Item, Integer> groupAt = new java.util.HashMap<>();
+        for (Block block : blocks) groupAt.merge(block.icon().getItem(), binary.orderOf(block.pos()), Math::min);
+        blocks.sort(Comparator.comparingInt((Block block) -> groupAt.get(block.icon().getItem()))
+                .thenComparingInt(block -> binary.orderOf(block.pos())));
         PacketDistributor.sendToPlayer(player, new BinaryView(pos, open, network.drives().size(), network.cellCount(),
                 network.usedItems(), network.capacity(), blocks, binary.radius()));
     }

@@ -108,13 +108,6 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
                 .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
-        tag(BlockTags.INCORRECT_FOR_COPPER_TOOL)
-                .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
-                .add(ModBlocks.OBSCURITE_BLOCK.getKey())
-                .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
-                .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
-                .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
-                .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey());
 
         tag(BlockTags.INCORRECT_FOR_IRON_TOOL)
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())

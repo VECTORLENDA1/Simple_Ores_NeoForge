@@ -86,7 +86,9 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     }
 
     public BinaryScreen(BinaryMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, BinaryMenu.WIDTH, menu.height);
+        super(menu, inventory, title);
+        this.imageWidth = BinaryMenu.WIDTH;
+        this.imageHeight = menu.height;
         this.pos = menu.pos;
         this.view = BinaryClient.last(menu.pos);
     }

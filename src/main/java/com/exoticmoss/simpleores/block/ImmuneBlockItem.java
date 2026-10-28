@@ -12,7 +12,7 @@ public class ImmuneBlockItem extends BlockItem {
     }
 
     @Override
-    public boolean canBeHurtBy(DamageSource source) {
-        return !source.is(ModBlocks.GRAVITY_CORE_IMMUNE) && super.canBeHurtBy(source);
+    public boolean canBeHurtBy(net.minecraft.world.item.ItemStack stack, DamageSource source) {
+        return !source.is(ModBlocks.GRAVITY_CORE_IMMUNE) && super.canBeHurtBy(stack, source);
     }
 }

@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 /// does the same for this mod.
 public record ItemStackTemplate(Holder<Item> item, int count, DataComponentPatch components) {
     public static final Codec<ItemStackTemplate> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-            Item.CODEC.fieldOf("id").forGetter(ItemStackTemplate::item),
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.holderByNameCodec().fieldOf("id").forGetter(ItemStackTemplate::item),
             Codec.INT.optionalFieldOf("count", 1).forGetter(ItemStackTemplate::count),
             DataComponentPatch.CODEC.optionalFieldOf("components", DataComponentPatch.EMPTY).forGetter(ItemStackTemplate::components)
     ).apply(inst, ItemStackTemplate::new));

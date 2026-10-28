@@ -45,8 +45,8 @@ public record QuasarCore(ResourceLocation recipe) implements CustomPacketPayload
         List<List<ItemStackTemplate>> inputs = new ArrayList<>();
         List<Integer> amounts = new ArrayList<>();
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            inputs.add(part.item().items().limit(QuasarFill.MAX_CHOICES)
-                    .map(item -> ItemStackTemplate.fromNonEmptyStack(new ItemStack(item))).toList());
+            inputs.add(java.util.Arrays.stream(part.item().getItems()).limit(QuasarFill.MAX_CHOICES)
+                    .map(stack -> ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))).toList());
             amounts.add(part.countFor(tier));
         }
         ItemStack result = recipe.createResult(tier);

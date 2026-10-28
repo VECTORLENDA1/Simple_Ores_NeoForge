@@ -9,15 +9,17 @@ import com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlock;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ExtractBlockOutlineRenderStateEvent;
+import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 
 /// The stars (Magnetar Core, Stellar Terminal and the Gravity Cores) don't show the black box outline when
 /// the player looks at them: the star itself shines instead (see StarBlockRenderer and GravityCoreRenderer).
 @EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)
 public class StarOutline {
     @SubscribeEvent
-    public static void onBlockOutline(ExtractBlockOutlineRenderStateEvent event) {
-        var block = event.getBlockState().getBlock();
+    public static void onBlockOutline(RenderHighlightEvent.Block event) {
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null) return;
+        var block = level.getBlockState(event.getTarget().getBlockPos()).getBlock();
         if (block instanceof MagnetarBlock || block instanceof StellarTerminalBlock || block instanceof GravityCoreBlock
                 || block instanceof BinaryStarBlock || block instanceof QuasarBlock) {
             event.setCanceled(true);

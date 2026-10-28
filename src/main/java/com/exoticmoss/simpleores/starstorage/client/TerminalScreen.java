@@ -93,7 +93,9 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     private Button clearButton;
 
     public TerminalScreen(M menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, TerminalLayout.WIDTH, menu.layout().height());
+        super(menu, inventory, title);
+        this.imageWidth = TerminalLayout.WIDTH;
+        this.imageHeight = menu.layout().height();
         this.layout = menu.layout();
         this.contents = TerminalClient.last(menu.networkPos());
         filter();

@@ -30,7 +30,7 @@ public class StarTooltips {
         GlobalPos link = event.getItemStack().get(ModDataComponents.LINK.get());
         if (link != null) {
             event.getToolTip().add(2, Component.translatable("tooltip.simpleores.wormhole_link.target", link.pos().getX(), link.pos().getY(),
-                    link.pos().getZ(), link.dimension().identifier().toString()).withStyle(ChatFormatting.LIGHT_PURPLE));
+                    link.pos().getZ(), link.dimension().location().toString()).withStyle(ChatFormatting.LIGHT_PURPLE));
         }
     }
 }

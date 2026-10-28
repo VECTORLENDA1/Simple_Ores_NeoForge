@@ -31,7 +31,9 @@ public class MagnetarScreen extends AbstractContainerScreen<MagnetarMenu> {
     private static final int TEXT_DIM = 0xFFA0A0B0;
 
     public MagnetarScreen(MagnetarMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, MagnetarMenu.WIDTH, MagnetarMenu.HEIGHT);
+        super(menu, inventory, title);
+        this.imageWidth = MagnetarMenu.WIDTH;
+        this.imageHeight = MagnetarMenu.HEIGHT;
     }
 
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
@@ -61,7 +63,6 @@ public class MagnetarScreen extends AbstractContainerScreen<MagnetarMenu> {
         }
     }
 
-    @Override
     public boolean mouseClicked(com.exoticmoss.simpleores.util.gui.MouseButtonEvent event, boolean doubleClick) {
         if (NetworkTabs.click(event.x(), event.y(), leftPos, topPos, imageWidth, 0, menu.pos)) return true;
         return super.mouseClicked(event.x(), event.y(), event.button());

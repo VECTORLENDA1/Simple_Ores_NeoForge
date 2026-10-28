@@ -92,11 +92,11 @@ public class JEISimpleOresPlugin implements IModPlugin {
     // Shows the recipes when the block is clicked inside JEI
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
-        registration.addCraftingStation(GravityCoreRecipeCategory.RECIPE_TYPE,
+        registration.addRecipeCatalysts(GravityCoreRecipeCategory.RECIPE_TYPE,
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
         // The Gravity Cores also make every crafting table recipe (of every mod, see VanillaCoreRecipe)
-        registration.addCraftingStation(mezz.jei.api.constants.RecipeTypes.CRAFTING,
+        registration.addRecipeCatalysts(mezz.jei.api.constants.RecipeTypes.CRAFTING,
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 

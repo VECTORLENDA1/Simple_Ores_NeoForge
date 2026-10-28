@@ -88,7 +88,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         }
 
         builder.addSlot(RecipeIngredientRole.OUTPUT, 138, 19)
-                .setOutputSlotBackground().add(recipe.createResult(recipe.getTier()).copyWithCount(1))
+                .setOutputSlotBackground().addItemStack(recipe.createResult(recipe.getTier()).copyWithCount(1))
                 .setOverlay(new AmountOverlay(recipe, tier -> recipe.createResult(tier).getCount()), 0, 0);
     }
 

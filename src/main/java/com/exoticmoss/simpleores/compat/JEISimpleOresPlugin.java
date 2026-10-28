@@ -102,6 +102,10 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addCraftingStation(GravityCoreRecipeCategory.RECIPE_TYPE,
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
+        // The Gravity Cores also make every crafting table recipe (of every mod, see VanillaCoreRecipe)
+        registration.addCraftingStation(mezz.jei.api.constants.RecipeTypes.CRAFTING,
+                ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
+                ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
     }
 

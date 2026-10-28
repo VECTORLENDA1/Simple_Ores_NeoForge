@@ -1,34 +1,50 @@
 package com.exoticmoss.simpleores.block;
 
-import com.exoticmoss.simpleores.item.ModItems;
+import com.exoticmoss.simpleores.SimpleOres;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 
+/// Bedrock Obscuridium Ore: hidden in the bedrock, at the bottom of the world.
+///  - Normal tools can't break it. Only the tools in the item tag "simpleores:mines_obscuridium" can
+///    (the Mega Breaker Tools from the Ultimate tier up add themselves to that tag).
+///    With them it is as hard as obsidian (MINING_HARDNESS), and Fortune and Silk Touch work.
+///  - One TNT is enough to break it: then it has 50% chance to drop Raw Obscuridium.
+/// It only appears from y -63 to -60, never in the last layer of bedrock (see BedrockOreFeature).
+/// The drops are in data/simpleores/loot_table/blocks/bedrock_obscuridium_ore.json
 public class BedrockObscuridiumOreBlock extends Block {
+    /// The tools that can mine it.
+    public static final TagKey<Item> MINING_TOOLS = TagKey.create(Registries.ITEM,
+            ResourceLocation.fromNamespaceAndPath(SimpleOres.MODID, "mines_obscuridium"));
+    /// How hard it is to mine with those tools (obsidian = 50).
+    public static final float MINING_HARDNESS = 50;
+    /// Resistance to explosions: low enough for one TNT to break it.
+    public static final float EXPLOSION_RESISTANCE = 4;
 
     public BedrockObscuridiumOreBlock(Properties properties) {
-        super(properties.strength(9999f, 15).sound(SoundType.STONE));
+        super(properties.strength(9999f, EXPLOSION_RESISTANCE).sound(SoundType.STONE));
     }
 
+    /// How fast the player breaks it: nothing without one of the MINING_TOOLS,
+    /// with them like a block of MINING_HARDNESS (their speed against obsidian, plus Efficiency).
     @Override
-    public void onBlockExploded(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion) {
-        double chance = Math.random();
-        if (chance <= 0.33) {
-            popResource(level, pos, new ItemStack(ModItems.RAW_OBSCURIDIUM.get()));
-        }
-        level.removeBlock(pos, false);
-        super.onBlockExploded(state, level, pos, explosion);
-    }
-
-    @Override
-    public boolean canHarvestBlock(BlockState state, BlockGetter world, BlockPos pos, Player player) {
-        return false;
+    protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+        ItemStack tool = player.getMainHandItem();
+        if (!tool.is(MINING_TOOLS)) return 0;
+        float speed = tool.getDestroySpeed(Blocks.OBSIDIAN.defaultBlockState());
+        if (speed > 1) speed += (float) player.getAttributeValue(Attributes.MINING_EFFICIENCY);
+        speed *= (float) player.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
+        if (!player.onGround()) speed /= 5;
+        return speed / MINING_HARDNESS / 30;
     }
 }

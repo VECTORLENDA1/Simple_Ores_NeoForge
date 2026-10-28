@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:antracite"
+    "#": {
+      "item": "simpleores:antracite"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:antracite_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:antracite_block"
+  }
 }

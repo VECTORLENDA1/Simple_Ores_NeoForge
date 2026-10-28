@@ -11,7 +11,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +40,7 @@ public final class CookingExperience {
     /// Fractions become a whole number by chance, like in the furnace (e.g. 2.5 = 2 or 3).
     public static int of(ServerLevel level, List<ItemStack> used, ItemStack result) {
         update(level);
-        List<Cooking> recipes = byResult.get(result.typeHolder());
+        List<Cooking> recipes = byResult.get(result.getItemHolder());
         if (recipes == null || result.isEmpty()) return 0;
 
         float perItem = 0;
@@ -61,15 +61,15 @@ public final class CookingExperience {
 
     /// Reads the furnace recipes again when the recipe list changes (server start, /reload).
     private static synchronized void update(ServerLevel level) {
-        RecipeManager manager = level.recipeAccess();
+        RecipeManager manager = level.getRecipeManager();
         if (manager == cachedFor) return;
         Map<Holder<Item>, List<Cooking>> map = new HashMap<>();
         for (RecipeHolder<?> holder : manager.getRecipes()) {
-            if (!(holder.value() instanceof AbstractCookingRecipe cooking) || cooking.experience() <= 0) continue;
+            if (!(holder.value() instanceof AbstractCookingRecipe cooking) || cooking.getExperience() <= 0) continue;
             try {
-                ItemStack out = cooking.assemble(new SingleRecipeInput(ItemStack.EMPTY));
+                ItemStack out = cooking.getResultItem(level.registryAccess());
                 if (out.isEmpty()) continue;
-                map.computeIfAbsent(out.typeHolder(), k -> new ArrayList<>()).add(new Cooking(cooking.input(), cooking.experience()));
+                map.computeIfAbsent(out.getItemHolder(), k -> new ArrayList<>()).add(new Cooking(cooking.getIngredients().get(0), cooking.getExperience()));
             } catch (Exception ignored) {
                 // a strange recipe is just left out
             }

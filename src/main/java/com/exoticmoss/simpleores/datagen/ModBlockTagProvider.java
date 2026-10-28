@@ -10,12 +10,11 @@ import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import java.util.concurrent.CompletableFuture;
 
 public class ModBlockTagProvider extends BlockTagsProvider {
-    // ExistingFileHelper was removed from NeoForge
-    public ModBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
-        super(output, lookupProvider, SimpleOres.MODID);
+    public ModBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider,
+                               net.neoforged.neoforge.common.data.ExistingFileHelper existingFileHelper) {
+        super(output, lookupProvider, SimpleOres.MODID, existingFileHelper);
     }
 
-    // tag(...).add() now takes the block's ResourceKey (DeferredBlock#getKey) instead of the Block
     @Override
     protected void addTags(HolderLookup.Provider pProvider) {
         tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -38,13 +37,17 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.OBSCURIDIUM_BLOCK.getKey())
                 .add(ModBlocks.OBSCURITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_OBSCURIDIUM_BLOCK.getKey())
+                .add(ModBlocks.BEDROCK_OBSCURIDIUM_ORE.getKey()) // only so the vein miners see it as a pickaxe block (who can mine it: BedrockObscuridiumOreBlock)
                 .add(ModBlocks.GRAVITY_CORE_SUN.getKey())
                 .add(ModBlocks.GRAVITY_CORE_RED_GIANT.getKey())
                 .add(ModBlocks.GRAVITY_CORE_PULSAR.getKey())
                 .add(ModBlocks.GRAVITY_CORE_BLACK_HOLE.getKey())
                 .add(ModBlocks.MAGNETAR_CORE.getKey())
                 .add(ModBlocks.STELLAR_DRIVE.getKey())
-                .add(ModBlocks.STELLAR_TERMINAL.getKey());
+                .add(ModBlocks.STELLAR_TERMINAL.getKey())
+                .add(ModBlocks.ADVANCED_TERMINAL.getKey())
+                .add(ModBlocks.BINARY_STAR.getKey())
+                .add(ModBlocks.QUASAR.getKey());
 
 
         tag(BlockTags.NEEDS_STONE_TOOL)
@@ -61,7 +64,14 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.RAW_ASTRALITE_BLOCK.getKey())
                 .add(ModBlocks.RAW_NEXALITE_BLOCK.getKey())
                 .add(ModBlocks.NETHER_ANTRACITE_ORE.getKey())
-                .add(ModBlocks.ANTRACITE_BLOCK.getKey());
+                .add(ModBlocks.ANTRACITE_BLOCK.getKey())
+                // The star storage: an iron pickaxe (or better)
+                .add(ModBlocks.MAGNETAR_CORE.getKey())
+                .add(ModBlocks.STELLAR_DRIVE.getKey())
+                .add(ModBlocks.STELLAR_TERMINAL.getKey())
+                .add(ModBlocks.ADVANCED_TERMINAL.getKey())
+                .add(ModBlocks.BINARY_STAR.getKey())
+                .add(ModBlocks.QUASAR.getKey());
 
         tag(BlockTags.NEEDS_DIAMOND_TOOL)
                 .add(ModBlocks.CELESTINE_BLOCK.getKey())

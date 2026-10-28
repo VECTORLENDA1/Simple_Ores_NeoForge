@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:celestine"
+    "#": {
+      "item": "simpleores:celestine"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:celestine_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:celestine_block"
+  }
 }

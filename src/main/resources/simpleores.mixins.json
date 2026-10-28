@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.exoticmoss.simpleores.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "MinecraftPickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

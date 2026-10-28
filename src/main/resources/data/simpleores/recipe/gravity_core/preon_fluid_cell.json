@@ -1,0 +1,26 @@
+{
+  "type": "simpleores:gravity_craft",
+  "tier": 3,
+  "time": 200,
+  "ingredients": [
+    {
+      "item": "simpleores:quark_fluid_cell",
+      "count": 3
+    },
+    {
+      "item": "simpleores:nexalite",
+      "count": 6
+    },
+    {
+      "item": "simpleores:zenithra",
+      "count": 6
+    },
+    {
+      "item": "minecraft:glass",
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "simpleores:preon_fluid_cell"
+  }
+}

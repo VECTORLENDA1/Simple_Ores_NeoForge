@@ -11,14 +11,14 @@ import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import mezz.jei.api.recipe.types.IRecipeHolderType;
+import mezz.jei.api.recipe.RecipeType;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.IntUnaryOperator;
@@ -31,8 +31,9 @@ import java.util.function.IntUnaryOperator;
 /// The recipes are given to JEI as a RecipeHolder (recipe + its ID). Thanks to the ID,
 /// JEI can show the "Bookmark" button and the "Move Items" button knows which recipe to send.
 public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<GravityCoreRecipe>> {
-    public static final IRecipeHolderType<GravityCoreRecipe> RECIPE_TYPE =
-            IRecipeHolderType.create(Identifier.fromNamespaceAndPath("simpleores", "gravity_craft"));
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static final RecipeType<RecipeHolder<GravityCoreRecipe>> RECIPE_TYPE =
+            new RecipeType<>(ResourceLocation.fromNamespaceAndPath("simpleores", "gravity_craft"), (Class) RecipeHolder.class);
 
     private static final int WIDTH = 160;
     private static final int HEIGHT = 66;
@@ -45,7 +46,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
     }
 
     @Override
-    public IRecipeHolderType<GravityCoreRecipe> getRecipeType() {
+    public RecipeType<RecipeHolder<GravityCoreRecipe>> getRecipeType() {
         return RECIPE_TYPE;
     }
 
@@ -79,7 +80,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         // while shift is held down, and this way the amounts keep changing with the tier anyway.
         for (int i = 0; i < parts.size(); i++) {
             GravityCoreRecipe.Part part = parts.get(i);
-            List<ItemStack> stacks = part.item().items().map(item -> new ItemStack(item, 1)).toList();
+            List<ItemStack> stacks = java.util.Arrays.stream(part.item().getItems()).map(stack -> stack.copyWithCount(1)).toList();
             builder.addSlot(RecipeIngredientRole.INPUT, 1 + (i % COLUMNS) * 18, 1 + (i / COLUMNS) * 18)
                     .setStandardSlotBackground()
                     .addItemStacks(stacks)
@@ -105,17 +106,20 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         }
 
         @Override
-        public void draw(GuiGraphicsExtractor guiGraphics, int xOffset, int yOffset) {
+        public void draw(GuiGraphics guiGraphics, int xOffset, int yOffset) {
             int amount = amountForTier.applyAsInt(shownTier(recipe));
             if (amount == 1) return;
             var font = Minecraft.getInstance().font;
             String text = String.valueOf(amount);
-            guiGraphics.text(font, Component.literal(text), xOffset + 17 - font.width(text), yOffset + 9, 0xFFFFFFFF, true);
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.drawString(font, Component.literal(text), xOffset + 17 - font.width(text), yOffset + 9, 0xFFFFFFFF, true);
+            guiGraphics.pose().popPose();
         }
     }
 
     @Override
-    public void draw(RecipeHolder<GravityCoreRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
+    public void draw(RecipeHolder<GravityCoreRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
         GravityCoreRecipe recipe = holder.value();
         var font = Minecraft.getInstance().font;
 
@@ -123,7 +127,7 @@ public class GravityCoreRecipeCategory implements IRecipeCategory<RecipeHolder<G
         int shownTier = shownTier(recipe);
         Component text = Component.translatable("jei.simpleores.gravity_craft.info",
                 shownTier, recipe.timeFor(shownTier) / 20f);
-        guiGraphics.text(font, text, 1, HEIGHT - 9, 0xFF404040, false);
+        guiGraphics.drawString(font, text, 1, HEIGHT - 9, 0xFF404040, false);
     }
 
     /// Tiers in which the recipe works (e.g. 1, 2, 3, 4 for a tier 1 recipe; only 2 for an upgrade from tier 2).

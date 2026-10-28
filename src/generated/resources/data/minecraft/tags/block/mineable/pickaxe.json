@@ -19,12 +19,16 @@
     "simpleores:obscuridium_block",
     "simpleores:obscurite_block",
     "simpleores:raw_obscuridium_block",
+    "simpleores:bedrock_obscuridium_ore",
     "simpleores:gravity_core_sun",
     "simpleores:gravity_core_red_giant",
     "simpleores:gravity_core_pulsar",
     "simpleores:gravity_core_black_hole",
     "simpleores:magnetar_core",
     "simpleores:stellar_drive",
-    "simpleores:stellar_terminal"
+    "simpleores:stellar_terminal",
+    "simpleores:advanced_stellar_terminal",
+    "simpleores:binary_star",
+    "simpleores:quasar"
   ]
 }

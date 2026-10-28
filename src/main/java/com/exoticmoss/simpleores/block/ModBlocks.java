@@ -1,16 +1,17 @@
 package com.exoticmoss.simpleores.block;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.item.component.DamageResistant;
 import com.exoticmoss.simpleores.gravitycraft.CoreTier;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlock;
-import com.exoticmoss.simpleores.starstorage.MagnetarBlock;
-import com.exoticmoss.simpleores.starstorage.StellarDriveBlock;
-import com.exoticmoss.simpleores.starstorage.StellarTerminalBlock;
+import com.exoticmoss.simpleores.starstorage.terminal.AdvancedTerminalBlock;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlock;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlock;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlock;
+import com.exoticmoss.simpleores.starstorage.drive.StellarDriveBlock;
+import com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlock;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -101,25 +102,35 @@ public class ModBlocks {
 
     //Star storage (Magnetar network)
     public static final DeferredBlock<Block> MAGNETAR_CORE = BLOCKS.registerBlock("magnetar_core", MagnetarBlock::new,
-            () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
+            BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
                     .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> 13));
     public static final DeferredBlock<Block> STELLAR_DRIVE = registerBlockItem("stellar_drive", StellarDriveBlock::new,
-            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
-                    .lightLevel(state -> state.getValue(StellarDriveBlock.CELLS) > 0 ? 6 : 0));
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.GLASS)
+                    .noOcclusion().isViewBlocking((state, level, pos) -> false).isSuffocating((state, level, pos) -> false)
+                    .isRedstoneConductor((state, level, pos) -> false)
+                    .lightLevel(state -> state.getValue(StellarDriveBlock.CELLS) > 0 ? 9 : 0));
     public static final DeferredBlock<Block> STELLAR_TERMINAL = registerBlockItem("stellar_terminal", StellarTerminalBlock::new,
-            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.METAL)
-                    .lightLevel(state -> 7));
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 11));
+    public static final DeferredBlock<Block> ADVANCED_TERMINAL = registerBlockItem("advanced_stellar_terminal", AdvancedTerminalBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 13));
+    public static final DeferredBlock<Block> BINARY_STAR = registerBlockItem("binary_star", BinaryStarBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 11));
+    public static final DeferredBlock<Block> QUASAR = registerBlockItem("quasar", QuasarBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(6f, 3600000f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 15));
 
     static {
         // The Magnetar item can't be destroyed by fire, lava or explosions (like the Gravity Cores)
-        ModItems.ITEMS.registerSimpleBlockItem("magnetar_core", MAGNETAR_CORE, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
-                context -> new DamageResistant(context.getOrThrow(ModBlocks.GRAVITY_CORE_IMMUNE))));
+        ModItems.ITEMS.register("magnetar_core", () -> new ImmuneBlockItem(MAGNETAR_CORE.get(), new net.minecraft.world.item.Item.Properties()));
     }
 
     /// Damage the Gravity Cores dropped as items never take (fire, lava, explosions, lightning, cactus...).
     /// The list is in data/simpleores/tags/damage_type/gravity_core_immune.json
     public static final TagKey<DamageType> GRAVITY_CORE_IMMUNE =
-            TagKey.create(Registries.DAMAGE_TYPE, Identifier.fromNamespaceAndPath(MODID, "gravity_core_immune"));
+            TagKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(MODID, "gravity_core_immune"));
 
     // Creates the block "gravity_core_<tier>" (e.g. gravity_core_sun) and its item.
     // The block can't be blown up (same resistance as bedrock) and the Wither / Ender Dragon can't break it
@@ -127,18 +138,16 @@ public class ModBlocks {
     private static DeferredBlock<Block> registerGravityCore(CoreTier tier) {
         String name = "gravity_core_" + tier.id;
         DeferredBlock<Block> block = BLOCKS.registerBlock(name, properties -> new GravityCoreBlock(tier, properties),
-                () -> BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
+                BlockBehaviour.Properties.of().strength(10f, 3600000f).requiresCorrectToolForDrops()
                         .sound(SoundType.AMETHYST).noOcclusion().lightLevel(state -> tier.light));
-        ModItems.ITEMS.registerSimpleBlockItem(name, block, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,
-                context -> new DamageResistant(context.getOrThrow(GRAVITY_CORE_IMMUNE))));
+        ModItems.ITEMS.register(name, () -> new ImmuneBlockItem(block.get(), new net.minecraft.world.item.Item.Properties()));
         return block;
     }
 
 
-    // The Properties must contain the block ID: registerBlock(...) takes care of that automatically
     public static <T extends Block> DeferredBlock<T> registerBlockItem(String name, Function<BlockBehaviour.Properties, T> block,
                                                                        Supplier<BlockBehaviour.Properties> properties) {
-        DeferredBlock<T> toReturn = BLOCKS.registerBlock(name, block, properties);
+        DeferredBlock<T> toReturn = BLOCKS.registerBlock(name, block, properties.get());
         registerBlockItem(name, toReturn);
         return toReturn;
     }

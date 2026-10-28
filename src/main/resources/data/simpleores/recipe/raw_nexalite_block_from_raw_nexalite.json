@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:raw_nexalite"
+    "#": {
+      "item": "simpleores:raw_nexalite"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:raw_nexalite_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:raw_nexalite_block"
+  }
 }

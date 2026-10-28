@@ -56,6 +56,9 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.NETHER_ANTRACITE_ORE.get());
                     output.accept(ModBlocks.ANTRACITE_BLOCK.get());
                     output.accept(ModBlocks.BEDROCK_OBSCURIDIUM_ORE.get());
+                    output.accept(ModBlocks.RAW_OBSCURIDIUM_BLOCK.get());
+                    output.accept(ModBlocks.OBSCURIDIUM_BLOCK.get());
+                    output.accept(ModBlocks.OBSCURITE_BLOCK.get());
 
                     //GRAVITY CORES//
                     output.accept(ModBlocks.GRAVITY_CORE_SUN.get());
@@ -67,9 +70,28 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.MAGNETAR_CORE.get());
                     output.accept(ModBlocks.STELLAR_DRIVE.get());
                     output.accept(ModBlocks.STELLAR_TERMINAL.get());
+                    output.accept(ModBlocks.ADVANCED_TERMINAL.get());
+                    output.accept(ModBlocks.BINARY_STAR.get());
+                    output.accept(ModBlocks.QUASAR.get());
+                    output.accept(ModItems.RED_DWARF_CELL.get());
                     output.accept(ModItems.WHITE_DWARF_CELL.get());
+                    output.accept(ModItems.BLUE_DWARF_CELL.get());
+                    output.accept(ModItems.PULSAR_CELL.get());
                     output.accept(ModItems.NEUTRON_CELL.get());
+                    output.accept(ModItems.QUARK_CELL.get());
+                    output.accept(ModItems.PREON_CELL.get());
                     output.accept(ModItems.SINGULARITY_CELL.get());
+                    output.accept(ModItems.RED_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.WHITE_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.BLUE_DWARF_FLUID_CELL.get());
+                    output.accept(ModItems.PULSAR_FLUID_CELL.get());
+                    output.accept(ModItems.NEUTRON_FLUID_CELL.get());
+                    output.accept(ModItems.QUARK_FLUID_CELL.get());
+                    output.accept(ModItems.PREON_FLUID_CELL.get());
+                    output.accept(ModItems.SINGULARITY_FLUID_CELL.get());
+                    output.accept(ModItems.SOLAR_WIND_UPGRADE.get());
+                    output.accept(ModItems.MAGNETIC_FIELD_UPGRADE.get());
+                    output.accept(ModItems.WORMHOLE_LINK.get());
 
 
             })

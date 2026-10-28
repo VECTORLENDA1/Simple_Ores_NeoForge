@@ -2,15 +2,20 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "G": "minecraft:glass",
-    "A": "simpleores:astralite",
-    "Q": "minecraft:quartz",
-    "D": "minecraft:diamond"
+    "W": {
+      "item": "simpleores:red_dwarf_cell"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "A": {
+      "item": "simpleores:astralite"
+    }
   },
   "pattern": [
-    "GAG",
-    "QDQ",
-    "GAG"
+    "GGG",
+    "GWG",
+    "WAW"
   ],
   "result": {
     "id": "simpleores:white_dwarf_cell"

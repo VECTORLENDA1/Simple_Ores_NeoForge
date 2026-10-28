@@ -21,9 +21,9 @@ import java.util.List;
 /// @param result what the recipe gives in this core (always 1 item, the real amount is in "count")
 /// @param count  how many items the recipe gives in this core (can be more than a stack, e.g. 128)
 /// @param needs  every ingredient: how many are orbiting and how many the recipe needs
-public record CoreCandidate(ResourceKey<Recipe<?>> id, ItemStack result, int count, List<Need> needs) {
+public record CoreCandidate(ResourceLocation id, ItemStack result, int count, List<Need> needs) {
     public static final Codec<CoreCandidate> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-            ResourceKey.codec(Registries.RECIPE).fieldOf("id").forGetter(CoreCandidate::id),
+            ResourceLocation.CODEC.fieldOf("id").forGetter(CoreCandidate::id),
             ItemStack.CODEC.fieldOf("result").forGetter(CoreCandidate::result),
             Codec.INT.fieldOf("count").forGetter(CoreCandidate::count),
             Need.CODEC.listOf().fieldOf("needs").forGetter(CoreCandidate::needs)
@@ -55,7 +55,7 @@ public record CoreCandidate(ResourceKey<Recipe<?>> id, ItemStack result, int cou
         GravityCoreRecipe recipe = holder.value();
         List<Need> needs = new ArrayList<>();
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
-            ItemStack icon = part.item().items().findFirst().map(item -> new ItemStack(item, 1)).orElse(ItemStack.EMPTY);
+            ItemStack icon = java.util.Arrays.stream(part.item().getItems()).findFirst().map(stack -> stack.copyWithCount(1)).orElse(ItemStack.EMPTY);
             if (icon.isEmpty()) continue; // empty tag: nothing to show
             needs.add(new Need(icon, GravityCoreRecipe.countMatching(part, items), part.countFor(coreTier)));
         }

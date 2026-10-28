@@ -9,14 +9,14 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
-import mezz.jei.api.recipe.types.IRecipeType;
+import mezz.jei.api.recipe.RecipeType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import org.jspecify.annotations.Nullable;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +53,7 @@ public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
     }
 
     @Override
-    public IRecipeType<RecipeHolder<GravityCoreRecipe>> getRecipeType() {
+    public RecipeType<RecipeHolder<GravityCoreRecipe>> getRecipeType() {
         return GravityCoreRecipeCategory.RECIPE_TYPE;
     }
 
@@ -92,7 +92,7 @@ public class GravityCoreTransferHandler<C extends AbstractContainerMenu>
 
         // 3. Everything is OK: when clicked, ask the server to move the items.
         if (doTransfer) {
-            ClientPacketDistributor.sendToServer(new MoveItemsToCore(holder.id(), maxTransfer));
+            PacketDistributor.sendToServer(new MoveItemsToCore(holder.id(), maxTransfer));
         }
         return null;
     }

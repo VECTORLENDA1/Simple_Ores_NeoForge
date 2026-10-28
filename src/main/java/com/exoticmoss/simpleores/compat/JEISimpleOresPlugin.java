@@ -11,15 +11,10 @@ import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeMap;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
-import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,12 +26,9 @@ import java.util.List;
 /// (and also registerGuiHandlers, which uses their screens).
 @JeiPlugin
 public class JEISimpleOresPlugin implements IModPlugin {
-    // The client no longer receives recipes automatically, so we keep the ones the server sends
-    private static RecipeMap syncedRecipes = RecipeMap.EMPTY;
-
     @Override
-    public Identifier getPluginUid() {
-        return Identifier.fromNamespaceAndPath(SimpleOres.MODID, "jei_plugin");
+    public ResourceLocation getPluginUid() {
+        return ResourceLocation.fromNamespaceAndPath(SimpleOres.MODID, "jei_plugin");
     }
 
     @Override
@@ -49,8 +41,8 @@ public class JEISimpleOresPlugin implements IModPlugin {
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         // Given as RecipeHolder (recipe + ID) so JEI can bookmark them
-        List<RecipeHolder<GravityCoreRecipe>> gravityRecipes =
-                new ArrayList<>(syncedRecipes.byType(ModRecipes.GRAVITY_CRAFT_TYPE.get()));
+        List<RecipeHolder<GravityCoreRecipe>> gravityRecipes = Minecraft.getInstance().level == null ? new ArrayList<>()
+                : new ArrayList<>(Minecraft.getInstance().level.getRecipeManager().getAllRecipesFor(ModRecipes.GRAVITY_CRAFT_TYPE.get()));
         registration.addRecipes(GravityCoreRecipeCategory.RECIPE_TYPE, gravityRecipes);
 
     }
@@ -63,6 +55,38 @@ public class JEISimpleOresPlugin implements IModPlugin {
                 new GravityCoreTransferHandler<>(InventoryMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
         registration.addRecipeTransferHandler(
                 new GravityCoreTransferHandler<>(CreativeModeInventoryScreen.ItemPickerMenu.class, helper), GravityCoreRecipeCategory.RECIPE_TYPE);
+        // "+" on crafting table recipes with the Quasar screen open: puts the recipe in its grid
+        registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
+        // "+" on Gravity Core recipes with the Quasar screen open: saves the recipe in the Quasar
+        registration.addRecipeTransferHandler(new QuasarCoreTransferHandler(), GravityCoreRecipeCategory.RECIPE_TYPE);
+        // "+" on furnace recipes with the Quasar screen open: puts the input in the furnace tab
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        // "+" on the recipes of the machines of other mods with the Quasar screen open: puts the recipe in its grid
+        registration.addUniversalRecipeTransferHandler(new QuasarMachineTransferHandler(helper));
+    }
+
+    // The Quasar screen shows recipes in JEI (left-click on a saved recipe or on an item of the JEI list)
+    @Override
+    public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
+        QuasarMachineTransferHandler.runtime = runtime;
+        StarScreenJeiHandler.ingredients = runtime.getIngredientManager();
+        com.exoticmoss.simpleores.starstorage.client.QuasarScreen.showRecipes = stack -> {
+            if (!stack.isEmpty()) runtime.getRecipesGui().show(runtime.getJeiHelpers().getFocusFactory()
+                    .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack));
+        };
+        com.exoticmoss.simpleores.starstorage.client.QuasarScreen.jeiTick = () -> QuasarGhostHandler.tick(runtime);
+        com.exoticmoss.simpleores.starstorage.client.BinaryScreen.jeiTick = () -> BinaryGhostHandler.tick(runtime);
+    }
+
+    // Drag and drop from the JEI list onto the recipe grid of the Quasar
+    @Override
+    public void registerGuiHandlers(mezz.jei.api.registration.IGuiHandlerRegistration registration) {
+        registration.addGhostIngredientHandler(com.exoticmoss.simpleores.starstorage.client.QuasarScreen.class, new QuasarGhostHandler());
+        registration.addGhostIngredientHandler(com.exoticmoss.simpleores.starstorage.client.BinaryScreen.class, new BinaryGhostHandler());
+        // R / U (and the clicks of JEI) on the items drawn by the screens of the star storage
+        registration.addGuiContainerHandler(StarScreenJeiHandler.screen(com.exoticmoss.simpleores.starstorage.client.TerminalScreen.class), new StarScreenJeiHandler());
+        registration.addGuiContainerHandler(StarScreenJeiHandler.screen(com.exoticmoss.simpleores.starstorage.client.QuasarScreen.class), new StarScreenJeiHandler());
+        registration.addGuiContainerHandler(StarScreenJeiHandler.screen(com.exoticmoss.simpleores.starstorage.client.BinaryScreen.class), new StarScreenJeiHandler());
     }
 
     // Shows the recipes when the block is clicked inside JEI
@@ -71,25 +95,10 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addCraftingStation(GravityCoreRecipeCategory.RECIPE_TYPE,
                 ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
                 ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
+        // The Gravity Cores also make every crafting table recipe (of every mod, see VanillaCoreRecipe)
+        registration.addCraftingStation(mezz.jei.api.constants.RecipeTypes.CRAFTING,
+                ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
+                ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get());
 
-    }
-
-    // Server: asks for our recipes to be sent to the players
-    @EventBusSubscriber(modid = SimpleOres.MODID)
-    public static class ServerRecipeSync {
-        @SubscribeEvent
-        public static void onDatapackSync(OnDatapackSyncEvent event) {
-            event.sendRecipes(
-                    ModRecipes.GRAVITY_CRAFT_TYPE.get());
-        }
-    }
-
-    // Client: keeps the recipes received from the server so JEI can use them
-    @EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)
-    public static class ClientRecipeSync {
-        @SubscribeEvent
-        public static void onRecipesReceived(RecipesReceivedEvent event) {
-            syncedRecipes = event.getRecipeMap();
-        }
     }
 }

@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "H": {
+      "item": "minecraft:hopper"
+    },
+    "E": {
+      "item": "minecraft:ender_pearl"
+    },
+    "A": {
+      "item": "simpleores:astralite_block"
+    }
+  },
+  "pattern": [
+    "DAD",
+    "EHE",
+    "DAD"
+  ],
+  "result": {
+    "id": "simpleores:binary_star"
+  }
+}

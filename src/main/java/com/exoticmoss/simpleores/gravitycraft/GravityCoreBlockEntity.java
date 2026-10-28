@@ -28,15 +28,15 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
+import com.exoticmoss.simpleores.util.ValueInput;
+import com.exoticmoss.simpleores.util.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.item.ItemUtil;
-import org.jspecify.annotations.Nullable;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -58,9 +58,11 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private static final String CRAFTED_TAG = "simpleores_gravity_output";
     /// How many times faster the items orbit at the end of a Craft (1 = no speed-up).
     private static final float CRAFT_SPEED_BOOST = 10;
+    /// Instant recipes: at most this many Crafts at once.
+    private static final int MAX_INSTANT_CRAFTS = 64;
     /// Maximum number of candidates sent to the client (the bar scrolls through them).
     public static final int MAX_CANDIDATES = 20;
-    private static final Codec<ResourceKey<Recipe<?>>> RECIPE_KEY_CODEC = ResourceKey.codec(Registries.RECIPE);
+    private static final Codec<ResourceLocation> RECIPE_KEY_CODEC = ResourceLocation.CODEC;
 
     /// Items in orbit.
     private final List<ItemStack> items = new ArrayList<>();
@@ -76,13 +78,17 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Recipe the player picked in the selection bar (or with JEI's "Move Items").
     /// It stays picked while there are items in orbit; when the orbit is empty it is cleared.
     @Nullable
-    private ResourceKey<Recipe<?>> target = null;
+    private ResourceLocation target = null;
     /// Recipe being crafted right now. null = not crafting.
     @Nullable
-    private ResourceKey<Recipe<?>> crafting = null;
+    private ResourceLocation crafting = null;
     /// Recipes the orbiting items can still become, best first. Shown in the selection bar.
     /// When a target is picked, this only has the target.
     private final List<CoreCandidate> candidates = new ArrayList<>();
+    /// Auto-craft: the result goes to the network of the Magnetar whose field reaches this position (see
+    /// insertFromNetwork). null = the result goes to the player / the inventory below, as always.
+    @Nullable
+    private BlockPos networkPos = null;
     /// Server: the candidates must be worked out again (e.g. after the world is loaded).
     private boolean candidatesOutdated = true;
 
@@ -114,7 +120,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     }
 
     /// Recipe picked by the player. null = none picked.
-    public @Nullable ResourceKey<Recipe<?>> getTarget() {
+    public @Nullable ResourceLocation getTarget() {
         return target;
     }
 
@@ -201,7 +207,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
         boolean refusedSomething = false;
 
         for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area)) {
-            if (entity.entityTags().contains(CRAFTED_TAG)) continue;
+            if (entity.getTags().contains(CRAFTED_TAG)) continue;
             Player thrower = entity.getOwner() instanceof Player player ? player : null;
 
             // An item that doesn't fit the picked recipe (or any recipe together with the orbiting
@@ -272,9 +278,67 @@ public class GravityCoreBlockEntity extends BlockEntity {
         return leftovers;
     }
 
+    /// True if the core is doing nothing (no items in orbit, not crafting): the auto-craft can use it.
+    public boolean isFree() {
+        return craftTotal == 0 && items.isEmpty() && upgradeTarget == null;
+    }
+
+    /// Auto-craft (Quasar): puts the ingredients in the orbit and picks the recipe; the result goes to the
+    /// network of "networkPos". Returns whatever didn't fit.
+    public List<ItemStack> insertFromNetwork(List<ItemStack> stacks, RecipeHolder<GravityCoreRecipe> recipe, BlockPos networkPos) {
+        List<ItemStack> leftovers = new ArrayList<>();
+        for (ItemStack stack : stacks) {
+            addToOrbit(stack);
+            if (!stack.isEmpty()) leftovers.add(stack);
+        }
+        owner = null;
+        target = recipe.id();
+        this.networkPos = networkPos.immutable();
+        level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.6f);
+        onItemsChanged();
+        return leftovers;
+    }
+
+    /// Auto-craft: true if the core is making this recipe for the network of "networkPos" (more sets can be added).
+    public boolean isMaking(ResourceLocation recipe, BlockPos networkPos) {
+        return upgradeTarget == null && owner == null && recipe.equals(target) && networkPos.equals(this.networkPos);
+    }
+
+    /// Auto-craft: true if the core still has items (or is crafting) for the network of "networkPos".
+    public boolean isWorkingFor(BlockPos networkPos) {
+        return networkPos.equals(this.networkPos) && (isBusy() || !items.isEmpty());
+    }
+
+    /// Auto-craft: how many sets of these items (up to "limit") fit in the orbit now.
+    public int setsThatFit(List<ItemStack> set, int limit) {
+        // Tries one set more each time, with copies of the orbit (like addToOrbit)
+        List<ItemStack> orbit = new ArrayList<>();
+        for (ItemStack inOrbit : items) orbit.add(inOrbit.copy());
+        int sets = 0;
+        while (sets < limit) {
+            for (ItemStack one : set) {
+                ItemStack stack = one.copy();
+                for (ItemStack inOrbit : orbit) {
+                    if (stack.isEmpty()) break;
+                    if (ItemStack.isSameItemSameComponents(inOrbit, stack)) {
+                        int moved = Math.min(inOrbit.getMaxStackSize() - inOrbit.getCount(), stack.getCount());
+                        inOrbit.grow(moved);
+                        stack.shrink(moved);
+                    }
+                }
+                while (!stack.isEmpty() && orbit.size() < getTier().maxItems) {
+                    orbit.add(stack.split(stack.getMaxStackSize()));
+                }
+                if (!stack.isEmpty()) return sets;
+            }
+            sets++;
+        }
+        return sets;
+    }
+
     /// Called when a player clicks a recipe in the selection bar (see SelectCoreRecipe).
     /// recipe = null means "unpick" (clicking the recipe that is already picked).
-    public void selectRecipe(Player player, @Nullable ResourceKey<Recipe<?>> recipe) {
+    public void selectRecipe(Player player, @Nullable ResourceLocation recipe) {
         if (recipe == null) {
             target = null;
         } else {
@@ -314,7 +378,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private List<RecipeHolder<GravityCoreRecipe>> allRecipes() {
         if (!(level instanceof ServerLevel serverLevel)) return List.of();
         List<RecipeHolder<GravityCoreRecipe>> recipes = new ArrayList<>();
-        for (RecipeHolder<?> holder : serverLevel.recipeAccess().getRecipes()) {
+        for (RecipeHolder<?> holder : serverLevel.getRecipeManager().getRecipes()) {
             if (holder.value() instanceof GravityCoreRecipe) recipes.add((RecipeHolder<GravityCoreRecipe>) holder);
         }
         recipes.addAll(VanillaCoreRecipe.all(serverLevel));
@@ -323,11 +387,11 @@ public class GravityCoreBlockEntity extends BlockEntity {
 
     /// Finds a recipe the core can make by its ID (Gravity Core or vanilla). Empty if it doesn't exist (anymore).
     @SuppressWarnings("unchecked")
-    private Optional<RecipeHolder<GravityCoreRecipe>> findByKey(ResourceKey<Recipe<?>> key) {
+    private Optional<RecipeHolder<GravityCoreRecipe>> findByKey(ResourceLocation key) {
         if (!(level instanceof ServerLevel serverLevel)) return Optional.empty();
         Optional<RecipeHolder<GravityCoreRecipe>> vanilla = VanillaCoreRecipe.find(serverLevel, key);
         if (vanilla.isPresent()) return vanilla;
-        return serverLevel.recipeAccess().byKey(key)
+        return serverLevel.getRecipeManager().byKey(key)
                 .filter(holder -> holder.value() instanceof GravityCoreRecipe)
                 .map(holder -> (RecipeHolder<GravityCoreRecipe>) (RecipeHolder<?>) holder);
     }
@@ -403,7 +467,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     private void tryStartCraft() {
         if (isBusy() || items.isEmpty()) return;
 
-        ResourceKey<Recipe<?>> key = target;
+        ResourceLocation key = target;
         if (key == null && candidates.size() == 1 && candidates.get(0).complete()) {
             key = candidates.get(0).id();
         }
@@ -422,7 +486,7 @@ public class GravityCoreBlockEntity extends BlockEntity {
     }
 
     private void finishCraft() {
-        ResourceKey<Recipe<?>> key = crafting;
+        ResourceLocation key = crafting;
         crafting = null;
         craftTime = 0;
         craftTotal = 0;
@@ -431,34 +495,64 @@ public class GravityCoreBlockEntity extends BlockEntity {
         // Check the recipe again (items may have been taken out in the meantime)
         Optional<RecipeHolder<GravityCoreRecipe>> recipe = key == null ? Optional.empty() : findByKey(key).filter(this::canCraft);
         if (recipe.isPresent()) {
-            List<ItemStack> used = consume(recipe.get().value());
-            // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
-            ItemStack result = recipe.get().value().createResult(getTier().level);
-            // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
-            // the enchantments, the used durability, the name and the settings of the old one
-            keepToolData(used, result);
+            // Instant recipes (no time in this tier, like in the Black Hole) make every set in the orbit at once
+            boolean instant = recipe.get().value().getUpgradeTier() == null && recipe.get().value().timeFor(getTier().level) <= 0;
+            int times = 0;
+            do {
+                List<ItemStack> used = consume(recipe.get().value());
+                // The amount can depend on the tier of this core ("count_per_tier" in the recipe)
+                ItemStack result = recipe.get().value().createResult(getTier().level);
+                // Upgrading a tool (e.g. Simple Pickaxe -> Advance Pickaxe): the new tool keeps
+                // the enchantments, the used durability, the name and the settings of the old one
+                keepToolData(used, result);
+                keepCellContents(used, result);
 
-            if (recipe.get().value().getUpgradeTier() != null) {
-                finishUpgrade(result);
-                return; // the block no longer exists
-            }
-            // Cooking (ores, raw ores, food...) gives the furnace's experience for every item made
-            if (level instanceof ServerLevel serverLevel) giveExperience(serverLevel, CookingExperience.of(serverLevel, used, result));
-            // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
-            while (!result.isEmpty()) {
-                deliver(result.split(result.getMaxStackSize()));
-            }
-            // Vanilla recipes give back what stays in the crafting table (e.g. empty buckets)
-            if (recipe.get().value() instanceof VanillaCoreRecipe vanilla) {
-                for (ItemStack remainder : vanilla.remainders(used)) {
-                    deliver(remainder);
+                if (recipe.get().value().getUpgradeTier() != null) {
+                    finishUpgrade(result);
+                    return; // the block no longer exists
                 }
-            }
+                // Cooking (ores, raw ores, food...) gives the furnace's experience for every item made
+                if (level instanceof ServerLevel serverLevel) giveExperience(serverLevel, CookingExperience.of(serverLevel, used, result));
+                // Deliver in normal stacks (e.g. 128 items = 2 stacks of 64)
+                while (!result.isEmpty()) {
+                    deliver(result.split(result.getMaxStackSize()));
+                }
+                // Vanilla recipes give back what stays in the crafting table (e.g. empty buckets)
+                if (recipe.get().value() instanceof VanillaCoreRecipe vanilla) {
+                    for (ItemStack remainder : vanilla.remainders(used)) {
+                        deliver(remainder);
+                    }
+                }
+                times++;
+            } while (instant && times < MAX_INSTANT_CRAFTS && canCraft(recipe.get()));
             flash();
         }
 
+        // The auto-craft is over when nothing is left in the orbit (all the results went to the network)
+        if (items.isEmpty()) networkPos = null;
         // If there are still enough items for the same recipe, the next Craft starts right away
         onItemsChanged();
+    }
+
+    /// Making a bigger Star Cell (or Fluid Cell) from smaller ones: the items (or liquids) of all of them go to the new cell.
+    private static void keepCellContents(List<ItemStack> used, ItemStack result) {
+        if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.cell.StarCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.cell.CellContents.EMPTY;
+            for (ItemStack old : used) {
+                var items = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get());
+                if (items == null) continue;
+                for (var entry : items.entries()) merged = merged.plus(entry.create(1), entry.count());
+            }
+            if (!merged.isEmpty()) result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.CELL_CONTENTS.get(), merged);
+        } else if (result.getItem() instanceof com.exoticmoss.simpleores.starstorage.cell.FluidCellItem) {
+            var merged = com.exoticmoss.simpleores.starstorage.cell.FluidContents.EMPTY;
+            for (ItemStack old : used) {
+                var fluids = old.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get());
+                if (fluids == null) continue;
+                for (var entry : fluids.entries()) merged = merged.plus(entry.fluid(), entry.amount());
+            }
+            if (!merged.isEmpty()) result.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.FLUID_CONTENTS.get(), merged);
+        }
     }
 
     /// When the result is a tool and one of the ingredients is a tool too, the result keeps the
@@ -548,15 +642,28 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// Player -> goes to the player's inventory (if it's full, it drops in front of the player).
     /// Machine -> goes to the inventory under the core (hopper, chest...) or pops out on top of the core.
     private void deliver(ItemStack result) {
+        // Auto-craft: to the network (what doesn't fit pops out of the core)
+        if (networkPos != null) {
+            if (level instanceof ServerLevel serverLevel) {
+                // The results a job waits for go to its storage (see Autocraft.Job)
+                result = com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.deliver(serverLevel, networkPos, result.copy());
+            }
+            result = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, networkPos).insert(result);
+            if (!result.isEmpty()) {
+                Vec3 c = center();
+                spawnItem(result, new Vec3(c.x, c.y + getTier().coreSize / 2, c.z));
+            }
+            return;
+        }
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
             giveToPlayer(player, result);
             return;
         }
 
-        ResourceHandler<ItemResource> below = level.getCapability(Capabilities.Item.BLOCK, worldPosition.below(), Direction.UP);
+        IItemHandler below = level.getCapability(Capabilities.ItemHandler.BLOCK, worldPosition.below(), Direction.UP);
         if (below != null) {
-            result = ItemUtil.insertItemReturnRemaining(below, result, false, null);
+            result = ItemHandlerHelper.insertItemStacked(below, result, false);
         }
         if (!result.isEmpty()) {
             Vec3 c = center();
@@ -568,6 +675,14 @@ public class GravityCoreBlockEntity extends BlockEntity {
     /// it comes out of the core as experience orbs.
     private void giveExperience(ServerLevel serverLevel, int amount) {
         if (amount <= 0) return;
+        // Auto-craft: the experience is kept by the Magnetar of the network (taken in the Stellar Terminal)
+        if (networkPos != null) {
+            var magnetar = com.exoticmoss.simpleores.starstorage.network.StarNetwork.findMagnetar(level, networkPos);
+            if (magnetar != null) {
+                magnetar.addExperience(amount);
+                return;
+            }
+        }
         Player player = owner == null ? null : level.getPlayerByUUID(owner);
         if (player != null) {
             player.giveExperiencePoints(amount);
@@ -616,10 +731,8 @@ public class GravityCoreBlockEntity extends BlockEntity {
         onItemsChanged(); // also clears the picked recipe and the selection bar
     }
 
-    /// When the block is broken, the orbiting items drop on the ground.
-    @Override
-    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-        super.preRemoveSideEffects(pos, state);
+    /// When the block is broken, the orbiting items drop on the ground (called by GravityCoreBlock.onRemove).
+    public void dropOrbit() {
         for (ItemStack stack : items) {
             spawnItem(stack, center());
         }
@@ -635,10 +748,12 @@ public class GravityCoreBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ValueOutput output = new ValueOutput(tag, registries);
         output.store("items", ItemStack.CODEC.listOf(), items);
         output.storeNullable("owner", UUIDUtil.CODEC, owner);
+        output.storeNullable("network_pos", BlockPos.CODEC, networkPos);
         output.putInt("craft_time", craftTime);
         output.putInt("craft_total", craftTotal);
         output.storeNullable("upgrade_target", CoreTier.CODEC, upgradeTarget);
@@ -648,11 +763,13 @@ public class GravityCoreBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        ValueInput input = new ValueInput(tag, registries);
         items.clear();
         items.addAll(input.read("items", ItemStack.CODEC.listOf()).orElse(List.of()));
         owner = input.read("owner", UUIDUtil.CODEC).orElse(null);
+        networkPos = input.read("network_pos", BlockPos.CODEC).orElse(null);
         craftTime = input.getIntOr("craft_time", 0);
         craftTotal = input.getIntOr("craft_total", 0);
         upgradeTarget = input.read("upgrade_target", CoreTier.CODEC).orElse(null);

@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:obscurite"
+    "#": {
+      "item": "simpleores:obscurite"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:obscurite_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:obscurite_block"
+  }
 }

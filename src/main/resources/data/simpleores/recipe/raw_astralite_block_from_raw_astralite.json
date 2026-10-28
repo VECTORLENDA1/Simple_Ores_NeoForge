@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:raw_astralite"
+    "#": {
+      "item": "simpleores:raw_astralite"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:raw_astralite_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:raw_astralite_block"
+  }
 }

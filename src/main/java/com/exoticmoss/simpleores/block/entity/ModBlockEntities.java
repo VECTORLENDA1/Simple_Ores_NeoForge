@@ -2,8 +2,12 @@ package com.exoticmoss.simpleores.block.entity;
 
 import com.exoticmoss.simpleores.block.ModBlocks;
 import com.exoticmoss.simpleores.gravitycraft.GravityCoreBlockEntity;
-import com.exoticmoss.simpleores.starstorage.MagnetarBlockEntity;
-import com.exoticmoss.simpleores.starstorage.StellarDriveBlockEntity;
+import com.exoticmoss.simpleores.starstorage.terminal.AdvancedTerminalBlockEntity;
+import com.exoticmoss.simpleores.starstorage.binary.BinaryStarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.drive.StellarDriveBlockEntity;
+import com.exoticmoss.simpleores.starstorage.terminal.StellarTerminalBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -17,16 +21,26 @@ public class ModBlockEntities {
 
     // A single block entity for the 4 cores
     public static final Supplier<BlockEntityType<GravityCoreBlockEntity>> GRAVITY_CORE_BE =
-            BLOCK_ENTITIES.register("gravity_core_be", () -> new BlockEntityType<>(
-                    GravityCoreBlockEntity::new,
-                    ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
-                    ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get()));
+            BLOCK_ENTITIES.register("gravity_core_be", () -> BlockEntityType.Builder.of(GravityCoreBlockEntity::new, ModBlocks.GRAVITY_CORE_SUN.get(), ModBlocks.GRAVITY_CORE_RED_GIANT.get(),
+                    ModBlocks.GRAVITY_CORE_PULSAR.get(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get()).build(null));
 
     public static final Supplier<BlockEntityType<MagnetarBlockEntity>> MAGNETAR_BE =
-            BLOCK_ENTITIES.register("magnetar_be", () -> new BlockEntityType<>(MagnetarBlockEntity::new, ModBlocks.MAGNETAR_CORE.get()));
+            BLOCK_ENTITIES.register("magnetar_be", () -> BlockEntityType.Builder.of(MagnetarBlockEntity::new, ModBlocks.MAGNETAR_CORE.get()).build(null));
 
     public static final Supplier<BlockEntityType<StellarDriveBlockEntity>> STELLAR_DRIVE_BE =
-            BLOCK_ENTITIES.register("stellar_drive_be", () -> new BlockEntityType<>(StellarDriveBlockEntity::new, ModBlocks.STELLAR_DRIVE.get()));
+            BLOCK_ENTITIES.register("stellar_drive_be", () -> BlockEntityType.Builder.of(StellarDriveBlockEntity::new, ModBlocks.STELLAR_DRIVE.get()).build(null));
+
+    public static final Supplier<BlockEntityType<StellarTerminalBlockEntity>> STELLAR_TERMINAL_BE =
+            BLOCK_ENTITIES.register("stellar_terminal_be", () -> BlockEntityType.Builder.of(StellarTerminalBlockEntity::new, ModBlocks.STELLAR_TERMINAL.get()).build(null));
+
+    public static final Supplier<BlockEntityType<AdvancedTerminalBlockEntity>> ADVANCED_TERMINAL_BE =
+            BLOCK_ENTITIES.register("advanced_terminal_be", () -> BlockEntityType.Builder.of(AdvancedTerminalBlockEntity::new, ModBlocks.ADVANCED_TERMINAL.get()).build(null));
+
+    public static final Supplier<BlockEntityType<BinaryStarBlockEntity>> BINARY_STAR_BE =
+            BLOCK_ENTITIES.register("binary_star_be", () -> BlockEntityType.Builder.of(BinaryStarBlockEntity::new, ModBlocks.BINARY_STAR.get()).build(null));
+
+    public static final Supplier<BlockEntityType<QuasarBlockEntity>> QUASAR_BE =
+            BLOCK_ENTITIES.register("quasar_be", () -> BlockEntityType.Builder.of(QuasarBlockEntity::new, ModBlocks.QUASAR.get()).build(null));
 
 
     public static void register(IEventBus eventBus) {

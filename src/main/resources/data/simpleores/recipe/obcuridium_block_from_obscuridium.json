@@ -1,16 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
-  "category": "misc" ,
+  "category": "misc",
   "key": {
-    "#": "simpleores:obscuridium"
+    "#": {
+      "item": "simpleores:obscuridium"
+    }
   },
   "pattern": [
     "###",
     "###",
     "###"
-    ],
-      "result": {
-        "count": 1,
-        "id": "simpleores:obscuridium_block"
-      }
+  ],
+  "result": {
+    "count": 1,
+    "id": "simpleores:obscuridium_block"
+  }
 }

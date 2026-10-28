@@ -2,7 +2,9 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    "simpleores:obscurite_block"
+    {
+      "item": "simpleores:obscurite_block"
+    }
   ],
   "result": {
     "count": 9,

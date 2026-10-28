@@ -2,7 +2,7 @@ package com.exoticmoss.simpleores.item.custom;
 
 import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.item.ModItems;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -18,7 +18,7 @@ public class WitherReaperEvents {
     @SubscribeEvent
     public static void onLivingDrops(LivingDropsEvent event) {
         LivingEntity entity = event.getEntity();
-        if (!entity.is(EntityTypes.WITHER_SKELETON)) return;
+        if (entity.getType() != EntityType.WITHER_SKELETON) return;
         if (!(event.getSource().getEntity() instanceof Player player)) return;
         if (!player.getMainHandItem().is(ModItems.WITHER_REAPER.get())) return;
 

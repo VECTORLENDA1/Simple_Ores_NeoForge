@@ -5,32 +5,35 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.exoticmoss.simpleores.SimpleOres;
 import com.exoticmoss.simpleores.screen.CoreSelectionBar;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.Minecraft;
+import com.exoticmoss.simpleores.util.render.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
-import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
-import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.item.ItemModelResolver;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
+import com.exoticmoss.simpleores.util.render.BlockEntityRenderState;
+
+import com.exoticmoss.simpleores.util.render.ItemModelResolver;
+import com.exoticmoss.simpleores.util.render.ItemStackRenderState;
+import net.minecraft.client.renderer.RenderType;
+import com.exoticmoss.simpleores.util.render.RenderTypes;
+import com.exoticmoss.simpleores.util.render.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
+import net.minecraft.resources.ResourceLocation;
+import com.exoticmoss.simpleores.util.render.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /// Draws a placed Gravity Core: the star (see CoreDrawing), the items orbiting around it
 /// and the selection bar with the possible recipes (see CoreSelectionBar).
-public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlockEntity, GravityCoreRenderer.State> {
+public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlockEntity> {
     /// How tilted (in degrees) the orbit of the items is.
     private static final float ORBIT_TILT = 12;
     /// Length of the Pulsar light beams, in blocks.
@@ -38,7 +41,7 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
 
     /// Selection bar: plain white texture (the colors are below), always fully lit.
     private static final RenderType BAR_TYPE = RenderTypes.entityTranslucentEmissive(
-            Identifier.fromNamespaceAndPath(SimpleOres.MODID, "textures/entity/gravity_core.png"));
+            ResourceLocation.fromNamespaceAndPath(SimpleOres.MODID, "textures/entity/gravity_core.png"));
     /// Colors of the selection bar (0xAARRGGBB).
     private static final int BAR_BACKGROUND = 0xD008080C;
     private static final int SLOT_MISSING = 0xA0404050;   // recipe still missing items
@@ -46,6 +49,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     private static final int SLOT_PICKED = 0xC0E09018;    // the recipe the player picked
     private static final int SLOT_HOVERED = 0xFFFFFFFF;   // border of the slot the player is looking at
     private static final int BAR_DOTS = 0xE0FFFFFF;       // "..." = more recipes (mouse wheel)
+    /// Light shell around the sphere while the player looks at it.
+    private static final int LOOKED_COLOR = 0x14FFFFFF;
     /// Size of the items inside the slots.
     private static final float BAR_ITEM_SCALE = 0.36f;
 
@@ -72,26 +77,34 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         boolean barMoreLeft;
         boolean barMoreRight;
         float barHeight;
+        /// The player is looking at the core.
+        boolean looked;
     }
 
     private final ItemModelResolver itemModelResolver;
 
     public GravityCoreRenderer(BlockEntityRendererProvider.Context context) {
-        this.itemModelResolver = context.itemModelResolver();
+        this.itemModelResolver = new ItemModelResolver();
     }
 
+    /// First reads what to draw from the core, then draws it.
     @Override
-    public State createRenderState() {
-        return new State();
+    public void render(GravityCoreBlockEntity core, float partialTick, PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers,
+                       int light, int overlay) {
+        Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        State state = new State();
+        state.blockPos = core.getBlockPos();
+        state.lightCoords = light;
+        extractRenderState(core, state, partialTick, cameraPos);
+        submit(state, pose, new SubmitNodeCollector(buffers), new CameraRenderState(cameraPos));
     }
 
-    @Override
-    public void extractRenderState(GravityCoreBlockEntity core, State state, float partialTick, Vec3 cameraPos,
-                                   ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
-        BlockEntityRenderer.super.extractRenderState(core, state, partialTick, cameraPos, breakProgress);
+    private void extractRenderState(GravityCoreBlockEntity core, State state, float partialTick, Vec3 cameraPos) {
         state.time = (core.getLevel().getGameTime() % 100000) + partialTick;
         state.progress = core.getCraftProgress(partialTick);
         state.orbitAngle = core.getOrbitAngle(partialTick);
+        state.looked = Minecraft.getInstance().hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK
+                && hit.getBlockPos().equals(core.getBlockPos());
 
         /// During an upgrade the core slowly turns into the next tier: "blend" goes from 0 (old) to 1 (new).
         /// When not upgrading, "from" and "to" are the same tier, so nothing changes.
@@ -137,14 +150,13 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         }
     }
 
-    @Override
-    public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
+    private void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
         float time = state.time;
         float radius = state.radius * (1 + 0.03f * Mth.sin(time * 0.15f)); // the sphere slowly "breathes"
 
         /// Direction from the sphere to the camera: the parts of the sphere facing the camera are brighter
         Vec3 center = new Vec3(state.blockPos.getX() + 0.5, state.blockPos.getY() + state.radius, state.blockPos.getZ() + 0.5);
-        Vec3 toCamera = camera.pos.subtract(center).normalize();
+        Vec3 toCamera = camera.pos().subtract(center).normalize();
         CoreDrawing.Shading shading = (p, x, y, z) -> (float) (x * toCamera.x + y * toCamera.y + z * toCamera.z);
 
         pose.pushPose();
@@ -153,6 +165,8 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         /// ---- The star (sphere, glow, disk, beams)
         CoreDrawing.drawStar(pose, collector, radius, time, state.coreColor, state.spotColor, state.glowColor,
                 state.diskColor, state.beamColor, BEAM_LENGTH, shading);
+        // Looked at: a light shell around the sphere (instead of the box outline)
+        if (state.looked) CoreDrawing.drawShell(pose, collector, radius * 1.18f, LOOKED_COLOR);
 
         /// ---- Orbiting items, on a slightly tilted ring.
         /// During a collapse they spiral into the center (the speed is handled in GravityCoreBlockEntity).
@@ -185,9 +199,9 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
     private void drawBar(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
         Vec3 barCenter = new Vec3(state.blockPos.getX() + 0.5, state.blockPos.getY() + state.barHeight, state.blockPos.getZ() + 0.5);
         // Fades out with the distance (see CoreSelectionBar.FADE_START / FADE_END)
-        float fade = CoreSelectionBar.visibility(camera.pos.distanceTo(barCenter));
+        float fade = CoreSelectionBar.visibility(camera.pos().distanceTo(barCenter));
         if (fade <= 0) return;
-        float yaw = CoreSelectionBar.yawTowards(barCenter, camera.pos);
+        float yaw = CoreSelectionBar.yawTowards(barCenter, camera.pos());
         int count = state.barItems.size();
         float half = CoreSelectionBar.SLOT / 2;
         float width = CoreSelectionBar.barWidth(count);

@@ -4,7 +4,9 @@
   "cookingtime": 100,
   "experience": 0.7,
   "group": "ignithra",
-  "ingredient": "simpleores:ignithra_ore",
+  "ingredient": {
+    "item": "simpleores:ignithra_ore"
+  },
   "result": {
     "id": "simpleores:ignithra"
   }

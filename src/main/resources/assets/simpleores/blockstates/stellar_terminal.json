@@ -1,19 +1,7 @@
 {
   "variants": {
-    "facing=north": {
+    "": {
       "model": "simpleores:block/stellar_terminal"
-    },
-    "facing=east": {
-      "model": "simpleores:block/stellar_terminal",
-      "y": 90
-    },
-    "facing=south": {
-      "model": "simpleores:block/stellar_terminal",
-      "y": 180
-    },
-    "facing=west": {
-      "model": "simpleores:block/stellar_terminal",
-      "y": 270
     }
   }
 }

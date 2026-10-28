@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "A": {
+      "item": "simpleores:astralite"
+    },
+    "R": {
+      "item": "simpleores:nexalite_block"
+    }
+  },
+  "pattern": [
+    "AGA",
+    "GRG",
+    "AGA"
+  ],
+  "result": {
+    "id": "simpleores:magnetar_core"
+  }
+}

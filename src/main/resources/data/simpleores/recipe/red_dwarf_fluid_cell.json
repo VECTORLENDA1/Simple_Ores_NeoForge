@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:bucket"
+    },
+    "A": {
+      "item": "simpleores:nexalite"
+    },
+    "R": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "pattern": [
+    "ABA",
+    "BRB",
+    "ABA"
+  ],
+  "result": {
+    "id": "simpleores:red_dwarf_fluid_cell"
+  }
+}

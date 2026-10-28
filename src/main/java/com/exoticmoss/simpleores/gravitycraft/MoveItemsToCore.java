@@ -7,7 +7,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -15,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.Optional;
 ///     (no need to choose it in the selection bar).
 ///
 /// Shift + click moves as many sets of ingredients as the player has (up to MAX_SETS).
-public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) implements CustomPacketPayload {
+public record MoveItemsToCore(ResourceLocation recipeId, boolean moveAll) implements CustomPacketPayload {
     /// How far (in blocks) the player can be from the core.
     public static final int RANGE = 4;
     /// Maximum number of ingredient sets moved with shift + click.
@@ -40,9 +40,9 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
 
     // How the message is identified and sent over the network
     public static final Type<MoveItemsToCore> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SimpleOres.MODID, "move_items_to_core"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(SimpleOres.MODID, "move_items_to_core"));
     public static final StreamCodec<RegistryFriendlyByteBuf, MoveItemsToCore> STREAM_CODEC = StreamCodec.composite(
-            ResourceKey.streamCodec(Registries.RECIPE), MoveItemsToCore::recipeId,
+            ResourceLocation.STREAM_CODEC, MoveItemsToCore::recipeId,
             ByteBufCodecs.BOOL, MoveItemsToCore::moveAll,
             MoveItemsToCore::new);
 
@@ -58,7 +58,7 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
         Player player = context.player();
         if (!(player.level() instanceof ServerLevel level)) return;
 
-        Optional<RecipeHolder<?>> holder = level.recipeAccess().byKey(message.recipeId());
+        Optional<RecipeHolder<?>> holder = level.getRecipeManager().byKey(message.recipeId());
         if (holder.isEmpty() || !(holder.get().value() instanceof GravityCoreRecipe recipe)) return;
 
         GravityCoreBlockEntity core = findCore(player, recipe);
@@ -98,7 +98,7 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
     /// How many items of this ingredient the player has (armor and offhand are not counted).
     public static int countInInventory(Player player, GravityCoreRecipe.Part part) {
         int count = 0;
-        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+        for (ItemStack stack : player.getInventory().items) {
             if (part.item().test(stack)) count += stack.getCount();
         }
         return count;
@@ -121,7 +121,7 @@ public record MoveItemsToCore(ResourceKey<Recipe<?>> recipeId, boolean moveAll) 
         List<ItemStack> taken = new ArrayList<>();
         for (GravityCoreRecipe.Part part : recipe.getParts()) {
             int missing = part.countFor(coreTier) * sets;
-            for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+            for (ItemStack stack : player.getInventory().items) {
                 if (missing <= 0) break;
                 if (part.item().test(stack)) {
                     ItemStack piece = stack.split(Math.min(missing, stack.getCount()));

@@ -16,8 +16,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import org.jspecify.annotations.Nullable;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -145,7 +145,7 @@ public class CoreSelectionBar {
         int oldSlot = hoveredSlot;
         hoveredCore = null;
         hoveredSlot = -1;
-        if (mc.player == null || mc.level == null || mc.gui.screen() != null) return;
+        if (mc.player == null || mc.level == null || mc.screen != null) return;
 
         Vec3 eye = mc.player.getEyePosition();
         Vec3 look = mc.player.getViewVector(1);
@@ -176,7 +176,7 @@ public class CoreSelectionBar {
             if (candidate != null) {
                 GravityCoreBlockEntity core = (GravityCoreBlockEntity) mc.level.getBlockEntity(hoveredCore);
                 boolean picked = core != null && candidate.id().equals(core.getTarget());
-                mc.player.sendOverlayMessage(describe(candidate, picked));
+                mc.player.displayClientMessage(describe(candidate, picked), true);
             }
         }
     }
@@ -199,7 +199,7 @@ public class CoreSelectionBar {
         if (held) return; // the button is being held down
 
         boolean picked = candidate.id().equals(core.getTarget());
-        ClientPacketDistributor.sendToServer(new SelectCoreRecipe(hoveredCore, picked ? Optional.empty() : Optional.of(candidate.id())));
+        PacketDistributor.sendToServer(new SelectCoreRecipe(hoveredCore, picked ? Optional.empty() : Optional.of(candidate.id())));
         textTimer = 10; // refresh the text on the next tick
     }
 

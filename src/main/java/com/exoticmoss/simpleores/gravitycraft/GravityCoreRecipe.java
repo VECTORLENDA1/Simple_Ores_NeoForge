@@ -9,17 +9,14 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.exoticmoss.simpleores.util.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.PlacementInfo;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeBookCategories;
-import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -62,10 +59,22 @@ import java.util.List;
 ///
 public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
 
+    /// An ingredient written as "namespace:item" or "#namespace:tag" (also the normal {"item": ...} / {"tag": ...}).
+    public static final Codec<Ingredient> INGREDIENT_CODEC = com.mojang.serialization.Codec.either(Codec.STRING, Ingredient.CODEC)
+            .xmap(either -> either.map(GravityCoreRecipe::parseIngredient, ingredient -> ingredient), com.mojang.datafixers.util.Either::right);
+
+    private static Ingredient parseIngredient(String text) {
+        if (text.startsWith("#")) {
+            return Ingredient.of(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+                    net.minecraft.resources.ResourceLocation.parse(text.substring(1))));
+        }
+        return Ingredient.of(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(text)));
+    }
+
     /// One ingredient with an amount (e.g. 4x raw_ignithra).
     public record Part(Ingredient item, int count, List<Integer> countPerTier) {
         public static final Codec<Part> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-                Ingredient.CODEC.fieldOf("item").forGetter(Part::item),
+                INGREDIENT_CODEC.fieldOf("item").forGetter(Part::item),
                 Codec.INT.optionalFieldOf("count", 1).forGetter(Part::count),
                 Codec.INT.listOf().optionalFieldOf("count_per_tier", List.of()).forGetter(Part::countPerTier)
         ).apply(inst, Part::new));
@@ -213,8 +222,18 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
     }
 
     @Override
-    public ItemStack assemble(Input input) {
+    public ItemStack assemble(Input input, net.minecraft.core.HolderLookup.Provider registries) {
         return createResult(input.tier());
+    }
+
+    @Override
+    public boolean canCraftInDimensions(int width, int height) {
+        return true;
+    }
+
+    @Override
+    public ItemStack getResultItem(net.minecraft.core.HolderLookup.Provider registries) {
+        return result.create();
     }
 
     /// Gravity Core recipes don't show up in the vanilla recipe book
@@ -229,18 +248,8 @@ public class GravityCoreRecipe implements Recipe<GravityCoreRecipe.Input> {
     }
 
     @Override
-    public String group() {
+    public String getGroup() {
         return "";
-    }
-
-    @Override
-    public PlacementInfo placementInfo() {
-        return PlacementInfo.NOT_PLACEABLE;
-    }
-
-    @Override
-    public RecipeBookCategory recipeBookCategory() {
-        return RecipeBookCategories.CRAFTING_MISC;
     }
 
     @Override

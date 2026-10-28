@@ -40,6 +40,8 @@
   "screen.simpleores.binary.take_all": "Tirar tudo",
   "screen.simpleores.binary.clear": "Limpar",
   "screen.simpleores.binary.empty": "Vazio",
+  "screen.simpleores.binary.linked_title": "Receitas desta máquina:",
+  "screen.simpleores.binary.linked_none": "Nenhuma (faz qualquer receita não ligada)",
   "screen.simpleores.binary.recipes": "Receitas",
   "screen.simpleores.binary.back": "Voltar",
   "screen.simpleores.binary.linked": "Feita por esta máquina",

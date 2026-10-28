@@ -400,6 +400,18 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
             if (!block.options().isEmpty()) {
                 drawButton(graphics, button(card, 2), Component.translatable("screen.simpleores.binary.recipes"), mouseX, cardMouseY);
+                // Mouse over "Recipes": the recipes linked to this machine
+                if (inside(button(card, 2), mouseX, cardMouseY)) {
+                    tooltip = new ArrayList<>();
+                    tooltip.add(Component.translatable("screen.simpleores.binary.linked_title"));
+                    for (int o = 0; o < block.options().size(); o++) {
+                        if (!block.linked().get(o)) continue;
+                        com.exoticmoss.simpleores.starstorage.quasar.Pattern pattern = block.options().get(o);
+                        tooltip.add(Component.literal(" - ").append(pattern.outputStack().getHoverName()).append(" x" + pattern.count())
+                                .withColor(INPUT_LINE));
+                    }
+                    if (tooltip.size() == 1) tooltip.add(Component.translatable("screen.simpleores.binary.linked_none").withColor(TEXT_DIM));
+                }
             }
 
             for (int slot = 0; slot < cells(block); slot++) {

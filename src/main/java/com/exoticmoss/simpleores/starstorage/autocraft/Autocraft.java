@@ -735,14 +735,14 @@ public final class Autocraft {
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             ItemStackTemplate input = step.items().isEmpty() ? null : step.items().get(0);
             if (magnetar == null || input == null) return false;
-            List<FurnaceBlockEntity> list = new ArrayList<>();
+            List<Container> list = new ArrayList<>();
             StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
-                if (blockEntity instanceof FurnaceBlockEntity furnace) list.add(furnace);
+                if (isFurnace(blockEntity)) list.add((Container) blockEntity);
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_furnaces" : "screen.simpleores.quasar.job.working";
             boolean progress = false;
             ItemStack item = input.create();
-            for (FurnaceBlockEntity furnace : list) {
+            for (Container furnace : list) {
                 if (done >= target) break;
                 ItemStack current = furnace.getItem(0);
                 if (!current.isEmpty() && !ItemStack.isSameItemSameComponents(current, item)) continue;
@@ -763,11 +763,28 @@ public final class Autocraft {
                 furnace.setChanged();
                 done += got.getCount();
                 long expected = (long) got.getCount() * step.pattern().count();
-                furnaces.merge(furnace.getBlockPos(), new FurnaceWait(step.pattern().output(), expected),
+                furnaces.merge(((net.minecraft.world.level.block.entity.BlockEntity) furnace).getBlockPos(), new FurnaceWait(step.pattern().output(), expected),
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
                 progress = true;
             }
             return progress;
+        }
+
+        /// A furnace the auto-craft can use: the furnace of Minecraft, and the furnaces of Iron Furnaces (iron, gold,
+        /// diamond, rainbow, crystal...) while they work as a furnace (not as a generator or a factory). Both have the
+        /// same slots: 0 = input, 1 = fuel, 2 = result.
+        private static boolean isFurnace(net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
+            if (blockEntity instanceof FurnaceBlockEntity) return true;
+            if (!(blockEntity instanceof Container container) || container.getContainerSize() < 3) return false;
+            for (Class<?> type = blockEntity.getClass(); type != null; type = type.getSuperclass()) {
+                if (!type.getName().equals("ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase")) continue;
+                try {
+                    return !(type.getMethod("isFurnace").invoke(blockEntity) instanceof Boolean furnace) || furnace;
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// Takes the cooked items of the furnaces used by this job to the network.

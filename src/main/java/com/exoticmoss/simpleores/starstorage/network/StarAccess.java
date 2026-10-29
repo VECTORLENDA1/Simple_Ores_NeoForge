@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -24,7 +25,39 @@ public final class StarAccess {
 
     /// The slots of the block (null = it has none).
     public static @Nullable IItemHandler items(Level level, BlockPos pos) {
-        return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        if (handler != null) return handler;
+        handler = titanium(level, pos);
+        if (handler != null) return handler;
+        // Only through the sides: the side that shows the most slots
+        for (IItemHandler side : itemSides(level, pos)) {
+            if (handler == null || side.getSlots() > handler.getSlots()) handler = side;
+        }
+        return handler;
+    }
+
+    /// The machines of Industrial Foregoing (and the other mods made with Titanium) give no slots without a side, and
+    /// each side only gives the slots it is configured for: all the slots of the machine, in the order of its screen
+    /// (the same handler Titanium makes for a side, with every inventory of the machine). Read without needing
+    /// Titanium to be installed (by name). null = not one of them.
+    private static @Nullable IItemHandler titanium(Level level, BlockPos pos) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) return null;
+        try {
+            java.lang.reflect.Method component = blockEntity.getClass().getMethod("getMultiInventoryComponent");
+            Object inventories = component.invoke(blockEntity);
+            if (inventories == null) return null;
+            Object list = inventories.getClass().getMethod("getInventoryHandlers").invoke(inventories);
+            if (!(list instanceof java.util.Collection<?> all) || all.isEmpty()) return null;
+            for (Class<?> inner : inventories.getClass().getDeclaredClasses()) {
+                if (!inner.getSimpleName().equals("MultiInvCapabilityHandler")) continue;
+                Object handler = inner.getConstructor(List.class).newInstance(new ArrayList<>(all));
+                return handler instanceof IItemHandler items ? items : null;
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return null;
+        }
+        return null;
     }
 
     /// The tanks of the block (null = it has none).

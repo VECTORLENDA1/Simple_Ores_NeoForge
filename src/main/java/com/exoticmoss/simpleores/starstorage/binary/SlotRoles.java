@@ -20,6 +20,7 @@ import java.util.List;
 ///  - Mekanism: each slot of its machines has a kind (input, extra, output...) that its screen uses for the
 ///    colors of the slots. Its slots are found with the item handler of the block (the same order as the
 ///    Binary Star sees them). Read without needing Mekanism to be installed (by name);
+///  - Industrial Foregoing (and the other mods made with Titanium): the inventories of the machine (see titanium);
 ///  - blocks like the furnace (WorldlyContainer): a slot that takes items through a side is an input, a slot
 ///    that only gives items is an output;
 ///  - anything else: not known (no color).
@@ -40,6 +41,8 @@ public final class SlotRoles {
     public static List<Integer> items(Level level, BlockPos pos, IItemHandler handler) {
         int size = handler.getSlots();
         List<Integer> roles = mekanism(handler, size);
+        if (roles != null) return roles;
+        roles = titanium(handler, size);
         if (roles != null) return roles;
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof WorldlyContainer container && container.getContainerSize() == size) return worldly(container, size);
@@ -115,6 +118,41 @@ public final class SlotRoles {
             }
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------- Titanium (Industrial Foregoing)
+
+    /// Titanium: the handler of the machine (MultiInvCapabilityHandler) has its inventories in the order of the
+    /// screen. An inventory named "output", or that can only push items out (not pull them in), is an output; the
+    /// others are inputs. null = not a Titanium machine.
+    private static List<Integer> titanium(IItemHandler handler, int size) {
+        if (!handler.getClass().getSimpleName().equals("MultiInvCapabilityHandler")) return null;
+        try {
+            java.lang.reflect.Field field = handler.getClass().getDeclaredField("inventoryHandlers");
+            field.setAccessible(true);
+            if (!(field.get(handler) instanceof List<?> inventories)) return null;
+            List<Integer> roles = new ArrayList<>(size);
+            for (Object inventory : inventories) {
+                if (!(inventory instanceof IItemHandler slots)) return null;
+                Method name = find(inventory.getClass(), "getName");
+                Method modes = find(inventory.getClass(), "getValidFacingModes");
+                String text = name == null ? "" : String.valueOf(name.invoke(inventory)).toLowerCase(java.util.Locale.ROOT);
+                boolean pull = true, push = false;
+                if (modes != null && modes.invoke(inventory) instanceof Object[] valid) {
+                    pull = false;
+                    for (Object mode : valid) {
+                        String mode2 = mode instanceof Enum<?> value ? value.name() : "";
+                        pull |= mode2.equals("PULL");
+                        push |= mode2.equals("PUSH");
+                    }
+                }
+                int role = text.contains("output") || push && !pull ? OUTPUT : INPUT;
+                for (int i = 0; i < slots.getSlots(); i++) roles.add(role);
+            }
+            return roles.size() == size ? roles : null;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     // ---------------------------------------------------------------- like the furnace

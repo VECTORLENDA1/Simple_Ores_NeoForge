@@ -859,6 +859,14 @@ public final class Autocraft {
                 if (Altars.of(level, at) == null && StarAccess.items(level, at) == null && worksBelow(level, at)) at = at.below();
                 if (!usable.contains(at) && (Altars.of(level, at) != null || StarAccess.items(level, at) != null)) usable.add(at);
             }
+            // The pedestals of an altar are not machines by themselves (JEI shows them with the altar, like the
+            // Infusion Pedestal of Mystical Agriculture): the altar puts the items on them
+            java.util.Set<BlockPos> pedestals = new java.util.HashSet<>();
+            for (BlockPos at : usable) {
+                Altars.Altar altar = Altars.of(level, at);
+                if (altar != null) pedestals.addAll(altar.pedestals());
+            }
+            usable.removeAll(pedestals);
             list.clear();
             list.addAll(usable);
             // A machine with linked recipes makes only those; a recipe linked to machines goes only to those

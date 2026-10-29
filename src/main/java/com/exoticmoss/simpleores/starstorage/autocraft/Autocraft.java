@@ -25,6 +25,7 @@ import java.util.Optional;
 import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
 import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.network.StarAccess;
 import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 
 /// The auto-craft of the Quasar.
@@ -836,6 +837,17 @@ public final class Autocraft {
                     binary.links().forEach((machine, recipes) -> links.computeIfAbsent(machine, p -> new ArrayList<>()).addAll(recipes));
                 }
             });
+            // Only the blocks that take items (a recipe can show more blocks, like the Mechanical Mixer and the Basin of
+            // Create: only the Basin takes the items). A Mechanical Press or Mixer of Create works on the block below it
+            // (a Depot or a Basin).
+            List<BlockPos> usable = new ArrayList<>();
+            for (BlockPos machine : list) {
+                BlockPos at = machine;
+                if (Altars.of(level, at) == null && StarAccess.items(level, at) == null && worksBelow(level, at)) at = at.below();
+                if (!usable.contains(at) && (Altars.of(level, at) != null || StarAccess.items(level, at) != null)) usable.add(at);
+            }
+            list.clear();
+            list.addAll(usable);
             // A machine with linked recipes makes only those; a recipe linked to machines goes only to those
             boolean linkedRecipe = links.values().stream().anyMatch(recipes -> recipes.contains(step.pattern()));
             list.removeIf(machine -> links.containsKey(machine) ? !links.get(machine).contains(step.pattern()) : linkedRecipe);
@@ -904,8 +916,17 @@ public final class Autocraft {
             return progress;
         }
 
-        /// Altar: when it is free, the first ingredient goes in its middle and the others one on each pedestal, then
-        /// it is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
+        /// A block of Create that works on the block below it (Mechanical Press, Mechanical Mixer).
+        private static boolean worksBelow(ServerLevel level, BlockPos pos) {
+            var blockEntity = level.getBlockEntity(pos);
+            if (blockEntity == null) return false;
+            String name = blockEntity.getClass().getName();
+            return name.equals("com.simibubi.create.content.kinetics.press.MechanicalPressBlockEntity")
+                    || name.equals("com.simibubi.create.content.kinetics.mixer.MechanicalMixerBlockEntity");
+        }
+
+        /// Altar: when it is free, the ingredients go one on each pedestal and the first one in its middle, then it
+        /// is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
         /// The result is taken out of the altar by collectMachines.
         private boolean workAltar(ServerLevel level, Altars.Altar altar, BlockPos machinePos, Step step,
                                   List<ItemStack> items, List<Integer> amounts, long share) {
@@ -938,16 +959,18 @@ public final class Autocraft {
                 }
                 got.add(part);
             }
-            ItemStack left = altar.center().insertItem(0, got.get(0).split(1), false);
-            if (!left.isEmpty()) {
-                store(left);
-                giveBack(got);
-                return false;
-            }
+            // The pedestals first (some altars start by themselves when the middle item goes in)
+            ItemStack middle = got.get(0).split(1);
             int next = 0;
             for (ItemStack stack : got) {
                 while (!stack.isEmpty() && next < free.size()) store(free.get(next++).insertItem(0, stack.split(1), false));
                 store(stack);
+            }
+            ItemStack left = altar.center().insertItem(0, middle, false);
+            if (!left.isEmpty()) {
+                // (the middle didn't go in: the items of the pedestals come back next time the altar is free)
+                store(left);
+                return false;
             }
             altar.start().run();
             for (int k = 0; k < items.size(); k++) {

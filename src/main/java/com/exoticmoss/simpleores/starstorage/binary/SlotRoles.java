@@ -22,6 +22,7 @@ import java.util.List;
 ///    Binary Star sees them). Read without needing Mekanism to be installed (by name);
 ///  - Industrial Foregoing (and the other mods made with Titanium): the inventories of the machine (see titanium);
 ///  - Thermal: its input slots, then its output slots (see thermal);
+///  - Ender IO: the layout of the machine (see enderIO);
 ///  - blocks like the furnace (WorldlyContainer): a slot that takes items through a side is an input, a slot
 ///    that only gives items is an output;
 ///  - anything else: not known (no color).
@@ -46,6 +47,8 @@ public final class SlotRoles {
         roles = titanium(handler, size);
         if (roles != null) return roles;
         roles = thermal(handler, size);
+        if (roles != null) return roles;
+        roles = enderIO(handler, size);
         if (roles != null) return roles;
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof WorldlyContainer container && container.getContainerSize() == size) return worldly(container, size);
@@ -177,6 +180,32 @@ public final class SlotRoles {
             }
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------- Ender IO
+
+    /// Ender IO: the handler of the machine keeps the inventory of the machine ("master"), and its layout says which
+    /// slots take items in and which give them out. null = not an Ender IO machine.
+    private static List<Integer> enderIO(IItemHandler handler, int size) {
+        if (!handler.getClass().getName().startsWith("com.enderio.")) return null;
+        try {
+            Method master = find(handler.getClass(), "master");
+            Object inventory = master == null ? null : master.invoke(handler);
+            Method getLayout = inventory == null ? null : find(inventory.getClass(), "getLayout");
+            Object layout = getLayout == null ? null : getLayout.invoke(inventory);
+            if (layout == null) return null;
+            Method canInsert = layout.getClass().getMethod("canInsert", int.class);
+            Method canExtract = layout.getClass().getMethod("canExtract", int.class);
+            List<Integer> roles = new ArrayList<>(size);
+            for (int slot = 0; slot < size; slot++) {
+                boolean in = Boolean.TRUE.equals(canInsert.invoke(layout, slot));
+                boolean out = Boolean.TRUE.equals(canExtract.invoke(layout, slot));
+                roles.add(in ? INPUT : out ? OUTPUT : UNKNOWN);
+            }
+            return roles;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     // ---------------------------------------------------------------- like the furnace

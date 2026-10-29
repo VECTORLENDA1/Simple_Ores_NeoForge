@@ -62,8 +62,17 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
         for (IRecipeSlotView view : recipeSlots.getSlotViews()) {
             if (view.getRole() == RecipeIngredientRole.OUTPUT) continue;
             List<ItemStack> items = view.getItemStacks().filter(stack -> !stack.isEmpty()).limit(QuasarFill.MAX_CHOICES).toList();
-            if (items.isEmpty() || slots.size() >= Pattern.SIZE) continue;
-            slots.add(items.stream().map(stack -> stack.copyWithCount(1)).toList());
+            if (items.isEmpty()) continue;
+            List<ItemStack> choices = items.stream().map(stack -> stack.copyWithCount(1)).toList();
+            // The same item in more slots (e.g. the injectors of the fusion crafting of Draconic Evolution): one slot
+            // of the grid with all of them
+            int same = indexOf(slots, choices);
+            if (same >= 0) {
+                amounts.set(same, amounts.get(same) + items.get(0).getCount());
+                continue;
+            }
+            if (slots.size() >= Pattern.SIZE) continue;
+            slots.add(choices);
             amounts.add(items.get(0).getCount());
         }
         ItemStack output = ItemStack.EMPTY;
@@ -89,6 +98,18 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
         container.tab = QuasarMenu.TAB_CRAFTING;
         PacketDistributor.sendToServer(new QuasarFill(slots, amounts, output, machines));
         return null;
+    }
+
+    /// The slot of the grid that has exactly these items (the same choices), or -1.
+    private static int indexOf(List<List<ItemStack>> slots, List<ItemStack> choices) {
+        for (int i = 0; i < slots.size(); i++) {
+            List<ItemStack> slot = slots.get(i);
+            if (slot.size() != choices.size()) continue;
+            boolean equal = true;
+            for (int j = 0; j < slot.size() && equal; j++) equal = ItemStack.isSameItemSameComponents(slot.get(j), choices.get(j));
+            if (equal) return i;
+        }
+        return -1;
     }
 
     /// The blocks that make this recipe: the ones JEI shows next to its kind of recipe.

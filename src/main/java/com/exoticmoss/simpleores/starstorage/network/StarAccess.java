@@ -183,6 +183,24 @@ public final class StarAccess {
         return extractAny(handler, sides, item, Integer.MAX_VALUE, false);
     }
 
+    /// Takes out of the machine every stack of the same item as "item" but with other data (like a tool made with
+    /// its energy). Returns what came out.
+    public static List<ItemStack> extractVariants(IItemHandler handler, List<IItemHandler> sides, ItemStack item) {
+        List<ItemStack> out = new ArrayList<>();
+        List<IItemHandler> all = new ArrayList<>();
+        all.add(handler);
+        all.addAll(sides);
+        for (IItemHandler from : all) {
+            for (int slot = 0; slot < from.getSlots(); slot++) {
+                ItemStack inside = from.getStackInSlot(slot);
+                if (inside.isEmpty() || !inside.is(item.getItem()) || ItemStack.isSameItemSameComponents(inside, item)) continue;
+                ItemStack got = from.extractItem(slot, inside.getCount(), false);
+                if (!got.isEmpty()) out.add(got);
+            }
+        }
+        return out;
+    }
+
     /// Puts as many of the items as fit in the machine (the machine chooses the slots). Returns how many went in.
     public static int insertSome(IItemHandler handler, List<IItemHandler> sides, ItemStack item) {
         return insertAny(handler, sides, item, item.getCount(), false);

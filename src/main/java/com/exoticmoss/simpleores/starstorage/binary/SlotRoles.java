@@ -51,6 +51,11 @@ public final class SlotRoles {
         roles = enderIO(handler, size);
         if (roles != null) return roles;
         BlockEntity blockEntity = level.getBlockEntity(pos);
+        // The altars of Mystical Agriculture and Draconic Evolution: the middle item, then the result
+        if (blockEntity != null && size == 2 && (blockEntity.getClass().getName().equals("com.blakebr0.mysticalagriculture.tileentity.InfusionAltarTileEntity")
+                || blockEntity.getClass().getName().equals("com.brandon3055.draconicevolution.blocks.tileentity.TileFusionCraftingCore"))) {
+            return List.of(INPUT, OUTPUT);
+        }
         if (blockEntity instanceof WorldlyContainer container && container.getContainerSize() == size) return worldly(container, size);
         return unknown(size);
     }

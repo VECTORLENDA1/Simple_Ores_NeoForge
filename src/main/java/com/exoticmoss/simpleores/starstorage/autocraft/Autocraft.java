@@ -360,6 +360,18 @@ public final class Autocraft {
             }
         }
 
+        /// A result of a machine that is the item of "expected" but with other data: it counts as "expected", and
+        /// it keeps its own data.
+        private void receiveResult(StarNetwork network, ItemStack stack, ItemStackTemplate expected) {
+            madeBySteps(expected.create().copyWithCount(stack.getCount()));
+            if (ItemStack.isSameItemSameComponents(expected.create(), output.create())) {
+                countFinal(stack.getCount());
+                store(network.insert(stack.copy()));
+            } else {
+                store(stack);
+            }
+        }
+
         private void countFinal(long count) {
             if (made >= amount) return;
             made += Math.min(count, amount - made);
@@ -1007,8 +1019,14 @@ public final class Autocraft {
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, key.pos());
                 ItemStack output = key.output().create();
                 int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.extractAll(handler, sides, output);
+                if (taken > 0) receive(network, output.copyWithCount(taken));
+                // The result can have more data than the recipe shows (like a tool of Draconic Evolution with its
+                // energy): the same item with other data is the result too
+                for (ItemStack other : StarAccess.extractVariants(handler, sides, output)) {
+                    receiveResult(network, other, key.output());
+                    taken += other.getCount();
+                }
                 if (taken <= 0) continue;
-                receive(network, output.copyWithCount(taken));
                 FurnaceWait wait = machines.get(key);
                 if (wait != null) {
                     long expected = wait.expected() - taken;

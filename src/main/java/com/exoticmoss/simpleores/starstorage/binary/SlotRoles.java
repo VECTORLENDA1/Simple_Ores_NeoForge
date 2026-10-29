@@ -21,6 +21,7 @@ import java.util.List;
 ///    colors of the slots. Its slots are found with the item handler of the block (the same order as the
 ///    Binary Star sees them). Read without needing Mekanism to be installed (by name);
 ///  - Industrial Foregoing (and the other mods made with Titanium): the inventories of the machine (see titanium);
+///  - Thermal: its input slots, then its output slots (see thermal);
 ///  - blocks like the furnace (WorldlyContainer): a slot that takes items through a side is an input, a slot
 ///    that only gives items is an output;
 ///  - anything else: not known (no color).
@@ -43,6 +44,8 @@ public final class SlotRoles {
         List<Integer> roles = mekanism(handler, size);
         if (roles != null) return roles;
         roles = titanium(handler, size);
+        if (roles != null) return roles;
+        roles = thermal(handler, size);
         if (roles != null) return roles;
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof WorldlyContainer container && container.getContainerSize() == size) return worldly(container, size);
@@ -153,6 +156,27 @@ public final class SlotRoles {
         } catch (ReflectiveOperationException | RuntimeException e) {
             return null;
         }
+    }
+
+    // ---------------------------------------------------------------- Thermal
+
+    /// Thermal (CoFH): the handler of the machine (ManagedItemHandler) has its input slots first, then its output
+    /// slots. null = not a Thermal machine.
+    private static List<Integer> thermal(IItemHandler handler, int size) {
+        for (Class<?> c = handler.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            if (!c.getSimpleName().equals("ManagedItemHandler")) continue;
+            try {
+                java.lang.reflect.Field field = c.getDeclaredField("inputSlots");
+                field.setAccessible(true);
+                if (!(field.get(handler) instanceof List<?> inputs) || inputs.size() > size) return null;
+                List<Integer> roles = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) roles.add(i < inputs.size() ? INPUT : OUTPUT);
+                return roles;
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------- like the furnace

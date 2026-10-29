@@ -860,6 +860,12 @@ public final class Autocraft {
                 BlockPos machinePos = list.get(m);
                 if (done >= target) break;
                 long share = step.times() / machineCount + (m < step.times() % machineCount ? 1 : 0);
+                // An altar with pedestals (Mystical Agriculture, Draconic Evolution): one craft at a time, see Altars
+                Altars.Altar altar = Altars.of(level, machinePos);
+                if (altar != null) {
+                    if (workAltar(level, altar, machinePos, step, items, amounts, share)) progress = true;
+                    continue;
+                }
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
                 if (handler == null) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
@@ -896,6 +902,64 @@ public final class Autocraft {
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
             }
             return progress;
+        }
+
+        /// Altar: when it is free, the first ingredient goes in its middle and the others one on each pedestal, then
+        /// it is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
+        /// The result is taken out of the altar by collectMachines.
+        private boolean workAltar(ServerLevel level, Altars.Altar altar, BlockPos machinePos, Step step,
+                                  List<ItemStack> items, List<Integer> amounts, long share) {
+            long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
+            long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
+            if (altar.busy()) return false;
+            List<net.neoforged.neoforge.items.IItemHandler> free = new ArrayList<>();
+            for (BlockPos at : altar.pedestals()) {
+                var pedestal = Altars.pedestal(level, at);
+                if (pedestal == null || pedestal.getSlots() < 1) continue;
+                store(pedestal.extractItem(0, 64, false));
+                if (pedestal.getStackInSlot(0).isEmpty()) free.add(pedestal);
+            }
+            if (done >= target || sets(sent, amounts) >= share) return false;
+            int onPedestals = -1;
+            for (int amount : amounts) onPedestals += amount;
+            if (free.size() < onPedestals) {
+                status = "screen.simpleores.quasar.job.waiting_machines";
+                return false;
+            }
+            // The items of one craft (all of them, or nothing)
+            List<ItemStack> got = new ArrayList<>();
+            for (int k = 0; k < items.size(); k++) {
+                ItemStack part = take(items.get(k), amounts.get(k));
+                if (part.getCount() < amounts.get(k)) {
+                    store(part);
+                    giveBack(got);
+                    status = "screen.simpleores.quasar.job.waiting_items";
+                    return false;
+                }
+                got.add(part);
+            }
+            ItemStack left = altar.center().insertItem(0, got.get(0).split(1), false);
+            if (!left.isEmpty()) {
+                store(left);
+                giveBack(got);
+                return false;
+            }
+            int next = 0;
+            for (ItemStack stack : got) {
+                while (!stack.isEmpty() && next < free.size()) store(free.get(next++).insertItem(0, stack.split(1), false));
+                store(stack);
+            }
+            altar.start().run();
+            for (int k = 0; k < items.size(); k++) {
+                sent[k] += amounts.get(k);
+                total[k] += amounts.get(k);
+            }
+            done++;
+            usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
+            machines.merge(new MachineKey(machinePos, step.pattern().output()),
+                    new FurnaceWait(step.pattern().output(), step.pattern().count()),
+                    (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
+            return true;
         }
 
         /// The whole sets in what was sent to a machine.

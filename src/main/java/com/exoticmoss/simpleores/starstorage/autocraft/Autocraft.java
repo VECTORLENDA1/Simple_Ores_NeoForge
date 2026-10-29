@@ -505,7 +505,8 @@ public final class Autocraft {
                 for (Job job : quasar.getJobs()) {
                     if (job.dimension != level.dimension()) continue;
                     for (MachineKey key : job.usedMachines) {
-                        if (key.pos().equals(machinePos) && ItemStack.isSameItemSameComponents(stack, key.output().create())) return true;
+                        // (the same item with other data too: the job takes it, see collectMachines)
+                        if (key.pos().equals(machinePos) && stack.is(key.output().item())) return true;
                     }
                 }
             }

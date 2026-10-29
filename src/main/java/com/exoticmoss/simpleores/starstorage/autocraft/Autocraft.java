@@ -944,7 +944,8 @@ public final class Autocraft {
             int onPedestals = -1;
             for (int amount : amounts) onPedestals += amount;
             if (free.size() < onPedestals) {
-                status = "screen.simpleores.quasar.job.waiting_machines";
+                // (the free pedestals the altar has / the pedestals the recipe needs)
+                status = "screen.simpleores.quasar.job.waiting_pedestals|" + free.size() + "|" + onPedestals;
                 return false;
             }
             // The items of one craft (all of them, or nothing)

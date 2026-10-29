@@ -320,7 +320,8 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 QuasarJobs.View job = line.job();
                 amount = job.amount();
                 made = job.made();
-                status = Component.translatable(job.status());
+                String[] parts = job.status().split("\\|");
+                status = Component.translatable(parts[0], (Object[]) java.util.Arrays.copyOfRange(parts, 1, parts.length));
                 // The small arrow (right = hidden, down = shown)
                 if (!job.subs().isEmpty()) drawArrow(graphics, left + 2, y + 9, expanded.contains(job.id()));
             } else {

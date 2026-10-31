@@ -132,6 +132,7 @@
   "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocks of field; Binary Star: +8 blocks (up to 4)",
   "tooltip.simpleores.wormhole_link": "Right-click a Magnetar, then put it in another one: their networks join (any dimension)",
   "tooltip.simpleores.wormhole_link.target": "Magnetar at %s %s %s (%s)",
+  "tooltip.simpleores.quasar.recipes": "Recipes: %s",
   "message.simpleores.magnetar.linked": "Wormhole Link points to the Magnetar at %s %s %s",
   "item.simpleores.white_dwarf_fluid_cell": "White Dwarf Fluid Cell",
   "item.simpleores.neutron_fluid_cell": "Neutron Fluid Cell",

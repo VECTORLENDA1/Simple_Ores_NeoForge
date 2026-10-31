@@ -46,7 +46,7 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// With the recipe of a machine, the slots of the grid keep an amount too (clicks like the core slots; shift + click
 /// adds or takes away one), and shift + click on the result changes how many it makes.
 /// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
-/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
+/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, COOKING + kind, REMOVE + n, CANCEL_JOB + job id, PICK.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, com.exoticmoss.simpleores.starstorage.network.StarTabs.Anchored {
     /// The block the player is next to (this one, or the one whose screen opened this one with a tab).
     private BlockPos anchor;
@@ -87,6 +87,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     public static final int CLEAR = 1;
     public static final int TAB = 10;
     public static final int CORE_SCROLL = 20;
+    /// The kind of furnace of the furnace tab (+ Pattern.FURNACE, BLAST_FURNACE or SMOKER).
+    public static final int COOKING = 50;
     public static final int REMOVE = 100;
     public static final int CANCEL_JOB = 10_000;
     /// PICK + slot * 2 (+ 1 = the other way): the mouse wheel on a slot of the grid with many items.
@@ -119,6 +121,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     private int syncedCoreCount;
     /// The tab shown (the client tells the server with TAB + n).
     public int tab = TAB_CRAFTING;
+    /// The kind of furnace of the furnace tab (Pattern.FURNACE, BLAST_FURNACE, SMOKER).
+    public int cooking = Pattern.FURNACE;
 
     public QuasarMenu(int id, Inventory inventory, BlockPos pos, int rows) {
         super(ModMenus.QUASAR.get(), id);
@@ -158,6 +162,17 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             @Override
             public void set(int value) {
                 syncedMachine = value == 1;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return cooking;
+            }
+
+            @Override
+            public void set(int value) {
+                cooking = value;
             }
         });
         addSlot(new PictureSlot(FURNACE_SLOT, left + 18 + 1, top + 18 + 1, TAB_FURNACE));
@@ -409,7 +424,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             ItemStack item = pictures.getItem(FURNACE_SLOT);
             if (!item.isEmpty()) {
                 SingleRecipeInput input = new SingleRecipeInput(item);
-                result = level.getRecipeManager().getRecipeFor(RecipeType.SMELTING, input, level)
+                result = level.getRecipeManager().getRecipeFor(Pattern.cookingType(cooking), input, level)
                         .map(holder -> holder.value().assemble(input, level.registryAccess())).orElse(ItemStack.EMPTY);
             }
         }
@@ -455,6 +470,11 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             updateResult();
             return true;
         }
+        if (id >= COOKING && id <= COOKING + Pattern.SMOKER) {
+            cooking = id - COOKING;
+            updateResult();
+            return true;
+        }
         if (id >= PICK && id < PICK + GRID_SLOTS * 2) {
             pick((id - PICK) / 2, (id - PICK) % 2 == 0 ? -1 : 1);
             return true;
@@ -490,7 +510,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
                 quasar.addPattern(QuasarCore.pattern(coreRecipe, coreTier(coreRecipe.value())));
             } else if (tab == TAB_FURNACE) {
                 quasar.addPattern(Pattern.furnace(output, result.getCount(),
-                        ItemStackTemplate.fromNonEmptyStack(pictures.getItem(FURNACE_SLOT).copyWithCount(1))));
+                        ItemStackTemplate.fromNonEmptyStack(pictures.getItem(FURNACE_SLOT).copyWithCount(1)), cooking));
             }
         } else if (id == CLEAR) {
             for (int i = 0; i < INVENTORY_START; i++) {

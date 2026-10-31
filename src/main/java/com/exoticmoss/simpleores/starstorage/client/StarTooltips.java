@@ -26,6 +26,11 @@ public class StarTooltips {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem());
         if (!id.getNamespace().equals(SimpleOres.MODID) || !STARS.contains(id.getPath())) return;
         event.getToolTip().add(1, Component.translatable("tooltip.simpleores." + id.getPath()).withStyle(ChatFormatting.GRAY));
+        // Quasar: the recipes it keeps
+        var recipes = event.getItemStack().get(ModDataComponents.QUASAR_RECIPES.get());
+        if (recipes != null) {
+            event.getToolTip().add(2, Component.translatable("tooltip.simpleores.quasar.recipes", recipes.count()).withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
         // Wormhole Link: the Magnetar it points to
         GlobalPos link = event.getItemStack().get(ModDataComponents.LINK.get());
         if (link != null) {

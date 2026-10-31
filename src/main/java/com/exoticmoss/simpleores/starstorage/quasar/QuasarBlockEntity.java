@@ -15,9 +15,14 @@ import com.exoticmoss.simpleores.starstorage.autocraft.Autocraft;
 /// gives its recipes to the network: the Stellar Terminal shows those items as craftable.
 public class QuasarBlockEntity extends BlockEntity {
     /// How many recipes one Quasar can keep.
-    public static final int MAX_PATTERNS = 54;
+    public static final int MAX_PATTERNS = 10_000;
 
     private final List<Pattern> patterns = new ArrayList<>();
+    /// The id of the recipes in the world (QuasarRecipes): they are always kept there too, and the item of the
+    /// broken Quasar keeps the id. null = no recipes saved yet.
+    private java.util.UUID recipesId;
+    /// Placed with the item of a broken Quasar: its recipes come back on the next tick.
+    private boolean restore;
     /// Auto-craft jobs with Gravity Core steps (they take time). Not saved: they stop if the world is closed.
     private final List<Autocraft.Job> jobs = new ArrayList<>();
     /// The items that were in the storage of the jobs when the world was saved (the jobs themselves are not saved):
@@ -47,6 +52,7 @@ public class QuasarBlockEntity extends BlockEntity {
         if (patterns.size() >= MAX_PATTERNS) return false;
         patterns.add(pattern);
         setChanged();
+        backup();
         return true;
     }
 
@@ -54,6 +60,54 @@ public class QuasarBlockEntity extends BlockEntity {
         if (index < 0 || index >= patterns.size()) return;
         patterns.remove(index);
         setChanged();
+        backup();
+    }
+
+    /// The recipes are also kept by the world (QuasarRecipes).
+    private void backup() {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (recipesId == null) recipesId = java.util.UUID.randomUUID();
+        QuasarRecipes.get(serverLevel).put(recipesId, patterns);
+    }
+
+    /// Placed with the item of a broken Quasar: its recipes come back (with a new id, so two Quasars never share one).
+    private void restoreRecipes(net.minecraft.server.level.ServerLevel serverLevel) {
+        restore = false;
+        if (recipesId == null) return;
+        QuasarRecipes store = QuasarRecipes.get(serverLevel);
+        List<Pattern> saved = store.get(recipesId);
+        if (saved.isEmpty()) return;
+        for (Pattern pattern : saved) {
+            if (!patterns.contains(pattern) && patterns.size() < MAX_PATTERNS) patterns.add(pattern);
+        }
+        store.remove(recipesId);
+        recipesId = null;
+        backup();
+        setChanged();
+    }
+
+    @Override
+    protected void applyImplicitComponents(BlockEntity.DataComponentInput input) {
+        super.applyImplicitComponents(input);
+        QuasarRecipes.Id id = input.get(com.exoticmoss.simpleores.starstorage.ModDataComponents.QUASAR_RECIPES.get());
+        if (id != null) {
+            recipesId = id.id();
+            restore = true;
+        }
+    }
+
+    @Override
+    protected void collectImplicitComponents(net.minecraft.core.component.DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        if (recipesId != null && !patterns.isEmpty()) {
+            components.set(com.exoticmoss.simpleores.starstorage.ModDataComponents.QUASAR_RECIPES.get(), new QuasarRecipes.Id(recipesId, patterns.size()));
+        }
+    }
+
+    @Override
+    public void removeComponentsFromTag(net.minecraft.nbt.CompoundTag tag) {
+        super.removeComponentsFromTag(tag);
+        tag.remove("recipes_id");
     }
 
     public void startJob(Autocraft.Job job) {
@@ -77,6 +131,9 @@ public class QuasarBlockEntity extends BlockEntity {
     /// the finished and the stuck ones go away).
     public void serverTick() {
         if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (restore) restoreRecipes(serverLevel);
+        // (the recipes saved before they were also kept by the world)
+        if (recipesId == null && !patterns.isEmpty()) backup();
         if (!toReturn.isEmpty()) returnItems();
         if (jobs.isEmpty()) return;
         // (the storage of the jobs changes all the time: it is saved with the Quasar)
@@ -116,6 +173,7 @@ public class QuasarBlockEntity extends BlockEntity {
         stored.forEach((item, count) -> list.add(new Stored(item, count)));
         output.store("job_items", Stored.CODEC.listOf(), list);
         output.store("patterns", Pattern.CODEC.listOf(), patterns);
+        if (recipesId != null) tag.putUUID("recipes_id", recipesId);
     }
 
     @Override
@@ -126,5 +184,6 @@ public class QuasarBlockEntity extends BlockEntity {
         for (Stored stored : input.read("job_items", Stored.CODEC.listOf()).orElse(List.of())) toReturn.merge(stored.item(), stored.count(), Long::sum);
         patterns.clear();
         patterns.addAll(input.read("patterns", Pattern.CODEC.listOf()).orElse(List.of()));
+        if (tag.hasUUID("recipes_id")) recipesId = tag.getUUID("recipes_id");
     }
 }

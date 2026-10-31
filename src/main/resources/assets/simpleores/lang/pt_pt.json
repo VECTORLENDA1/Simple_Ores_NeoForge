@@ -95,6 +95,7 @@
   "tooltip.simpleores.magnetic_field_upgrade": "Magnetar: +16 blocos de campo; Binary Star: +8 blocos (até 4)",
   "tooltip.simpleores.wormhole_link": "Clica num Magnetar e põe-na noutro: as redes juntam-se (qualquer dimensão)",
   "tooltip.simpleores.wormhole_link.target": "Magnetar em %s %s %s (%s)",
+  "tooltip.simpleores.quasar.recipes": "Receitas: %s",
   "message.simpleores.magnetar.linked": "A Ligação aponta para o Magnetar em %s %s %s",
   "item.simpleores.white_dwarf_fluid_cell": "Célula de Líquidos Anã Branca",
   "item.simpleores.neutron_fluid_cell": "Célula de Líquidos de Neutrões",

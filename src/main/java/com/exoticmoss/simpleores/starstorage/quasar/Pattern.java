@@ -22,7 +22,8 @@ import java.util.Optional;
 ///  - amounts: how many of each ingredient (1 for the crafting table recipes);
 ///  - coreRecipe / coreTier: for the Gravity Core recipes, the recipe and the smallest tier of core that makes it
 ///    (empty = a crafting table recipe, with the 9 slots of the grid as inputs);
-///  - furnace: a furnace recipe (one input, cooked in the furnaces of the field);
+///  - furnace: a furnace recipe (one input, cooked in the furnaces of the field). "machines" says which kind:
+///    none = the Furnace, a Blast Furnace or a Smoker = those (see cooking);
 ///  - machines: a recipe of a machine of another mod (from JEI): the blocks that make it. The ingredients are put
 ///    in one of those blocks in the field of the Magnetar, and the result is taken out of it.
 public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTemplate>> inputs, List<Integer> amounts,
@@ -48,9 +49,35 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
         return new Pattern(output, count, inputs, List.of(), Optional.empty(), 0, false, List.of());
     }
 
-    /// A furnace recipe (one input).
-    public static Pattern furnace(ItemStackTemplate output, int count, ItemStackTemplate input) {
-        return new Pattern(output, count, List.of(List.of(input)), List.of(), Optional.empty(), 0, true, List.of());
+    /// The kinds of furnace recipes: the Furnace, the Blast Furnace and the Smoker.
+    public static final int FURNACE = 0;
+    public static final int BLAST_FURNACE = 1;
+    public static final int SMOKER = 2;
+
+    /// The block of each kind of furnace recipe.
+    public static ItemStack cookingBlock(int kind) {
+        return new ItemStack(kind == BLAST_FURNACE ? net.minecraft.world.item.Items.BLAST_FURNACE
+                : kind == SMOKER ? net.minecraft.world.item.Items.SMOKER : net.minecraft.world.item.Items.FURNACE);
+    }
+
+    /// The recipe type of each kind of furnace recipe.
+    public static net.minecraft.world.item.crafting.RecipeType<? extends net.minecraft.world.item.crafting.AbstractCookingRecipe> cookingType(int kind) {
+        return kind == BLAST_FURNACE ? net.minecraft.world.item.crafting.RecipeType.BLASTING
+                : kind == SMOKER ? net.minecraft.world.item.crafting.RecipeType.SMOKING : net.minecraft.world.item.crafting.RecipeType.SMELTING;
+    }
+
+    /// A furnace recipe (one input), made in the furnaces of that kind.
+    public static Pattern furnace(ItemStackTemplate output, int count, ItemStackTemplate input, int kind) {
+        List<ItemStackTemplate> block = kind == FURNACE ? List.of() : List.of(ItemStackTemplate.fromNonEmptyStack(cookingBlock(kind)));
+        return new Pattern(output, count, List.of(List.of(input)), List.of(), Optional.empty(), 0, true, block);
+    }
+
+    /// The kind of a furnace recipe (FURNACE, BLAST_FURNACE, SMOKER).
+    public int cooking() {
+        if (!furnace || machines.isEmpty()) return FURNACE;
+        ItemStack block = machines.get(0).create();
+        return block.is(net.minecraft.world.item.Items.BLAST_FURNACE) ? BLAST_FURNACE
+                : block.is(net.minecraft.world.item.Items.SMOKER) ? SMOKER : FURNACE;
     }
 
     /// A recipe of a machine (the 9 slots of the grid, each with its amount).
@@ -71,7 +98,7 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
     }
 
     public boolean isMachine() {
-        return !machines.isEmpty();
+        return !furnace && !machines.isEmpty();
     }
 
     /// True if the block is one of the machines of this recipe.

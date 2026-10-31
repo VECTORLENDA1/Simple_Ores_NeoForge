@@ -59,8 +59,13 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
         // "+" on Gravity Core recipes with the Quasar screen open: saves the recipe in the Quasar
         registration.addRecipeTransferHandler(new QuasarCoreTransferHandler(), GravityCoreRecipeCategory.RECIPE_TYPE);
-        // "+" on furnace recipes with the Quasar screen open: puts the input in the furnace tab
-        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        // "+" on furnace, blast furnace and smoker recipes with the Quasar screen open: puts the input in the furnace tab
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.SMELTING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.FURNACE), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.BLASTING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.BLAST_FURNACE), mezz.jei.api.constants.RecipeTypes.BLASTING);
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.SMOKING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.SMOKER), mezz.jei.api.constants.RecipeTypes.SMOKING);
         // "+" on the recipes of the machines of other mods with the Quasar screen open: puts the recipe in its grid
         registration.addUniversalRecipeTransferHandler(new QuasarMachineTransferHandler(helper));
     }

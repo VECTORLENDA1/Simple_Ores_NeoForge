@@ -743,15 +743,20 @@ public final class Autocraft {
             return progress;
         }
 
-        /// Furnace: puts the input in the furnaces of the field (their input slot), as many as fit.
+        /// Furnace: puts the input in the furnaces of the field of the kind of the recipe (Furnace, Blast Furnace,
+        /// Smoker; their input slot), as many as fit.
         /// The cooked items are collected from those furnaces by collectFurnaces.
         private boolean workFurnace(ServerLevel level, StarNetwork network, Step step) {
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             ItemStackTemplate input = step.items().isEmpty() ? null : step.items().get(0);
             if (magnetar == null || input == null) return false;
             List<Container> list = new ArrayList<>();
+            int kind = step.pattern().cooking();
             StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
-                if (isFurnace(blockEntity)) list.add((Container) blockEntity);
+                boolean right = kind == Pattern.BLAST_FURNACE ? blockEntity instanceof net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity
+                        : kind == Pattern.SMOKER ? blockEntity instanceof net.minecraft.world.level.block.entity.SmokerBlockEntity
+                        : isFurnace(blockEntity);
+                if (right) list.add((Container) blockEntity);
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_furnaces" : "screen.simpleores.quasar.job.working";
             boolean progress = false;

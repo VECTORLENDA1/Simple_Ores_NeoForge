@@ -954,7 +954,6 @@ public final class Autocraft {
             long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
             long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
             if (altar.busy()) return false;
-            com.exoticmoss.simpleores.SimpleOres.LOGGER.info("[altar] {} free, {} pedestals: {}, items {} x {}", machinePos, altar.pedestals().size(), altar.pedestals(), items, amounts);
             List<net.neoforged.neoforge.items.IItemHandler> free = new ArrayList<>();
             for (BlockPos at : altar.pedestals()) {
                 var pedestal = Altars.pedestal(level, at);
@@ -986,16 +985,10 @@ public final class Autocraft {
             ItemStack middle = got.get(0).split(1);
             int next = 0;
             for (ItemStack stack : got) {
-                while (!stack.isEmpty() && next < free.size()) {
-                    ItemStack one = stack.split(1);
-                    ItemStack back = free.get(next++).insertItem(0, one, false);
-                    com.exoticmoss.simpleores.SimpleOres.LOGGER.info("[altar] pedestal {} <- {} : left {}", next - 1, one, back);
-                    store(back);
-                }
+                while (!stack.isEmpty() && next < free.size()) store(free.get(next++).insertItem(0, stack.split(1), false));
                 store(stack);
             }
             ItemStack left = altar.center().insertItem(0, middle, false);
-            com.exoticmoss.simpleores.SimpleOres.LOGGER.info("[altar] middle {} : left {}, free {}, needed {}", middle, left, free.size(), onPedestals);
             if (!left.isEmpty()) {
                 // (the middle didn't go in: the items of the pedestals come back next time the altar is free)
                 store(left);

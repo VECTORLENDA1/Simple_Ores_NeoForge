@@ -65,8 +65,10 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
             if (items.isEmpty()) continue;
             List<ItemStack> choices = items.stream().map(stack -> stack.copyWithCount(1)).toList();
             // The same item in more slots (e.g. the injectors of the fusion crafting of Draconic Evolution): one slot
-            // of the grid with all of them
-            int same = indexOf(slots, choices);
+            // of the grid with all of them. Never with the first slot: on an altar it is the middle item, with its
+            // own amount (e.g. 4 crystals in the Fusion Crafting Core)
+            int same = slots.size() > 1 ? indexOf(slots.subList(1, slots.size()), choices) : -1;
+            if (same >= 0) same++;
             if (same >= 0) {
                 amounts.set(same, amounts.get(same) + items.get(0).getCount());
                 continue;

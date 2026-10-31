@@ -951,8 +951,8 @@ public final class Autocraft {
                     || name.equals("com.simibubi.create.content.kinetics.mixer.MechanicalMixerBlockEntity");
         }
 
-        /// Altar: when it is free, the ingredients go one on each pedestal and the first one in its middle, then it
-        /// is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
+        /// Altar: when it is free, the ingredients go one on each pedestal and the first one (all of its amount) in its
+        /// middle, then it is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
         /// The result is taken out of the altar by collectMachines.
         private boolean workAltar(ServerLevel level, Altars.Altar altar, BlockPos machinePos, Step step,
                                   List<ItemStack> items, List<Integer> amounts, long share) {
@@ -967,7 +967,9 @@ public final class Autocraft {
                 if (pedestal.getStackInSlot(0).isEmpty()) free.add(pedestal);
             }
             if (done >= target || sets(sent, amounts) >= share) return false;
-            int onPedestals = -1;
+            // The first ingredient all goes in the middle (its amount: e.g. 4 crystals in the Fusion Crafting Core of
+            // Draconic Evolution); every other item goes on a pedestal of its own
+            int onPedestals = -amounts.get(0);
             for (int amount : amounts) onPedestals += amount;
             if (free.size() < onPedestals) {
                 // (the free pedestals the altar has / the pedestals the recipe needs)
@@ -986,8 +988,16 @@ public final class Autocraft {
                 }
                 got.add(part);
             }
+            // The middle must take all of its items (checked first, so nothing goes on the pedestals for nothing; not
+            // by trying it: some altars only take the middle item when the pedestals are full)
+            ItemStack middle = got.get(0).split(got.get(0).getCount());
+            if (Math.min(altar.center().getSlotLimit(0), middle.getMaxStackSize()) < middle.getCount()) {
+                store(middle);
+                giveBack(got);
+                status = "screen.simpleores.quasar.job.waiting_machines";
+                return false;
+            }
             // The pedestals first (some altars start by themselves when the middle item goes in)
-            ItemStack middle = got.get(0).split(1);
             int next = 0;
             for (ItemStack stack : got) {
                 while (!stack.isEmpty() && next < free.size()) store(free.get(next++).insertItem(0, stack.split(1), false));

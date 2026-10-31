@@ -275,6 +275,70 @@ public final class Autocraft {
         private record MachineKey(BlockPos pos, ItemStackTemplate output) {
         }
 
+        /// A result still to be taken out of a machine, altar or furnace after its job is gone (cancelled, or the world
+        /// was closed): the Quasar takes it to the network when it is ready.
+        public record Pickup(ResourceKey<Level> dimension, BlockPos pos, ItemStackTemplate output, long expected, boolean furnace) {
+            public static final com.mojang.serialization.Codec<Pickup> CODEC = com.mojang.serialization.codecs.RecordCodecBuilder.create(inst -> inst.group(
+                    ResourceKey.codec(net.minecraft.core.registries.Registries.DIMENSION).fieldOf("dimension").forGetter(Pickup::dimension),
+                    BlockPos.CODEC.fieldOf("pos").forGetter(Pickup::pos),
+                    ItemStackTemplate.CODEC.fieldOf("output").forGetter(Pickup::output),
+                    com.mojang.serialization.Codec.LONG.fieldOf("expected").forGetter(Pickup::expected),
+                    com.mojang.serialization.Codec.BOOL.optionalFieldOf("furnace", false).forGetter(Pickup::furnace)
+            ).apply(inst, Pickup::new));
+
+            /// Takes what is ready out of the block to the network (what doesn't fit goes to "left"). Returns the
+            /// pickup with what is still to come, or null when nothing more is to come.
+            public @org.jetbrains.annotations.Nullable Pickup collect(ServerLevel quasarLevel, StarNetwork network, Map<ItemStackTemplate, Long> left) {
+                ServerLevel level = quasarLevel.getServer().getLevel(dimension);
+                if (level == null) return null;
+                // (not loaded now: later)
+                if (!level.isLoaded(pos)) return this;
+                ItemStack item = output.create();
+                long taken = 0;
+                if (furnace) {
+                    if (!(level.getBlockEntity(pos) instanceof Container container) || container.getContainerSize() < 3) return null;
+                    ItemStack out = container.getItem(2);
+                    if (!out.isEmpty() && ItemStack.isSameItemSameComponents(out, item)) {
+                        int count = (int) Math.min(out.getCount(), expected);
+                        give(network, out.copyWithCount(count), left);
+                        ItemStack rest = out.copy();
+                        rest.shrink(count);
+                        container.setItem(2, rest);
+                        container.setChanged();
+                        taken = count;
+                    }
+                    if (expected - taken <= 0 || container.getItem(0).isEmpty() && container.getItem(2).isEmpty()) return null;
+                    return new Pickup(dimension, pos, output, expected - taken, true);
+                }
+                var handler = StarAccess.items(level, pos);
+                if (handler == null) return null;
+                var sides = StarAccess.itemSides(level, pos);
+                int exact = StarAccess.extractAll(handler, sides, item);
+                if (exact > 0) give(network, item.copyWithCount(exact), left);
+                taken += exact;
+                for (ItemStack other : StarAccess.extractVariants(handler, sides, item)) {
+                    give(network, other, left);
+                    taken += other.getCount();
+                }
+                // An altar that stopped: what is left on its pedestals goes back too
+                Altars.Altar altar = Altars.of(level, pos);
+                if (altar != null && !altar.busy()) {
+                    for (BlockPos at : altar.pedestals()) {
+                        var pedestal = Altars.pedestal(level, at);
+                        if (pedestal != null && pedestal.getSlots() > 0) give(network, pedestal.extractItem(0, 64, false), left);
+                    }
+                    if (expected - taken > 0 && taken == 0) return null;
+                }
+                return expected - taken <= 0 ? null : new Pickup(dimension, pos, output, expected - taken, false);
+            }
+
+            private static void give(StarNetwork network, ItemStack stack, Map<ItemStackTemplate, Long> left) {
+                if (stack.isEmpty()) return;
+                ItemStack rest = network.insert(stack.copy());
+                if (!rest.isEmpty()) left.merge(ItemStackTemplate.fromNonEmptyStack(rest.copyWithCount(1)), (long) rest.getCount(), Long::sum);
+            }
+        }
+
         /// How many of each ingredient of a step were put in a machine.
         private record SentKey(BlockPos pos, int step) {
         }
@@ -385,23 +449,39 @@ public final class Autocraft {
         }
 
         /// The job ended (done or cancelled): what is left in its storage goes back to the network.
-        public void finish(StarNetwork network) {
+        /// Returns what didn't fit in the network (it waits in the Quasar).
+        public Map<ItemStackTemplate, Long> finish(StarNetwork network) {
+            Map<ItemStackTemplate, Long> left = new HashMap<>();
             for (Map.Entry<ItemStackTemplate, Long> entry : storage.entrySet()) {
-                long left = entry.getValue();
-                while (left > 0) {
-                    int part = (int) Math.min(left, Integer.MAX_VALUE);
+                long count = entry.getValue();
+                while (count > 0) {
+                    int part = (int) Math.min(count, Integer.MAX_VALUE);
                     ItemStack rest = network.insert(entry.getKey().create().copyWithCount(part));
-                    left -= part;
+                    count -= part - rest.getCount();
                     if (!rest.isEmpty()) break;
                 }
+                if (count > 0) left.merge(entry.getKey(), count, Long::sum);
             }
             storage.clear();
+            return left;
         }
 
-        /// The same, from the Quasar (it finds the network of the job).
-        public void finish(ServerLevel quasarLevel) {
+        /// The same, from the Quasar (it finds the network of the job). Returns what didn't fit in the network.
+        public Map<ItemStackTemplate, Long> finish(ServerLevel quasarLevel) {
             ServerLevel level = quasarLevel.getServer().getLevel(dimension);
-            if (level != null) finish(StarNetwork.at(level, pos));
+            if (level != null) return finish(StarNetwork.at(level, pos));
+            Map<ItemStackTemplate, Long> all = new HashMap<>(storage);
+            storage.clear();
+            return all;
+        }
+
+        /// The results this job still waits for in the machines, altars and furnaces (when the job is cancelled or the
+        /// world is saved, the Quasar still takes them out, see Pickup).
+        public List<Pickup> pickups() {
+            List<Pickup> list = new ArrayList<>();
+            furnaces.forEach((at, wait) -> list.add(new Pickup(dimension, at, wait.output(), wait.expected(), true)));
+            machines.forEach((key, wait) -> list.add(new Pickup(dimension, key.pos(), wait.output(), wait.expected(), false)));
+            return list;
         }
 
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {

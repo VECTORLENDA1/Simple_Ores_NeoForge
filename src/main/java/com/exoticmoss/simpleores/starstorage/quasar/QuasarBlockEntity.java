@@ -28,6 +28,13 @@ public class QuasarBlockEntity extends BlockEntity {
     /// The items that were in the storage of the jobs when the world was saved (the jobs themselves are not saved):
     /// they go back to the network as soon as the Quasar works again.
     private final java.util.Map<com.exoticmoss.simpleores.util.ItemStackTemplate, Long> toReturn = new java.util.HashMap<>();
+    /// The results still in machines, altars and furnaces of jobs that are gone (cancelled, or the world was closed
+    /// while they worked): they are taken to the network when they are ready.
+    private final List<Autocraft.Job.Pickup> pickups = new ArrayList<>();
+    /// Ticks since a pickup last got something (after a long time without anything, they are forgotten).
+    private int pickupIdle;
+    /// The pickups are forgotten after this many ticks without anything coming (20 minutes).
+    private static final int PICKUP_TIME = 24_000;
 
     /// An item and how many, as saved.
     private record Stored(com.exoticmoss.simpleores.util.ItemStackTemplate item, long count) {
@@ -121,8 +128,8 @@ public class QuasarBlockEntity extends BlockEntity {
     public void cancelJob(int id) {
         jobs.removeIf(job -> {
             if (job.id != id) return false;
-            // What the job keeps goes back to the network
-            if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) job.finish(serverLevel);
+            // What the job keeps goes back to the network, and what is still being made is taken out when it is ready
+            if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) end(job, serverLevel);
             return true;
         });
     }
@@ -135,14 +142,44 @@ public class QuasarBlockEntity extends BlockEntity {
         // (the recipes saved before they were also kept by the world)
         if (recipesId == null && !patterns.isEmpty()) backup();
         if (!toReturn.isEmpty()) returnItems();
+        if (!pickups.isEmpty() && serverLevel.getGameTime() % 20 == 0) collectPickups(serverLevel);
         if (jobs.isEmpty()) return;
         // (the storage of the jobs changes all the time: it is saved with the Quasar)
         setChanged();
         jobs.removeIf(job -> {
             if (job.tick(serverLevel) && !job.done()) return false;
-            job.finish(serverLevel);
+            end(job, serverLevel);
             return true;
         });
+    }
+
+    /// A job ends (done, stuck or cancelled): what it keeps goes back to the network (what doesn't fit waits in the
+    /// Quasar), and what it still waits for in the machines is taken out later.
+    private void end(Autocraft.Job job, net.minecraft.server.level.ServerLevel serverLevel) {
+        job.finish(serverLevel).forEach((item, count) -> toReturn.merge(item, count, Long::sum));
+        if (!job.pickups().isEmpty()) {
+            pickups.addAll(job.pickups());
+            pickupIdle = 0;
+        }
+        setChanged();
+    }
+
+    /// Takes the results that are ready out of the machines of the jobs that are gone.
+    private void collectPickups(net.minecraft.server.level.ServerLevel serverLevel) {
+        var network = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, worldPosition);
+        if (network.drives().isEmpty()) return;
+        boolean got = false;
+        List<Autocraft.Job.Pickup> next = new ArrayList<>();
+        for (Autocraft.Job.Pickup pickup : pickups) {
+            Autocraft.Job.Pickup rest = pickup.collect(serverLevel, network, toReturn);
+            if (rest == null || rest.expected() < pickup.expected()) got = true;
+            if (rest != null) next.add(rest);
+        }
+        pickups.clear();
+        pickups.addAll(next);
+        pickupIdle = got ? 0 : pickupIdle + 20;
+        if (pickupIdle >= PICKUP_TIME) pickups.clear();
+        setChanged();
     }
 
     /// The items of the jobs of before the world was loaded go back to the network (what doesn't fit waits).
@@ -172,6 +209,10 @@ public class QuasarBlockEntity extends BlockEntity {
         List<Stored> list = new ArrayList<>();
         stored.forEach((item, count) -> list.add(new Stored(item, count)));
         output.store("job_items", Stored.CODEC.listOf(), list);
+        // (the jobs are not saved: what they still wait for in the machines is taken out when the world is loaded)
+        List<Autocraft.Job.Pickup> waiting = new ArrayList<>(pickups);
+        for (Autocraft.Job job : jobs) waiting.addAll(job.pickups());
+        output.store("pickups", Autocraft.Job.Pickup.CODEC.listOf(), waiting);
         output.store("patterns", Pattern.CODEC.listOf(), patterns);
         if (recipesId != null) tag.putUUID("recipes_id", recipesId);
     }
@@ -182,6 +223,8 @@ public class QuasarBlockEntity extends BlockEntity {
         ValueInput input = new ValueInput(tag, registries);
         toReturn.clear();
         for (Stored stored : input.read("job_items", Stored.CODEC.listOf()).orElse(List.of())) toReturn.merge(stored.item(), stored.count(), Long::sum);
+        pickups.clear();
+        pickups.addAll(input.read("pickups", Autocraft.Job.Pickup.CODEC.listOf()).orElse(List.of()));
         patterns.clear();
         patterns.addAll(input.read("patterns", Pattern.CODEC.listOf()).orElse(List.of()));
         if (tag.hasUUID("recipes_id")) recipesId = tag.getUUID("recipes_id");

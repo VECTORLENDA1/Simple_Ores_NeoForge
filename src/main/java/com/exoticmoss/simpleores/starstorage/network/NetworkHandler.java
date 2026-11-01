@@ -51,7 +51,7 @@ public final class NetworkHandler {
             StarNetwork network = network();
             List<ItemStackTemplate> list = new ArrayList<>();
             List<Long> counts = new ArrayList<>();
-            if (!network.drives().isEmpty()) {
+            if (network.hasStorage()) {
                 for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) {
                     list.add(entry.getKey());
                     counts.add(entry.getValue());
@@ -59,7 +59,7 @@ public final class NetworkHandler {
             }
             kinds = list;
             amounts = counts;
-            space = network.drives().isEmpty() ? 0 : Math.max(0, network.capacity() - network.usedItems());
+            space = !network.hasStorage() ? 0 : Math.max(0, network.capacity() - network.usedItems());
         }
 
         private boolean accepts(ItemStack stack) {
@@ -143,8 +143,8 @@ public final class NetworkHandler {
             if (level.getGameTime() == readTick) return;
             readTick = level.getGameTime();
             StarNetwork network = network();
-            kinds = network.drives().isEmpty() ? List.of() : List.copyOf(network.fluids());
-            space = network.drives().isEmpty() ? 0 : Math.max(0, network.fluidCapacity() - network.fluidUsed());
+            kinds = !network.hasStorage() ? List.of() : List.copyOf(network.fluids());
+            space = !network.hasStorage() ? 0 : Math.max(0, network.fluidCapacity() - network.fluidUsed());
         }
 
         @Override

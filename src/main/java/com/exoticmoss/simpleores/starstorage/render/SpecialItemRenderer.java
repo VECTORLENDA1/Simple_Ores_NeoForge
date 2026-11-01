@@ -62,7 +62,8 @@ public class SpecialItemRenderer extends BlockEntityWithoutLevelRenderer {
                 : block == ModBlocks.STELLAR_TERMINAL.get() ? StarLook.TERMINAL
                 : block == ModBlocks.ADVANCED_TERMINAL.get() ? StarLook.TERMINAL_2
                 : block == ModBlocks.BINARY_STAR.get() ? StarLook.BINARY
-                : block == ModBlocks.QUASAR.get() ? StarLook.QUASAR : null;
+                : block == ModBlocks.QUASAR.get() ? StarLook.QUASAR
+                : block == ModBlocks.EVENT_HORIZON.get() ? StarLook.HORIZON : null;
         if (look == null) return null;
         StarItemRenderer renderer = new StarItemRenderer(look);
         return (pose, collector, light, overlay) -> renderer.submit(pose, collector, light, overlay, false, 0);

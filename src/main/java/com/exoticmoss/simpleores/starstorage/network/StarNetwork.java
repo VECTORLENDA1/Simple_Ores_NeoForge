@@ -10,6 +10,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
+import com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlockEntity;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,7 +40,10 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalContents;
 /// (more with Magnetic Field Upgrades). Wormhole Links join the networks of other Magnetars.
 /// The network is found again every time it is used, so placing or breaking a drive works right away.
 /// "coreCrafting" = the network has a Stellar Terminal II: only then the Gravity Core recipes of the Quasars can be crafted.
-public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars, boolean coreCrafting) {
+/// "horizons" = the Event Horizons of the field: the inventories and tanks they touch are part of the network too
+/// (see External).
+public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlockEntity> quasars, boolean coreCrafting,
+                          List<EventHorizonBlockEntity> horizons) {
     /// Size of the magnetic field of a Magnetar without upgrades (blocks in every direction).
     public static final int FIELD_RADIUS = 16;
 
@@ -67,7 +75,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// The network of the Magnetar whose field reaches this position (empty if there is no Magnetar).
     public static StarNetwork at(Level level, BlockPos pos) {
         MagnetarBlockEntity magnetar = findMagnetar(level, pos);
-        return magnetar == null ? new StarNetwork(List.of(), List.of(), false) : around(level, magnetar.getBlockPos());
+        return magnetar == null ? new StarNetwork(List.of(), List.of(), false, List.of()) : around(level, magnetar.getBlockPos());
     }
 
     /// Every drive and Quasar inside the field of the Magnetar at this position, and inside the fields of the
@@ -75,13 +83,15 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public static StarNetwork around(Level level, BlockPos magnetarPos) {
         List<StellarDriveBlockEntity> drives = new ArrayList<>();
         List<QuasarBlockEntity> quasars = new ArrayList<>();
+        List<EventHorizonBlockEntity> horizons = new ArrayList<>();
         boolean[] coreCrafting = {false};
-        collect(level, magnetarPos, drives, quasars, coreCrafting, new HashSet<>());
-        return new StarNetwork(drives, quasars, coreCrafting[0]);
+        collect(level, magnetarPos, drives, quasars, horizons, coreCrafting, new HashSet<>());
+        return new StarNetwork(drives, quasars, coreCrafting[0], horizons);
     }
 
     private static void collect(Level level, BlockPos magnetarPos, List<StellarDriveBlockEntity> drives,
-                                List<QuasarBlockEntity> quasars, boolean[] coreCrafting, Set<GlobalPos> visited) {
+                                List<QuasarBlockEntity> quasars, List<EventHorizonBlockEntity> horizons, boolean[] coreCrafting,
+                                Set<GlobalPos> visited) {
         if (!visited.add(GlobalPos.of(level.dimension(), magnetarPos))) return;
         MagnetarBlockEntity magnetar = level.getBlockEntity(magnetarPos) instanceof MagnetarBlockEntity found ? found : null;
         int radius = magnetar == null ? FIELD_RADIUS : magnetar.radius();
@@ -89,6 +99,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             if (blockEntity.isRemoved()) return;
             if (blockEntity instanceof StellarDriveBlockEntity drive && !drives.contains(drive)) drives.add(drive);
             else if (blockEntity instanceof QuasarBlockEntity quasar && !quasars.contains(quasar)) quasars.add(quasar);
+            else if (blockEntity instanceof EventHorizonBlockEntity horizon && !horizons.contains(horizon)) horizons.add(horizon);
             else if (blockEntity instanceof AdvancedTerminalBlockEntity) coreCrafting[0] = true;
         });
         if (magnetar == null || !(level instanceof ServerLevel serverLevel)) return;
@@ -96,8 +107,59 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             ServerLevel other = serverLevel.getServer().getLevel(link.dimension());
             BlockPos otherPos = link.pos();
             if (other == null || other.getChunkSource().getChunkNow(otherPos.getX() >> 4, otherPos.getZ() >> 4) == null) continue;
-            if (other.getBlockEntity(otherPos) instanceof MagnetarBlockEntity) collect(other, otherPos, drives, quasars, coreCrafting, visited);
+            if (other.getBlockEntity(otherPos) instanceof MagnetarBlockEntity) collect(other, otherPos, drives, quasars, horizons, coreCrafting, visited);
         }
+    }
+
+    /// True if the network keeps things: Stellar Drives, or Event Horizons.
+    public boolean hasStorage() {
+        return !drives.isEmpty() || !horizons.isEmpty();
+    }
+
+    // ---------------------------------------------------------------- inventories of other mods (Event Horizons)
+
+    /// An inventory and its tanks touched by an Event Horizon of the network (null = it has none of them).
+    private record External(EventHorizonBlockEntity horizon, @Nullable IItemHandler items, @Nullable IFluidHandler fluids) {
+    }
+
+    /// The inventories and tanks the Event Horizons touch (each one once; never a block of the star storage), the
+    /// highest priority first.
+    private List<External> externals() {
+        if (horizons.isEmpty()) return List.of();
+        List<External> list = new ArrayList<>();
+        Set<GlobalPos> seen = new HashSet<>();
+        for (EventHorizonBlockEntity horizon : horizons) {
+            Level level = horizon.getLevel();
+            if (level == null || horizon.isRemoved()) continue;
+            for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) {
+                BlockPos at = horizon.getBlockPos().relative(side);
+                if (!level.isLoaded(at)) continue;
+                BlockEntity target = level.getBlockEntity(at);
+                if (target == null || target.getClass().getName().startsWith("com.exoticmoss.simpleores.")) continue;
+                if (!seen.add(GlobalPos.of(level.dimension(), at))) continue;
+                IItemHandler items = level.getCapability(Capabilities.ItemHandler.BLOCK, at, side.getOpposite());
+                if (items == null) items = level.getCapability(Capabilities.ItemHandler.BLOCK, at, null);
+                IFluidHandler fluids = level.getCapability(Capabilities.FluidHandler.BLOCK, at, side.getOpposite());
+                if (fluids == null) fluids = level.getCapability(Capabilities.FluidHandler.BLOCK, at, null);
+                if (items != null || fluids != null) list.add(new External(horizon, items, fluids));
+            }
+        }
+        list.sort((a, b) -> Integer.compare(b.horizon().priority(), a.horizon().priority()));
+        return list;
+    }
+
+    /// Puts the stack in an inventory of an Event Horizon (the slots with the same item first). Returns what didn't fit.
+    private static ItemStack insertExternal(External external, ItemStack stack) {
+        if (external.items() == null || !external.horizon().accepts(stack)) return stack;
+        IItemHandler handler = external.items();
+        ItemStack left = stack;
+        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty(); slot++) {
+            if (ItemStack.isSameItemSameComponents(handler.getStackInSlot(slot), left)) left = handler.insertItem(slot, left, false);
+        }
+        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty(); slot++) {
+            if (handler.getStackInSlot(slot).isEmpty()) left = handler.insertItem(slot, left, false);
+        }
+        return left;
     }
 
     /// Every recipe of the Quasars of the network (an item can have more than one recipe).
@@ -142,6 +204,14 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 totals.merge(entry.item(), (long) entry.count(), Long::sum);
             }
         });
+        for (External external : externals()) {
+            if (external.items() == null) continue;
+            for (int slot = 0; slot < external.items().getSlots(); slot++) {
+                ItemStack stack = external.items().getStackInSlot(slot);
+                if (stack.isEmpty() || !external.horizon().accepts(stack)) continue;
+                totals.merge(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1)), (long) stack.getCount(), Long::sum);
+            }
+        }
         List<Map.Entry<ItemStackTemplate, Long>> list = new ArrayList<>(totals.entrySet());
         list.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
         return list;
@@ -153,27 +223,52 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         return count[0];
     }
 
-    /// Items kept in all the cells.
+    /// Items kept in all the cells (and in the inventories of the Event Horizons).
     public long usedItems() {
         long[] used = {0};
         forEachCell((drive, cell, item) -> used[0] += StarCellItem.getContents(cell).totalCount());
+        for (External external : externals()) {
+            if (external.items() == null) continue;
+            for (int slot = 0; slot < external.items().getSlots(); slot++) used[0] += external.items().getStackInSlot(slot).getCount();
+        }
         return used[0];
     }
 
-    /// How many items fit in all the cells.
+    /// How many items fit in all the cells (and in the inventories of the Event Horizons).
     public long capacity() {
         long[] capacity = {0};
         forEachCell((drive, cell, item) -> capacity[0] += item.tier.capacity);
+        for (External external : externals()) {
+            if (external.items() == null) continue;
+            for (int slot = 0; slot < external.items().getSlots(); slot++) capacity[0] += external.items().getSlotLimit(slot);
+        }
         return capacity[0];
     }
 
     // ---------------------------------------------------------------- putting in and taking out
 
     /// Puts the stack in the network. Returns what did not fit (EMPTY = everything fit).
-    /// First the cells that already have this item (so the same item stays together), then any cell with room.
+    /// First the inventories of the Event Horizons with a priority above 0, then the cells that already have this item
+    /// (so the same item stays together), then any cell with room, then the other inventories of the Event Horizons.
     public ItemStack insert(ItemStack stack) {
         if (stack.isEmpty() || stack.getItem() instanceof StarCellItem && !StarCellItem.isEmptyCell(stack)
                 || stack.getItem() instanceof FluidCellItem && !FluidCellItem.getContents(stack).isEmpty()) return stack;
+        List<External> externals = externals();
+        ItemStack first = stack.copy();
+        for (External external : externals) {
+            if (first.isEmpty()) return ItemStack.EMPTY;
+            if (external.horizon().priority() > 0) first = insertExternal(external, first);
+        }
+        ItemStack left = insertCells(first);
+        for (External external : externals) {
+            if (left.isEmpty()) break;
+            if (external.horizon().priority() <= 0) left = insertExternal(external, left);
+        }
+        return left;
+    }
+
+    private ItemStack insertCells(ItemStack stack) {
+        if (stack.isEmpty()) return ItemStack.EMPTY;
         ItemStack left = stack.copy();
         for (int pass = 0; pass < 2 && !left.isEmpty(); pass++) {
             final boolean onlyWithItem = pass == 0;
@@ -201,6 +296,21 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 drive.cellsChanged();
             }
         });
+        // Then the inventories of the Event Horizons (the lowest priority first)
+        List<External> externals = externals();
+        for (int i = externals.size() - 1; i >= 0 && taken[0] < amount; i--) {
+            External external = externals.get(i);
+            if (external.items() == null || !external.horizon().accepts(template)) continue;
+            IItemHandler handler = external.items();
+            for (int slot = 0; slot < handler.getSlots() && taken[0] < amount; slot++) {
+                if (!ItemStack.isSameItemSameComponents(handler.getStackInSlot(slot), template)) continue;
+                while (taken[0] < amount) {
+                    ItemStack out = handler.extractItem(slot, Math.min(amount - taken[0], template.getMaxStackSize()), false);
+                    if (out.isEmpty()) break;
+                    taken[0] += out.getCount();
+                }
+            }
+        }
         return taken[0] == 0 ? ItemStack.EMPTY : template.copyWithCount(taken[0]);
     }
 
@@ -244,6 +354,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         forEachFluidCell((drive, cell, item) -> {
             for (FluidContents.Entry entry : FluidCellItem.getContents(cell).entries()) totals.merge(entry.fluid(), entry.amount(), Long::sum);
         });
+        for (External external : externals()) {
+            if (external.fluids() == null) continue;
+            for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
+                FluidStack fluid = external.fluids().getFluidInTank(tank);
+                if (!fluid.isEmpty()) totals.merge(fluid.getFluid(), (long) fluid.getAmount(), Long::sum);
+            }
+        }
         List<FluidContents.Entry> list = new ArrayList<>();
         totals.forEach((fluid, amount) -> list.add(new FluidContents.Entry(fluid, amount)));
         list.sort((a, b) -> Long.compare(b.amount(), a.amount()));
@@ -254,12 +371,22 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public long fluidUsed() {
         long[] used = {0};
         forEachFluidCell((drive, cell, item) -> used[0] += FluidCellItem.getContents(cell).total());
+        for (External external : externals()) {
+            if (external.fluids() == null) continue;
+            for (int tank = 0; tank < external.fluids().getTanks(); tank++) used[0] += external.fluids().getFluidInTank(tank).getAmount();
+        }
         return used[0];
     }
 
     public long fluidCapacity() {
         long[] capacity = {0};
         forEachFluidCell((drive, cell, item) -> capacity[0] = Math.min(Long.MAX_VALUE / 2, capacity[0] + item.tier.fluidCapacity));
+        for (External external : externals()) {
+            if (external.fluids() == null) continue;
+            for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
+                capacity[0] = Math.min(Long.MAX_VALUE / 2, capacity[0] + external.fluids().getTankCapacity(tank));
+            }
+        }
         return capacity[0];
     }
 
@@ -267,13 +394,25 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public long fluidAmount(Fluid fluid) {
         long[] amount = {0};
         forEachFluidCell((drive, cell, item) -> amount[0] += FluidCellItem.getContents(cell).amountOf(fluid));
+        for (External external : externals()) {
+            if (external.fluids() == null) continue;
+            for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
+                FluidStack inside = external.fluids().getFluidInTank(tank);
+                if (inside.getFluid() == fluid) amount[0] += inside.getAmount();
+            }
+        }
         return amount[0];
     }
 
     /// Puts up to "amount" mB of this liquid in the network (first the cells that already have it).
     /// Returns how many mB went in.
     public long insertFluid(Fluid fluid, long amount) {
+        List<External> externals = externals();
         long[] left = {amount};
+        // The tanks of the Event Horizons with a priority above 0 first, then the cells, then the other tanks
+        for (External external : externals) {
+            if (external.horizon().priority() > 0) left[0] -= fillExternal(external, fluid, left[0]);
+        }
         for (int pass = 0; pass < 2 && left[0] > 0; pass++) {
             final boolean onlyWithFluid = pass == 0;
             forEachFluidCell((drive, cell, item) -> {
@@ -286,7 +425,15 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 }
             });
         }
+        for (External external : externals) {
+            if (external.horizon().priority() <= 0) left[0] -= fillExternal(external, fluid, left[0]);
+        }
         return amount - left[0];
+    }
+
+    private static long fillExternal(External external, Fluid fluid, long amount) {
+        if (external.fluids() == null || amount <= 0) return 0;
+        return external.fluids().fill(new FluidStack(fluid, (int) Math.min(amount, Integer.MAX_VALUE)), IFluidHandler.FluidAction.EXECUTE);
     }
 
     /// Takes up to "amount" mB of this liquid out of the network. Returns how many mB were taken.
@@ -300,6 +447,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 drive.cellsChanged();
             }
         });
+        List<External> externals = externals();
+        for (int i = externals.size() - 1; i >= 0 && taken[0] < amount; i--) {
+            IFluidHandler tanks = externals.get(i).fluids();
+            if (tanks == null) continue;
+            int want = (int) Math.min(amount - taken[0], Integer.MAX_VALUE);
+            taken[0] += tanks.drain(new FluidStack(fluid, want), IFluidHandler.FluidAction.EXECUTE).getAmount();
+        }
         return taken[0];
     }
 

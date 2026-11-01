@@ -39,6 +39,9 @@ public class ModBlockEntities {
     public static final Supplier<BlockEntityType<BinaryStarBlockEntity>> BINARY_STAR_BE =
             BLOCK_ENTITIES.register("binary_star_be", () -> BlockEntityType.Builder.of(BinaryStarBlockEntity::new, ModBlocks.BINARY_STAR.get()).build(null));
 
+    public static final Supplier<BlockEntityType<com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlockEntity>> EVENT_HORIZON_BE =
+            BLOCK_ENTITIES.register("event_horizon_be", () -> BlockEntityType.Builder.of(
+                    com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlockEntity::new, ModBlocks.EVENT_HORIZON.get()).build(null));
     public static final Supplier<BlockEntityType<QuasarBlockEntity>> QUASAR_BE =
             BLOCK_ENTITIES.register("quasar_be", () -> BlockEntityType.Builder.of(QuasarBlockEntity::new, ModBlocks.QUASAR.get()).build(null));
 

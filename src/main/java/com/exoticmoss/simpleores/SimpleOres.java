@@ -142,6 +142,7 @@ public class SimpleOres {
             event.registerBlockEntityRenderer(ModBlockEntities.ADVANCED_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL_2));
             event.registerBlockEntityRenderer(ModBlockEntities.BINARY_STAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.BINARY));
             event.registerBlockEntityRenderer(ModBlockEntities.QUASAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.QUASAR));
+            event.registerBlockEntityRenderer(ModBlockEntities.EVENT_HORIZON_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.HORIZON));
         }
 
         // Screen of the Stellar Terminal
@@ -151,6 +152,7 @@ public class SimpleOres {
             event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
             event.register(ModMenus.BINARY.get(), BinaryScreen::new);
             event.register(ModMenus.MAGNETAR.get(), com.exoticmoss.simpleores.starstorage.client.MagnetarScreen::new);
+            event.register(ModMenus.EVENT_HORIZON.get(), com.exoticmoss.simpleores.starstorage.client.EventHorizonScreen::new);
         }
 
         // 3D items: the Gravity Cores, the stars of the star storage and the cells (their item models are "builtin/entity")
@@ -169,7 +171,7 @@ public class SimpleOres {
                     ModBlocks.GRAVITY_CORE_SUN.get().asItem(), ModBlocks.GRAVITY_CORE_RED_GIANT.get().asItem(),
                     ModBlocks.GRAVITY_CORE_PULSAR.get().asItem(), ModBlocks.GRAVITY_CORE_BLACK_HOLE.get().asItem(),
                     ModBlocks.MAGNETAR_CORE.get().asItem(), ModBlocks.STELLAR_TERMINAL.get().asItem(), ModBlocks.ADVANCED_TERMINAL.get().asItem(),
-                    ModBlocks.BINARY_STAR.get().asItem(), ModBlocks.QUASAR.get().asItem(),
+                    ModBlocks.BINARY_STAR.get().asItem(), ModBlocks.QUASAR.get().asItem(), ModBlocks.EVENT_HORIZON.get().asItem(),
                     ModItems.RED_DWARF_CELL.get(), ModItems.WHITE_DWARF_CELL.get(), ModItems.BLUE_DWARF_CELL.get(), ModItems.PULSAR_CELL.get(),
                     ModItems.NEUTRON_CELL.get(), ModItems.QUARK_CELL.get(), ModItems.PREON_CELL.get(), ModItems.SINGULARITY_CELL.get(),
                     ModItems.RED_DWARF_FLUID_CELL.get(), ModItems.WHITE_DWARF_FLUID_CELL.get(), ModItems.BLUE_DWARF_FLUID_CELL.get(),

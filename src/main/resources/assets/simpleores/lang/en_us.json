@@ -166,5 +166,11 @@
   "item.simpleores.preon_cell": "Preon Cell",
   "item.simpleores.preon_fluid_cell": "Preon Fluid Cell",
   "screen.simpleores.area.show": "Show area",
-  "screen.simpleores.area.hide": "Hide area"
+  "screen.simpleores.area.hide": "Hide area",
+  "block.simpleores.event_horizon": "Event Horizon",
+  "tooltip.simpleores.event_horizon": "Joins the inventories and tanks it touches to the network",
+  "screen.simpleores.horizon.priority": "Priority: %s",
+  "screen.simpleores.horizon.priority_info": "Higher: things are kept here first (above 0: before the cells). Shift: 10 at a time",
+  "screen.simpleores.horizon.filter": "Filter",
+  "screen.simpleores.horizon.filter_info": "Click with an item to only see and keep that item here. Empty: every item"
 }

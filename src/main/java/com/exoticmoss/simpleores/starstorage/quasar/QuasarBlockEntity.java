@@ -167,7 +167,7 @@ public class QuasarBlockEntity extends BlockEntity {
     /// Takes the results that are ready out of the machines of the jobs that are gone.
     private void collectPickups(net.minecraft.server.level.ServerLevel serverLevel) {
         var network = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, worldPosition);
-        if (network.drives().isEmpty()) return;
+        if (!network.hasStorage()) return;
         boolean got = false;
         List<Autocraft.Job.Pickup> next = new ArrayList<>();
         for (Autocraft.Job.Pickup pickup : pickups) {
@@ -185,7 +185,7 @@ public class QuasarBlockEntity extends BlockEntity {
     /// The items of the jobs of before the world was loaded go back to the network (what doesn't fit waits).
     private void returnItems() {
         var network = com.exoticmoss.simpleores.starstorage.network.StarNetwork.at(level, worldPosition);
-        if (network.drives().isEmpty()) return;
+        if (!network.hasStorage()) return;
         for (var entry : new ArrayList<>(toReturn.entrySet())) {
             long left = entry.getValue();
             while (left > 0) {

@@ -19,7 +19,7 @@ import java.util.Set;
 public class StarTooltips {
     private static final Set<String> STARS = Set.of("magnetar_core", "stellar_terminal", "advanced_stellar_terminal",
             "binary_star", "quasar", "stellar_drive", "gravity_core_sun", "gravity_core_red_giant", "gravity_core_pulsar",
-            "gravity_core_black_hole", "solar_wind_upgrade", "magnetic_field_upgrade", "wormhole_link");
+            "gravity_core_black_hole", "solar_wind_upgrade", "magnetic_field_upgrade", "wormhole_link", "event_horizon");
 
     @SubscribeEvent
     public static void onTooltip(ItemTooltipEvent event) {

@@ -29,6 +29,7 @@
     "simpleores:stellar_terminal",
     "simpleores:advanced_stellar_terminal",
     "simpleores:binary_star",
-    "simpleores:quasar"
+    "simpleores:quasar",
+    "simpleores:event_horizon"
   ]
 }

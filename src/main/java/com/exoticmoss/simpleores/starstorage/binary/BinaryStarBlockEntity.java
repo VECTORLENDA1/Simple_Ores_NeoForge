@@ -158,7 +158,7 @@ public class BinaryStarBlockEntity extends BlockEntity {
         if (level != null && ticks % SCAN_TICKS == 0) scanOutputs();
         if (++ticks % WORK_TICKS != 0 || rules.isEmpty() || level == null) return;
         StarNetwork network = StarNetwork.at(level, worldPosition);
-        if (network.drives().isEmpty()) return;
+        if (!network.hasStorage()) return;
         for (Map.Entry<BlockPos, Map<Integer, SlotRule>> entry : new ArrayList<>(rules.entrySet())) {
             BlockPos pos = entry.getKey();
             if (!inReach(pos) || !level.isLoaded(pos)) continue;

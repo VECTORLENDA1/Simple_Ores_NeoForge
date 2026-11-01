@@ -129,5 +129,11 @@
   "item.simpleores.preon_cell": "Célula de Preão",
   "item.simpleores.preon_fluid_cell": "Célula de Líquidos de Preão",
   "screen.simpleores.area.show": "Ver área",
-  "screen.simpleores.area.hide": "Esconder área"
+  "screen.simpleores.area.hide": "Esconder área",
+  "block.simpleores.event_horizon": "Horizonte de Eventos",
+  "tooltip.simpleores.event_horizon": "Junta à rede os inventários e tanques em que toca",
+  "screen.simpleores.horizon.priority": "Prioridade: %s",
+  "screen.simpleores.horizon.priority_info": "Mais alta: as coisas são guardadas aqui primeiro (acima de 0: antes das células). Shift: de 10 em 10",
+  "screen.simpleores.horizon.filter": "Filtro",
+  "screen.simpleores.horizon.filter_info": "Clica com um item para só ver e guardar esse item aqui. Vazio: todos os items"
 }

@@ -447,14 +447,18 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 continue;
             }
             Pattern recipe = options.get(i);
-            graphics.item(mainInput(recipe), box[0] + 2, box[1] + 2);
+            // (a furnace recipe shows its kind of furnace: Furnace, Blast Furnace or Smoker)
+            graphics.item(recipe.furnace() ? Pattern.cookingBlock(recipe.cooking()) : mainInput(recipe), box[0] + 2, box[1] + 2);
             int dot = recipe.isCore() ? 0xFFFF9A2A : recipe.furnace() ? 0xFFA0A0A0 : 0xFFA0703A;
             graphics.fill(box[0] + box[2] - 5, box[1] + 2, box[0] + box[2] - 2, box[1] + 5, dot);
             if (over) {
                 List<Component> lines = new ArrayList<>();
-                String kind = recipe.isCore() ? "core" : recipe.furnace() ? "furnace" : "crafting";
-                lines.add(Component.translatable("screen.simpleores.quasar.tab." + kind).append(" -> " + recipe.count() + " x ")
-                        .append(recipe.output().create().getHoverName()));
+                // The kind of recipe: the Gravity Core, the block of a furnace or machine recipe, or the crafting table
+                Component kind = recipe.isCore() ? Component.translatable("screen.simpleores.quasar.tab.core")
+                        : recipe.furnace() ? Pattern.cookingBlock(recipe.cooking()).getHoverName()
+                        : recipe.isMachine() ? recipe.machines().get(0).create().getHoverName()
+                        : Component.translatable("screen.simpleores.quasar.tab.crafting");
+                lines.add(kind.copy().append(" -> " + recipe.count() + " x ").append(recipe.output().create().getHoverName()));
                 for (int input = 0; input < recipe.inputs().size(); input++) {
                     List<ItemStackTemplate> slot = recipe.inputs().get(input);
                     if (slot.isEmpty()) continue;

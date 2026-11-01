@@ -109,6 +109,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     /// Server: the item picked with the mouse wheel in each slot of the grid (-1 = none: every item can be used).
     private final int[] picked = new int[GRID_SLOTS];
     private List<ItemStackTemplate> machines = List.of();
+    /// Server: the liquids the recipe of a machine uses and makes (mB for one craft).
+    private List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> machineFluids = List.of();
+    private List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> machineFluidOutputs = List.of();
     /// Server: the Gravity Core recipe the core slots make (null = none).
     private RecipeHolder<GravityCoreRecipe> coreRecipe;
     /// Server: the items of all the core slots (the shown ones are copied to the pictures).
@@ -384,6 +387,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         }
         machines = machineOutput.isEmpty() ? List.of() : list;
         if (machines.isEmpty()) machineOutput = ItemStack.EMPTY;
+        machineFluids = machines.isEmpty() ? List.of() : List.copyOf(fill.fluids());
+        machineFluidOutputs = machines.isEmpty() ? List.of() : List.copyOf(fill.fluidOutputs());
         updateResult();
     }
 
@@ -504,7 +509,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
                     else inputs.add(choices.get(i));
                     slotAmounts.add(stack.isEmpty() ? 1 : amounts[i]);
                 }
-                if (isMachine()) quasar.addPattern(Pattern.machine(output, machineOutput.getCount(), inputs, slotAmounts, machines));
+                if (isMachine()) quasar.addPattern(Pattern.machine(output, machineOutput.getCount(), inputs, slotAmounts, machines,
+                        machineFluids, machineFluidOutputs));
                 else quasar.addPattern(Pattern.crafting(output, result.getCount(), inputs));
             } else if (tab == TAB_CORE && coreRecipe != null) {
                 quasar.addPattern(QuasarCore.pattern(coreRecipe, coreTier(coreRecipe.value())));
@@ -523,6 +529,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             }
             machineOutput = ItemStack.EMPTY;
             machines = List.of();
+            machineFluids = List.of();
+            machineFluidOutputs = List.of();
             for (int i = 0; i < CORE_SLOTS; i++) cores.set(i, ItemStack.EMPTY);
             coreScroll = 0;
             updateResult();

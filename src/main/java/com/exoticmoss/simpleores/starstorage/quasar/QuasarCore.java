@@ -51,7 +51,7 @@ public record QuasarCore(ResourceLocation recipe) implements CustomPacketPayload
         }
         ItemStack result = recipe.createResult(tier);
         return new Pattern(ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1)), result.getCount(),
-                inputs, amounts, Optional.of(holder.id()), tier, false, List.of());
+                inputs, amounts, Optional.of(holder.id()), tier, false, List.of(), List.of(), List.of());
     }
 
     @SuppressWarnings("unchecked")

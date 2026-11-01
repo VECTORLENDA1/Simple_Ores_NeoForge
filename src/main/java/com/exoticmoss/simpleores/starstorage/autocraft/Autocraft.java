@@ -65,6 +65,8 @@ public final class Autocraft {
     }
 
     private final Map<ItemStackTemplate, Long> stock = new HashMap<>();
+    /// The liquids of the network (mB) the plan can still use.
+    private final Map<net.minecraft.world.level.material.Fluid, Long> fluidStock = new HashMap<>();
     /// The extra items the planned crafts make (e.g. 9 when 8 are needed): used before the network.
     private final Map<ItemStackTemplate, Long> extras = new HashMap<>();
     /// The items of the network the plan uses (they go into the storage of the job when it starts).
@@ -78,6 +80,7 @@ public final class Autocraft {
 
     private Autocraft(StarNetwork network, boolean advanced) {
         for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) stock.put(entry.getKey(), entry.getValue());
+        for (var fluid : network.fluids()) fluidStock.merge(fluid.fluid(), fluid.amount(), Long::sum);
         this.patterns = network.patterns().stream().filter(pattern -> advanced || !pattern.advanced()).toList();
     }
 
@@ -162,6 +165,7 @@ public final class Autocraft {
                 Map<ItemStackTemplate, Long> extrasBefore = new HashMap<>(extras);
                 Map<ItemStackTemplate, Long> fromNetworkBefore = new HashMap<>(fromNetwork);
                 Map<ItemStackTemplate, Long> missingBefore = new LinkedHashMap<>(missing);
+                Map<net.minecraft.world.level.material.Fluid, Long> fluidsBefore = new HashMap<>(fluidStock);
                 int stepsBefore = steps.size();
                 long craftsBefore = crafts;
                 if (craft(option, item, amount, depth) && crafts <= MAX_CRAFTS) return true;
@@ -173,6 +177,8 @@ public final class Autocraft {
                 fromNetwork.putAll(fromNetworkBefore);
                 missing.clear();
                 missing.putAll(missingBefore);
+                fluidStock.clear();
+                fluidStock.putAll(fluidsBefore);
                 while (steps.size() > stepsBefore) steps.remove(steps.size() - 1);
                 crafts = craftsBefore;
             }
@@ -206,6 +212,19 @@ public final class Autocraft {
             ItemStackTemplate choice = choose(choices, needed);
             items.add(choice);
             ok &= need(choice, needed, depth + 1);
+        }
+        // The liquids of a machine recipe come from the network (what it doesn't have is missing: shown as its bucket)
+        for (var fluid : pattern.fluids()) {
+            long needed = times * fluid.amount();
+            long have = fluidStock.getOrDefault(fluid.fluid(), 0L);
+            long used = Math.min(have, needed);
+            fluidStock.put(fluid.fluid(), have - used);
+            if (used < needed) {
+                ItemStack bucket = com.exoticmoss.simpleores.starstorage.network.StarFluids.bucket(fluid.fluid());
+                missing.merge(ItemStackTemplate.fromNonEmptyStack(bucket.isEmpty() ? new ItemStack(net.minecraft.world.item.Items.BUCKET) : bucket),
+                        needed - used, Long::sum);
+                ok = false;
+            }
         }
         steps.add(new Step(pattern, items, times));
         long extra = times * pattern.count() - amount;
@@ -344,6 +363,8 @@ public final class Autocraft {
         }
 
         private final Map<SentKey, long[]> sentToMachines = new HashMap<>();
+        /// The machines used by this job that make liquids, and the liquids they make (taken out to the network).
+        private final Map<BlockPos, java.util.Set<net.minecraft.world.level.material.Fluid>> fluidMachines = new HashMap<>();
         /// At most this many of one ingredient are sent to one machine each time the job works.
         private static final int MAX_SEND = 1024;
         /// The index of the step being worked on now (inside work).
@@ -620,7 +641,7 @@ public final class Autocraft {
 
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
-            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | arrivedNow;
+            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | collectFluids(level, network) | arrivedNow;
             arrivedNow = false;
             // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:
             // what has its ingredients is made). The steps are in order (the sub-crafts first), so what one makes
@@ -1002,6 +1023,25 @@ public final class Autocraft {
                 long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
                 long setsBefore = sets(sent, amounts);
                 long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
+                // The liquids of the recipe: only as many sets as the network has liquid for and the tanks of the
+                // machine take
+                var fluids = step.pattern().fluids();
+                var tanks = fluids.isEmpty() ? null : StarAccess.fluids(level, machinePos);
+                var tankSides = fluids.isEmpty() ? List.<net.neoforged.neoforge.fluids.capability.IFluidHandler>of() : StarAccess.fluidSides(level, machinePos);
+                if (!fluids.isEmpty()) {
+                    long fluidSets = Long.MAX_VALUE;
+                    for (var fluid : fluids) {
+                        long have = network.fluidAmount(fluid.fluid());
+                        int fits = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(),
+                                (int) Math.min(Integer.MAX_VALUE, Math.max(1, have))), true);
+                        fluidSets = Math.min(fluidSets, Math.min(have, fits) / Math.max(1, fluid.amount()));
+                    }
+                    if (fluidSets <= 0) {
+                        status = "screen.simpleores.quasar.job.waiting_items";
+                        continue;
+                    }
+                    goal = Math.min(goal, setsBefore + fluidSets);
+                }
                 for (int k = 0; k < items.size(); k++) {
                     // (all the machines together never get more of an ingredient than the step needs)
                     long want = Math.min(Math.min(goal * amounts.get(k) - sent[k], MAX_SEND),
@@ -1022,6 +1062,18 @@ public final class Autocraft {
                 }
                 long given = sets(sent, amounts) - setsBefore;
                 if (given <= 0) continue;
+                // The liquids of the sets given (what the tanks don't take goes back)
+                for (var fluid : fluids) {
+                    long want = given * fluid.amount();
+                    int got = (int) network.extractFluid(fluid.fluid(), Math.min(want, Integer.MAX_VALUE));
+                    if (got <= 0) continue;
+                    int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
+                    if (put < got) network.insertFluid(fluid.fluid(), got - put);
+                }
+                if (!step.pattern().fluidOutputs().isEmpty()) {
+                    var made = fluidMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
+                    for (var fluid : step.pattern().fluidOutputs()) made.add(fluid.fluid());
+                }
                 done += given;
                 usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
                 machines.merge(new MachineKey(machinePos, step.pattern().output()),
@@ -1109,6 +1161,43 @@ public final class Autocraft {
                     new FurnaceWait(step.pattern().output(), step.pattern().count()),
                     (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
             return true;
+        }
+
+        /// Puts a liquid in the tanks of a machine (through the sides when it takes nothing without one). Returns how many mB.
+        private static int fillMachine(@org.jetbrains.annotations.Nullable net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
+                                       List<net.neoforged.neoforge.fluids.capability.IFluidHandler> sides,
+                                       net.neoforged.neoforge.fluids.FluidStack fluid, boolean simulate) {
+            var action = simulate ? net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.SIMULATE
+                    : net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE;
+            int put = tanks == null ? 0 : tanks.fill(fluid.copy(), action);
+            for (var side : sides) {
+                if (put >= fluid.getAmount()) break;
+                put += side.fill(fluid.copyWithAmount(fluid.getAmount() - put), action);
+            }
+            return put;
+        }
+
+        /// The liquids the machines of this job made go to the network (as much as it takes).
+        private boolean collectFluids(ServerLevel level, StarNetwork network) {
+            boolean progress = false;
+            for (var entry : fluidMachines.entrySet()) {
+                var tanks = StarAccess.fluids(level, entry.getKey());
+                List<net.neoforged.neoforge.fluids.capability.IFluidHandler> all = new ArrayList<>();
+                if (tanks != null) all.add(tanks);
+                all.addAll(StarAccess.fluidSides(level, entry.getKey()));
+                for (var fluid : entry.getValue()) {
+                    for (var from : all) {
+                        int there = from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, Integer.MAX_VALUE),
+                                net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.SIMULATE).getAmount();
+                        if (there <= 0) continue;
+                        int put = (int) network.insertFluid(fluid, there);
+                        if (put <= 0) continue;
+                        from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, put), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                        progress = true;
+                    }
+                }
+            }
+            return progress;
         }
 
         /// The whole sets in what was sent to a machine.

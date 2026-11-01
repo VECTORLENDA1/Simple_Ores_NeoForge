@@ -22,6 +22,10 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+import mezz.jei.api.neoforge.NeoForgeTypes;
+import net.neoforged.neoforge.fluids.FluidStack;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +34,7 @@ import java.util.Optional;
 /// (crafting table, furnace and Gravity Core recipes have their own handlers): puts the ingredients of the recipe
 /// in the recipe grid of the Quasar, with their amounts and the result. The machines are the blocks JEI shows
 /// for that kind of recipe; the auto-craft uses the ones in the field of the Magnetar.
-/// Only items: liquids and the other things of a recipe (gases of Mekanism...) are not used.
+/// Items and liquids: the other things of a recipe (gases of Mekanism...) are not used.
 public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHandler<QuasarMenu> {
     /// Set by the plugin when JEI is ready (to find the machines of a recipe).
     static @Nullable IJeiRuntime runtime;
@@ -77,6 +81,14 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
             slots.add(choices);
             amounts.add(items.get(0).getCount());
         }
+        // The liquids it uses and makes (mB for one craft; the same liquid in more slots counts once, with all its mB)
+        List<FluidContents.Entry> fluids = new ArrayList<>();
+        List<FluidContents.Entry> fluidOutputs = new ArrayList<>();
+        for (IRecipeSlotView view : recipeSlots.getSlotViews()) {
+            Optional<FluidStack> fluid = view.getIngredients(NeoForgeTypes.FLUID_STACK).filter(stack -> !stack.isEmpty()).findFirst();
+            if (fluid.isEmpty()) continue;
+            addFluid(view.getRole() == RecipeIngredientRole.OUTPUT ? fluidOutputs : fluids, fluid.get());
+        }
         ItemStack output = ItemStack.EMPTY;
         for (IRecipeSlotView view : recipeSlots.getSlotViews(RecipeIngredientRole.OUTPUT)) {
             Optional<ItemStack> first = view.getItemStacks().filter(stack -> !stack.isEmpty()).findFirst();
@@ -98,8 +110,19 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
             amounts.add(1);
         }
         container.tab = QuasarMenu.TAB_CRAFTING;
-        PacketDistributor.sendToServer(new QuasarFill(slots, amounts, output, machines));
+        PacketDistributor.sendToServer(new QuasarFill(slots, amounts, output, machines,
+                fluids.stream().limit(Pattern.SIZE).toList(), fluidOutputs.stream().limit(Pattern.SIZE).toList()));
         return null;
+    }
+
+    private static void addFluid(List<FluidContents.Entry> list, FluidStack stack) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).fluid() == stack.getFluid()) {
+                list.set(i, new FluidContents.Entry(stack.getFluid(), list.get(i).amount() + stack.getAmount()));
+                return;
+            }
+        }
+        list.add(new FluidContents.Entry(stack.getFluid(), stack.getAmount()));
     }
 
     /// The slot of the grid that has exactly these items (the same choices), or -1.

@@ -474,6 +474,15 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                     lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
                 }
             }
+            // The liquids it uses (-) and makes (+)
+            for (var fluid : pattern.fluids()) {
+                lines.add(Component.literal(" - " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(fluid.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.network.StarFluids.name(fluid.fluid())));
+            }
+            for (var fluid : pattern.fluidOutputs()) {
+                lines.add(Component.literal(" + " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(fluid.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.network.StarFluids.name(fluid.fluid())));
+            }
             if (!pattern.machines().isEmpty()) {
                 lines.add(Component.translatable("screen.simpleores.quasar.machine", pattern.machines().get(0).create().getHoverName()));
             }

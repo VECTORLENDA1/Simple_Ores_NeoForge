@@ -12,6 +12,8 @@ import com.exoticmoss.simpleores.util.ItemStackTemplate;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.crafting.Recipe;
 
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -25,9 +27,12 @@ import java.util.Optional;
 ///  - furnace: a furnace recipe (one input, cooked in the furnaces of the field). "machines" says which kind:
 ///    none = the Furnace, a Blast Furnace or a Smoker = those (see cooking);
 ///  - machines: a recipe of a machine of another mod (from JEI): the blocks that make it. The ingredients are put
-///    in one of those blocks in the field of the Magnetar, and the result is taken out of it.
+///    in one of those blocks in the field of the Magnetar, and the result is taken out of it;
+///  - fluids / fluidOutputs: the liquids a machine recipe uses and makes (mB for one craft): the liquids it uses go
+///    from the network into the tanks of the machine, and the ones it makes are taken out of them to the network.
 public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTemplate>> inputs, List<Integer> amounts,
-                      Optional<ResourceLocation> coreRecipe, int coreTier, boolean furnace, List<ItemStackTemplate> machines) {
+                      Optional<ResourceLocation> coreRecipe, int coreTier, boolean furnace, List<ItemStackTemplate> machines,
+                      List<FluidContents.Entry> fluids, List<FluidContents.Entry> fluidOutputs) {
     public static final int SIZE = 9;
     private static final Codec<ResourceLocation> RECIPE_KEY_CODEC = ResourceLocation.CODEC;
 
@@ -39,14 +44,16 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
             RECIPE_KEY_CODEC.optionalFieldOf("core_recipe").forGetter(Pattern::coreRecipe),
             Codec.INT.optionalFieldOf("core_tier", 0).forGetter(Pattern::coreTier),
             Codec.BOOL.optionalFieldOf("furnace", false).forGetter(Pattern::furnace),
-            ItemStackTemplate.CODEC.listOf().optionalFieldOf("machines", List.of()).forGetter(Pattern::machines)
+            ItemStackTemplate.CODEC.listOf().optionalFieldOf("machines", List.of()).forGetter(Pattern::machines),
+            FluidContents.Entry.CODEC.listOf().optionalFieldOf("fluids", List.of()).forGetter(Pattern::fluids),
+            FluidContents.Entry.CODEC.listOf().optionalFieldOf("fluid_outputs", List.of()).forGetter(Pattern::fluidOutputs)
     ).apply(inst, Pattern::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, Pattern> STREAM_CODEC = ByteBufCodecs.fromCodecWithRegistries(CODEC);
 
     /// A crafting table recipe (the 9 slots of the grid).
     public static Pattern crafting(ItemStackTemplate output, int count, List<List<ItemStackTemplate>> inputs) {
-        return new Pattern(output, count, inputs, List.of(), Optional.empty(), 0, false, List.of());
+        return new Pattern(output, count, inputs, List.of(), Optional.empty(), 0, false, List.of(), List.of(), List.of());
     }
 
     /// The kinds of furnace recipes: the Furnace, the Blast Furnace and the Smoker.
@@ -69,7 +76,7 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
     /// A furnace recipe (one input), made in the furnaces of that kind.
     public static Pattern furnace(ItemStackTemplate output, int count, ItemStackTemplate input, int kind) {
         List<ItemStackTemplate> block = kind == FURNACE ? List.of() : List.of(ItemStackTemplate.fromNonEmptyStack(cookingBlock(kind)));
-        return new Pattern(output, count, List.of(List.of(input)), List.of(), Optional.empty(), 0, true, block);
+        return new Pattern(output, count, List.of(List.of(input)), List.of(), Optional.empty(), 0, true, block, List.of(), List.of());
     }
 
     /// The kind of a furnace recipe (FURNACE, BLAST_FURNACE, SMOKER).
@@ -82,8 +89,8 @@ public record Pattern(ItemStackTemplate output, int count, List<List<ItemStackTe
 
     /// A recipe of a machine (the 9 slots of the grid, each with its amount).
     public static Pattern machine(ItemStackTemplate output, int count, List<List<ItemStackTemplate>> inputs, List<Integer> amounts,
-                                  List<ItemStackTemplate> machines) {
-        return new Pattern(output, count, inputs, amounts, Optional.empty(), 0, false, machines);
+                                  List<ItemStackTemplate> machines, List<FluidContents.Entry> fluids, List<FluidContents.Entry> fluidOutputs) {
+        return new Pattern(output, count, inputs, amounts, Optional.empty(), 0, false, machines, fluids, fluidOutputs);
     }
 
     /// Gravity Core recipes need level 2 (Stellar Terminal II, Quasar); crafting table and furnace recipes work in

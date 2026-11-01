@@ -9,13 +9,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+
 import java.util.List;
 
 /// Sent by the client when JEI's "+" button is used with the Quasar screen open: the items of the recipe,
 /// for each of the 9 slots the items that can go there (e.g. every kind of planks).
 /// For the recipe of a machine of another mod also: how many of each slot, what it makes, and the machines
-/// (empty output = a crafting table recipe).
-public record QuasarFill(List<List<ItemStack>> slots, List<Integer> amounts, ItemStack output, List<ItemStack> machines)
+/// (empty output = a crafting table recipe), and the liquids it uses and makes.
+public record QuasarFill(List<List<ItemStack>> slots, List<Integer> amounts, ItemStack output, List<ItemStack> machines,
+                         List<FluidContents.Entry> fluids, List<FluidContents.Entry> fluidOutputs)
         implements CustomPacketPayload {
     /// At most this many choices are kept for one slot.
     public static final int MAX_CHOICES = 32;
@@ -24,7 +27,7 @@ public record QuasarFill(List<List<ItemStack>> slots, List<Integer> amounts, Ite
 
     /// A crafting table recipe.
     public QuasarFill(List<List<ItemStack>> slots) {
-        this(slots, List.of(), ItemStack.EMPTY, List.of());
+        this(slots, List.of(), ItemStack.EMPTY, List.of(), List.of(), List.of());
     }
 
     public static final Type<QuasarFill> TYPE =
@@ -34,6 +37,8 @@ public record QuasarFill(List<List<ItemStack>> slots, List<Integer> amounts, Ite
             ByteBufCodecs.VAR_INT.apply(ByteBufCodecs.list(Pattern.SIZE)), QuasarFill::amounts,
             ItemStack.OPTIONAL_STREAM_CODEC, QuasarFill::output,
             ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list(MAX_MACHINES)), QuasarFill::machines,
+            FluidContents.Entry.STREAM_CODEC.apply(ByteBufCodecs.list(Pattern.SIZE)), QuasarFill::fluids,
+            FluidContents.Entry.STREAM_CODEC.apply(ByteBufCodecs.list(Pattern.SIZE)), QuasarFill::fluidOutputs,
             QuasarFill::new);
 
     @Override

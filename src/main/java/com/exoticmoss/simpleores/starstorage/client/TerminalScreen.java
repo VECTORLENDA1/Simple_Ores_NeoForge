@@ -465,6 +465,9 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                     String amount = recipe.amount(input) > 1 ? recipe.amount(input) + " x " : "";
                     lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
                 }
+                for (var fluid : recipe.fluids()) {
+                    lines.add(Component.literal(" - " + StarFluids.buckets(fluid.amount()) + " ").append(StarFluids.name(fluid.fluid())));
+                }
                 graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
             }
         }

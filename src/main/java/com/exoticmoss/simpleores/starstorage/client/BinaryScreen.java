@@ -443,8 +443,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
             // A group: how many blocks, and its arrow on the left (down = open, right = closed)
             String name = block.icon().getHoverName().getString();
-            String count = card.group() > 0 ? " x" + card.group() : "";
-            graphics.text(font, Component.literal(fit(name, nameRight - card.x() - 22 - font.width(count)) + count),
+            String groupCount = card.group() > 0 ? " x" + card.group() : "";
+            graphics.text(font, Component.literal(fit(name, nameRight - card.x() - 22 - font.width(groupCount)) + groupCount),
                     card.x() + 22, card.y() + 6, TEXT);
             if (card.group() > 0) {
                 int ax = card.x() - 7, ay = card.y() + 7;

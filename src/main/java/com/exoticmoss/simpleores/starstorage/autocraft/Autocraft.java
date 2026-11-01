@@ -833,10 +833,7 @@ public final class Autocraft {
             List<Container> list = new ArrayList<>();
             int kind = step.pattern().cooking();
             StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
-                boolean right = kind == Pattern.BLAST_FURNACE ? blockEntity instanceof net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity
-                        : kind == Pattern.SMOKER ? blockEntity instanceof net.minecraft.world.level.block.entity.SmokerBlockEntity
-                        : isFurnace(blockEntity);
-                if (right) list.add((Container) blockEntity);
+                if (furnaceKind(blockEntity) == kind) list.add((Container) blockEntity);
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_furnaces" : "screen.simpleores.quasar.job.working";
             boolean progress = false;
@@ -869,21 +866,33 @@ public final class Autocraft {
             return progress;
         }
 
-        /// A furnace the auto-craft can use: the furnace of Minecraft, and the furnaces of Iron Furnaces (iron, gold,
-        /// diamond, rainbow, crystal...) while they work as a furnace (not as a generator or a factory). Both have the
-        /// same slots: 0 = input, 1 = fuel, 2 = result.
-        private static boolean isFurnace(net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
-            if (blockEntity instanceof FurnaceBlockEntity) return true;
-            if (!(blockEntity instanceof Container container) || container.getContainerSize() < 3) return false;
+        /// The kind of furnace a block is (Pattern.FURNACE, BLAST_FURNACE, SMOKER), or -1 if the auto-craft can't use
+        /// it as a furnace. The Furnace, Blast Furnace and Smoker of Minecraft, and the furnaces of Iron Furnaces (iron,
+        /// gold, diamond, rainbow, crystal...): their kind is the one of their augment (a Blast Furnace or Smoker
+        /// augment makes them that kind), and only while they work as a furnace (not as a generator or a factory).
+        /// All of them have the same slots: 0 = input, 1 = fuel, 2 = result.
+        private static int furnaceKind(net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
+            if (blockEntity instanceof net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity) return Pattern.BLAST_FURNACE;
+            if (blockEntity instanceof net.minecraft.world.level.block.entity.SmokerBlockEntity) return Pattern.SMOKER;
+            if (blockEntity instanceof FurnaceBlockEntity) return Pattern.FURNACE;
+            if (!(blockEntity instanceof Container container) || container.getContainerSize() < 3) return -1;
             for (Class<?> type = blockEntity.getClass(); type != null; type = type.getSuperclass()) {
                 if (!type.getName().equals("ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase")) continue;
                 try {
-                    return !(type.getMethod("isFurnace").invoke(blockEntity) instanceof Boolean furnace) || furnace;
+                    if (type.getMethod("isFurnace").invoke(blockEntity) instanceof Boolean furnace && !furnace) return -1;
                 } catch (ReflectiveOperationException | RuntimeException e) {
-                    return true;
+                    // (no such method: it is a furnace)
                 }
+                try {
+                    Object recipeType = type.getField("recipeType").get(blockEntity);
+                    if (recipeType == RecipeType.BLASTING) return Pattern.BLAST_FURNACE;
+                    if (recipeType == RecipeType.SMOKING) return Pattern.SMOKER;
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    // (no augment known: a furnace)
+                }
+                return Pattern.FURNACE;
             }
-            return false;
+            return -1;
         }
 
         /// Takes the cooked items of the furnaces used by this job to the network.

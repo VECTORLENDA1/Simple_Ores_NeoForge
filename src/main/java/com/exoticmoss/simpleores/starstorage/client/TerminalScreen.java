@@ -792,10 +792,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 if (craftItem != null) continue;
                 graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
                 if (item.fluid() != null) {
-                    // A liquid: a small drop in the corner, and the buckets
+                    // A liquid: a small drop in the corner, and how many mB (like the items: "950", "14.4k"; the unit
+                    // is in the tooltip)
                     graphics.fill(x + 3, y + 3, x + 5, y + 7, FLUID_COLOR);
                     graphics.fill(x + 2, y + 5, x + 6, y + 7, FLUID_COLOR);
-                    String amount = item.count() < StarFluids.BUCKET ? item.count() + "mB" : StarNetwork.format(item.count() / StarFluids.BUCKET) + "B";
+                    String amount = StarNetwork.format(item.count());
                     graphics.centeredText(font, Component.literal(amount), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, FLUID_TEXT);
                 } else if (item.count() == 0) {
                     TinyText.craft(graphics, x + (TerminalLayout.CELL_W - TinyText.CRAFT_WIDTH) / 2, y + TerminalLayout.CELL_H - 8, 0xFF7FE0C0);

@@ -81,8 +81,36 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private int left, top, height2;
     private final BlockPos pos;
 
-    /// Where one card is on the screen (only the cards that fit are placed).
-    private record Card(int index, int x, int y, int height) {
+    /// Where one card is on the screen (only the cards that fit are placed). "group" = how many blocks of the same kind
+    /// are next to it in the list when it is the first of them (2 or more), else 0.
+    private record Card(int index, int x, int y, int height, int group) {
+    }
+
+    /// The kinds of blocks whose group is open (a closed group shows only its first block, with an arrow).
+    private static final java.util.Set<net.minecraft.world.item.Item> opened = new java.util.HashSet<>();
+
+    /// The blocks shown, in order: {index of the block, size of its group if it is the first of one (else 0)}.
+    /// The blocks of the same kind are next to each other in the list; of a closed group only the first is shown.
+    private List<int[]> shown() {
+        List<int[]> list = new ArrayList<>();
+        List<BinaryView.Block> blocks = view.blocks();
+        for (int i = 0; i < blocks.size(); ) {
+            net.minecraft.world.item.Item kind = blocks.get(i).icon().getItem();
+            int end = i + 1;
+            while (end < blocks.size() && blocks.get(end).icon().is(kind)) end++;
+            int size = end - i;
+            list.add(new int[]{i, size >= 2 ? size : 0});
+            if (size >= 2 && opened.contains(kind)) {
+                for (int j = i + 1; j < end; j++) list.add(new int[]{j, 0});
+            }
+            i = end;
+        }
+        return list;
+    }
+
+    /// The arrow of a group: on the left of the card. {x, y, width, height}
+    private static int[] arrow(Card card) {
+        return new int[]{card.x() - 9, card.y(), 9, CARD_HEADER};
     }
 
     public BinaryScreen(BinaryMenu menu, Inventory inventory, Component title) {
@@ -216,10 +244,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private List<Card> cards() {
         List<Card> cards = new ArrayList<>();
         int y = areaTop() - (int) Math.round(scroll);
-        for (int i = 0; i < view.blocks().size(); i++) {
+        for (int[] block : shown()) {
+            int i = block[0];
             int cardHeight = cardHeight(i);
             // Only the cards that can be seen (a card cut by the top or the bottom too)
-            if (y + cardHeight > areaTop() && y < areaBottom()) cards.add(new Card(i, left + 10, y, cardHeight));
+            if (y + cardHeight > areaTop() && y < areaBottom()) cards.add(new Card(i, left + 10, y, cardHeight, block[1]));
             y += cardHeight + CARD_GAP;
         }
         return cards;
@@ -270,7 +299,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     /// The height of all the cards together.
     private int contentHeight() {
         int height = 0;
-        for (int i = 0; i < view.blocks().size(); i++) height += cardHeight(i) + CARD_GAP;
+        for (int[] block : shown()) height += cardHeight(block[0]) + CARD_GAP;
         return Math.max(0, height - CARD_GAP);
     }
 
@@ -350,6 +379,14 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         boolean inArea = event.y() >= areaTop() && event.y() < areaBottom();
         for (Card card : inArea ? cards() : List.<Card>of()) {
             BinaryView.Block block = view.blocks().get(card.index());
+            // The arrow (or the name) of a group: opens or closes it
+            int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
+            boolean onName = event.x() >= card.x() && event.x() < nameRight && event.y() >= card.y() && event.y() < card.y() + CARD_HEADER;
+            if (card.group() > 0 && (inside(arrow(card), event.x(), event.y()) || onName)) {
+                net.minecraft.world.item.Item kind = block.icon().getItem();
+                if (!opened.remove(kind)) opened.add(kind);
+                return true;
+            }
             if (inside(button(card, 0), event.x(), event.y())) {
                 send(block.pos(), BinaryAction.TAKE_ALL, 0);
                 return true;
@@ -404,8 +441,19 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             graphics.fill(card.x(), card.y(), card.x() + WIDTH - 20, card.y() + card.height(), CARD);
             graphics.item(block.icon(), card.x() + 2, card.y() + 2);
             int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
-            graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - card.x() - 22)),
+            // A group: how many blocks, and its arrow on the left (down = open, right = closed)
+            String name = block.icon().getHoverName().getString();
+            String count = card.group() > 0 ? " x" + card.group() : "";
+            graphics.text(font, Component.literal(fit(name, nameRight - card.x() - 22 - font.width(count)) + count),
                     card.x() + 22, card.y() + 6, TEXT);
+            if (card.group() > 0) {
+                int ax = card.x() - 7, ay = card.y() + 7;
+                boolean open = opened.contains(block.icon().getItem());
+                for (int i = 0; i < 4; i++) {
+                    if (open) graphics.fill(ax + i, ay + i, ax + 7 - i, ay + i + 1, TEXT);
+                    else graphics.fill(ax + i, ay + i, ax + i + 1, ay + 7 - i, TEXT);
+                }
+            }
             drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, cardMouseY);
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
             if (!block.options().isEmpty()) {

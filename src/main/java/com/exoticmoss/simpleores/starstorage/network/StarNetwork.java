@@ -358,7 +358,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             if (external.fluids() == null) continue;
             for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
                 FluidStack fluid = external.fluids().getFluidInTank(tank);
-                if (!fluid.isEmpty()) totals.merge(fluid.getFluid(), (long) fluid.getAmount(), Long::sum);
+                if (!fluid.isEmpty() && external.horizon().acceptsFluid(fluid.getFluid())) totals.merge(fluid.getFluid(), (long) fluid.getAmount(), Long::sum);
             }
         }
         List<FluidContents.Entry> list = new ArrayList<>();
@@ -398,7 +398,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             if (external.fluids() == null) continue;
             for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
                 FluidStack inside = external.fluids().getFluidInTank(tank);
-                if (inside.getFluid() == fluid) amount[0] += inside.getAmount();
+                if (inside.getFluid() == fluid && external.horizon().acceptsFluid(fluid)) amount[0] += inside.getAmount();
             }
         }
         return amount[0];
@@ -432,7 +432,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     }
 
     private static long fillExternal(External external, Fluid fluid, long amount) {
-        if (external.fluids() == null || amount <= 0) return 0;
+        if (external.fluids() == null || amount <= 0 || !external.horizon().acceptsFluid(fluid)) return 0;
         return external.fluids().fill(new FluidStack(fluid, (int) Math.min(amount, Integer.MAX_VALUE)), IFluidHandler.FluidAction.EXECUTE);
     }
 
@@ -450,7 +450,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         List<External> externals = externals();
         for (int i = externals.size() - 1; i >= 0 && taken[0] < amount; i--) {
             IFluidHandler tanks = externals.get(i).fluids();
-            if (tanks == null) continue;
+            if (tanks == null || !externals.get(i).horizon().acceptsFluid(fluid)) continue;
             int want = (int) Math.min(amount - taken[0], Integer.MAX_VALUE);
             taken[0] += tanks.drain(new FluidStack(fluid, want), IFluidHandler.FluidAction.EXECUTE).getAmount();
         }

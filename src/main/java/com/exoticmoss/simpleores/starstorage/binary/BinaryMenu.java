@@ -73,8 +73,20 @@ public class BinaryMenu extends AbstractContainerMenu implements com.exoticmoss.
     }
 
     @Override
+    /// Shift + click: a Magnetic Field Upgrade goes to its slot, and the upgrades of the slot go to the inventory.
     public ItemStack quickMoveStack(Player player, int index) {
-        return ItemStack.EMPTY;
+        Slot slot = slots.get(index);
+        ItemStack stack = slot.getItem();
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        ItemStack before = stack.copy();
+        if (index == 0) {
+            if (!moveItemStackTo(stack, 1, slots.size(), true)) return ItemStack.EMPTY;
+        } else if (!stack.is(ModItems.MAGNETIC_FIELD_UPGRADE.get()) || !moveItemStackTo(stack, 0, 1, false)) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
+        else slot.setChanged();
+        return before;
     }
 
     @Override

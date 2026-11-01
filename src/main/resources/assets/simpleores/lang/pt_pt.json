@@ -135,5 +135,5 @@
   "screen.simpleores.horizon.priority": "Prioridade: %s",
   "screen.simpleores.horizon.priority_info": "Mais alta: as coisas são guardadas aqui primeiro (acima de 0: antes das células). Shift: de 10 em 10",
   "screen.simpleores.horizon.filter": "Filtro",
-  "screen.simpleores.horizon.filter_info": "Clica com um item para só ver e guardar esse item aqui. Vazio: todos os items"
+  "screen.simpleores.horizon.filter_info": "Clica com um item para só ver e guardar esse item aqui (com um balde: esse líquido). Vazio: tudo"
 }

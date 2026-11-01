@@ -9,13 +9,16 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import com.exoticmoss.simpleores.starstorage.network.StarFluids;
 
 /// The Event Horizon: the inventories and tanks of other mods it touches (on its 6 sides: chests, barrels, drawers,
 /// tanks...) become part of the network of the Magnetar whose field it is in. Their items show in the terminals, can
 /// be taken out and used by the auto-craft, and the network can put items in them (see StarNetwork.External).
 ///  - priority: when the network keeps something, first the inventories with a priority above 0 (the highest first),
 ///    then the cells, then the other inventories. Things are taken from the lowest priority first;
-///  - filter: when it has items, only those items are seen and kept through this Event Horizon.
+///  - filter: when it has items, only those items are seen and kept through this Event Horizon; when it has buckets
+///    of liquids, only those liquids (the buckets don't limit the items, and the items don't limit the liquids).
 public class EventHorizonBlockEntity extends BlockEntity {
     public static final int FILTER_SLOTS = 9;
     public static final int MIN_PRIORITY = -99;
@@ -52,14 +55,28 @@ public class EventHorizonBlockEntity extends BlockEntity {
         return filter;
     }
 
-    /// True if this item goes through this Event Horizon (always without a filter).
+    /// True if this item goes through this Event Horizon (always when the filter has no items).
     public boolean accepts(ItemStack stack) {
-        if (filter.isEmpty()) return true;
+        boolean any = false;
         for (int i = 0; i < FILTER_SLOTS; i++) {
             ItemStack item = filter.getItem(i);
-            if (!item.isEmpty() && stack.is(item.getItem())) return true;
+            if (item.isEmpty() || StarFluids.fromBucket(item) != null) continue;
+            any = true;
+            if (stack.is(item.getItem())) return true;
         }
-        return false;
+        return !any;
+    }
+
+    /// True if this liquid goes through this Event Horizon (always when the filter has no buckets of liquids).
+    public boolean acceptsFluid(Fluid fluid) {
+        boolean any = false;
+        for (int i = 0; i < FILTER_SLOTS; i++) {
+            Fluid kept = StarFluids.fromBucket(filter.getItem(i));
+            if (kept == null) continue;
+            any = true;
+            if (kept.isSame(fluid)) return true;
+        }
+        return !any;
     }
 
     @Override

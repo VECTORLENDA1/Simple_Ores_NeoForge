@@ -483,6 +483,14 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 lines.add(Component.literal(" + " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(fluid.amount()) + " ")
                         .append(com.exoticmoss.simpleores.starstorage.network.StarFluids.name(fluid.fluid())));
             }
+            for (var gas : pattern.gases()) {
+                lines.add(Component.literal(" - " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(gas.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())));
+            }
+            for (var gas : pattern.gasOutputs()) {
+                lines.add(Component.literal(" + " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(gas.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())));
+            }
             if (!pattern.machines().isEmpty()) {
                 lines.add(Component.translatable("screen.simpleores.quasar.machine", pattern.machines().get(0).create().getHoverName()));
             }

@@ -23,6 +23,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
+import com.exoticmoss.simpleores.starstorage.gas.Gas;
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
 import mezz.jei.api.neoforge.NeoForgeTypes;
 import net.neoforged.neoforge.fluids.FluidStack;
 
@@ -34,7 +36,7 @@ import java.util.Optional;
 /// (crafting table, furnace and Gravity Core recipes have their own handlers): puts the ingredients of the recipe
 /// in the recipe grid of the Quasar, with their amounts and the result. The machines are the blocks JEI shows
 /// for that kind of recipe; the auto-craft uses the ones in the field of the Magnetar.
-/// Items and liquids: the other things of a recipe (gases of Mekanism...) are not used.
+/// Items, liquids and the gases of Mekanism.
 public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHandler<QuasarMenu> {
     /// Set by the plugin when JEI is ready (to find the machines of a recipe).
     static @Nullable IJeiRuntime runtime;
@@ -84,10 +86,18 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
         // The liquids it uses and makes (mB for one craft; the same liquid in more slots counts once, with all its mB)
         List<FluidContents.Entry> fluids = new ArrayList<>();
         List<FluidContents.Entry> fluidOutputs = new ArrayList<>();
+        // and the gases of Mekanism
+        List<Gas> gases = new ArrayList<>();
+        List<Gas> gasOutputs = new ArrayList<>();
         for (IRecipeSlotView view : recipeSlots.getSlotViews()) {
             Optional<FluidStack> fluid = view.getIngredients(NeoForgeTypes.FLUID_STACK).filter(stack -> !stack.isEmpty()).findFirst();
-            if (fluid.isEmpty()) continue;
-            addFluid(view.getRole() == RecipeIngredientRole.OUTPUT ? fluidOutputs : fluids, fluid.get());
+            if (fluid.isPresent()) {
+                addFluid(view.getRole() == RecipeIngredientRole.OUTPUT ? fluidOutputs : fluids, fluid.get());
+                continue;
+            }
+            Optional<Gas> gas = view.getAllIngredients().map(typed -> Gases.fromIngredient(typed.getIngredient()))
+                    .filter(java.util.Objects::nonNull).findFirst();
+            if (gas.isPresent()) addGas(view.getRole() == RecipeIngredientRole.OUTPUT ? gasOutputs : gases, gas.get());
         }
         ItemStack output = ItemStack.EMPTY;
         for (IRecipeSlotView view : recipeSlots.getSlotViews(RecipeIngredientRole.OUTPUT)) {
@@ -110,9 +120,20 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
             amounts.add(1);
         }
         container.tab = QuasarMenu.TAB_CRAFTING;
-        PacketDistributor.sendToServer(new QuasarFill(slots, amounts, output, machines,
-                fluids.stream().limit(Pattern.SIZE).toList(), fluidOutputs.stream().limit(Pattern.SIZE).toList()));
+        PacketDistributor.sendToServer(new QuasarFill(slots, amounts, output, machines, new QuasarFill.Liquids(
+                fluids.stream().limit(Pattern.SIZE).toList(), fluidOutputs.stream().limit(Pattern.SIZE).toList(),
+                gases.stream().limit(Pattern.SIZE).toList(), gasOutputs.stream().limit(Pattern.SIZE).toList())));
         return null;
+    }
+
+    private static void addGas(List<Gas> list, Gas gas) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).id().equals(gas.id())) {
+                list.set(i, new Gas(gas.id(), list.get(i).amount() + gas.amount()));
+                return;
+            }
+        }
+        list.add(gas);
     }
 
     private static void addFluid(List<FluidContents.Entry> list, FluidStack stack) {

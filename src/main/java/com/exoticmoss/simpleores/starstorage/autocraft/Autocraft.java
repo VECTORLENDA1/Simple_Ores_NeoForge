@@ -67,6 +67,8 @@ public final class Autocraft {
     private final Map<ItemStackTemplate, Long> stock = new HashMap<>();
     /// The liquids of the network (mB) the plan can still use.
     private final Map<net.minecraft.world.level.material.Fluid, Long> fluidStock = new HashMap<>();
+    /// The gases of Mekanism of the network (mB) the plan can still use.
+    private final Map<net.minecraft.resources.ResourceLocation, Long> gasStock = new HashMap<>();
     /// The extra items the planned crafts make (e.g. 9 when 8 are needed): used before the network.
     private final Map<ItemStackTemplate, Long> extras = new HashMap<>();
     /// The items of the network the plan uses (they go into the storage of the job when it starts).
@@ -81,6 +83,7 @@ public final class Autocraft {
     private Autocraft(StarNetwork network, boolean advanced) {
         for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) stock.put(entry.getKey(), entry.getValue());
         for (var fluid : network.fluids()) fluidStock.merge(fluid.fluid(), fluid.amount(), Long::sum);
+        for (var gas : network.gases()) gasStock.merge(gas.id(), gas.amount(), Long::sum);
         this.patterns = network.patterns().stream().filter(pattern -> advanced || !pattern.advanced()).toList();
     }
 
@@ -166,6 +169,7 @@ public final class Autocraft {
                 Map<ItemStackTemplate, Long> fromNetworkBefore = new HashMap<>(fromNetwork);
                 Map<ItemStackTemplate, Long> missingBefore = new LinkedHashMap<>(missing);
                 Map<net.minecraft.world.level.material.Fluid, Long> fluidsBefore = new HashMap<>(fluidStock);
+                Map<net.minecraft.resources.ResourceLocation, Long> gasesBefore = new HashMap<>(gasStock);
                 int stepsBefore = steps.size();
                 long craftsBefore = crafts;
                 if (craft(option, item, amount, depth) && crafts <= MAX_CRAFTS) return true;
@@ -179,6 +183,8 @@ public final class Autocraft {
                 missing.putAll(missingBefore);
                 fluidStock.clear();
                 fluidStock.putAll(fluidsBefore);
+                gasStock.clear();
+                gasStock.putAll(gasesBefore);
                 while (steps.size() > stepsBefore) steps.remove(steps.size() - 1);
                 crafts = craftsBefore;
             }
@@ -223,6 +229,20 @@ public final class Autocraft {
                 ItemStack bucket = com.exoticmoss.simpleores.starstorage.network.StarFluids.bucket(fluid.fluid());
                 missing.merge(ItemStackTemplate.fromNonEmptyStack(bucket.isEmpty() ? new ItemStack(net.minecraft.world.item.Items.BUCKET) : bucket),
                         needed - used, Long::sum);
+                ok = false;
+            }
+        }
+        // The gases of Mekanism too (what the network doesn't have is missing: shown as a bottle with its name)
+        for (var gas : pattern.gases()) {
+            long needed = times * gas.amount();
+            long have = gasStock.getOrDefault(gas.id(), 0L);
+            long used = Math.min(have, needed);
+            gasStock.put(gas.id(), have - used);
+            if (used < needed) {
+                ItemStack bottle = new ItemStack(net.minecraft.world.item.Items.GLASS_BOTTLE);
+                bottle.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                        com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id()).copy().withStyle(style -> style.withItalic(false)));
+                missing.merge(ItemStackTemplate.fromNonEmptyStack(bottle), needed - used, Long::sum);
                 ok = false;
             }
         }
@@ -365,6 +385,8 @@ public final class Autocraft {
         private final Map<SentKey, long[]> sentToMachines = new HashMap<>();
         /// The machines used by this job that make liquids, and the liquids they make (taken out to the network).
         private final Map<BlockPos, java.util.Set<net.minecraft.world.level.material.Fluid>> fluidMachines = new HashMap<>();
+        /// The same for the gases of Mekanism.
+        private final Map<BlockPos, java.util.Set<net.minecraft.resources.ResourceLocation>> gasMachines = new HashMap<>();
         /// At most this many of one ingredient are sent to one machine each time the job works.
         private static final int MAX_SEND = 1024;
         /// The index of the step being worked on now (inside work).
@@ -641,7 +663,7 @@ public final class Autocraft {
 
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
-            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | collectFluids(level, network) | arrivedNow;
+            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | collectFluids(level, network) | collectGases(level, network) | arrivedNow;
             arrivedNow = false;
             // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:
             // what has its ingredients is made). The steps are in order (the sub-crafts first), so what one makes
@@ -1042,6 +1064,23 @@ public final class Autocraft {
                     }
                     goal = Math.min(goal, setsBefore + fluidSets);
                 }
+                // The gases of the recipe: the same
+                var gases = step.pattern().gases();
+                var gasTanks = gases.isEmpty() ? List.<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks>of() : gasTanks(level, machinePos);
+                if (!gases.isEmpty()) {
+                    long gasSets = Long.MAX_VALUE;
+                    for (var gas : gases) {
+                        long have = network.gasAmount(gas.id());
+                        long fits = 0;
+                        for (var tank : gasTanks) fits += tank.fill(gas.id(), Math.max(1, have) - fits, true);
+                        gasSets = Math.min(gasSets, Math.min(have, fits) / Math.max(1, gas.amount()));
+                    }
+                    if (gasSets <= 0) {
+                        status = "screen.simpleores.quasar.job.waiting_items";
+                        continue;
+                    }
+                    goal = Math.min(goal, setsBefore + gasSets);
+                }
                 for (int k = 0; k < items.size(); k++) {
                     // (all the machines together never get more of an ingredient than the step needs)
                     long want = Math.min(Math.min(goal * amounts.get(k) - sent[k], MAX_SEND),
@@ -1069,6 +1108,20 @@ public final class Autocraft {
                     if (got <= 0) continue;
                     int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
                     if (put < got) network.insertFluid(fluid.fluid(), got - put);
+                }
+                // The gases of the sets given (what the tanks don't take goes back)
+                for (var gas : gases) {
+                    long got = network.extractGas(gas.id(), given * gas.amount());
+                    long put = 0;
+                    for (var tank : gasTanks) {
+                        if (put >= got) break;
+                        put += tank.fill(gas.id(), got - put, false);
+                    }
+                    if (put < got) network.insertGas(gas.id(), got - put);
+                }
+                if (!step.pattern().gasOutputs().isEmpty()) {
+                    var made = gasMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
+                    for (var gas : step.pattern().gasOutputs()) made.add(gas.id());
                 }
                 if (!step.pattern().fluidOutputs().isEmpty()) {
                     var made = fluidMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
@@ -1175,6 +1228,36 @@ public final class Autocraft {
                 put += side.fill(fluid.copyWithAmount(fluid.getAmount() - put), action);
             }
             return put;
+        }
+
+        /// The tanks of gases of a machine: without a side, then its sides (only the different ones).
+        private static List<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks> gasTanks(ServerLevel level, BlockPos pos) {
+            List<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks> list = new ArrayList<>();
+            var tanks = com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, pos, null);
+            if (tanks != null) list.add(tanks);
+            for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) {
+                var sided = com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, pos, side);
+                if (sided != null && !list.contains(sided)) list.add(sided);
+            }
+            return list;
+        }
+
+        /// The gases the machines of this job made go to the network (as much as it takes).
+        private boolean collectGases(ServerLevel level, StarNetwork network) {
+            boolean progress = false;
+            for (var entry : gasMachines.entrySet()) {
+                for (var tank : gasTanks(level, entry.getKey())) {
+                    for (var gas : entry.getValue()) {
+                        long there = tank.drain(gas, Long.MAX_VALUE / 2, true);
+                        if (there <= 0) continue;
+                        long put = network.insertGas(gas, there);
+                        if (put <= 0) continue;
+                        tank.drain(gas, put, false);
+                        progress = true;
+                    }
+                }
+            }
+            return progress;
         }
 
         /// The liquids the machines of this job made go to the network (as much as it takes).

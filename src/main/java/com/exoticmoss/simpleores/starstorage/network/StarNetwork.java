@@ -10,6 +10,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
+import com.exoticmoss.simpleores.starstorage.gas.Gas;
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
+import net.minecraft.resources.ResourceLocation;
 import com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -119,7 +122,8 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     // ---------------------------------------------------------------- inventories of other mods (Event Horizons)
 
     /// An inventory and its tanks touched by an Event Horizon of the network (null = it has none of them).
-    private record External(EventHorizonBlockEntity horizon, @Nullable IItemHandler items, @Nullable IFluidHandler fluids) {
+    private record External(EventHorizonBlockEntity horizon, @Nullable IItemHandler items, @Nullable IFluidHandler fluids,
+                            @Nullable Gases.Tanks gases) {
     }
 
     /// The inventories and tanks the Event Horizons touch (each one once; never a block of the star storage), the
@@ -141,7 +145,9 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
                 if (items == null) items = level.getCapability(Capabilities.ItemHandler.BLOCK, at, null);
                 IFluidHandler fluids = level.getCapability(Capabilities.FluidHandler.BLOCK, at, side.getOpposite());
                 if (fluids == null) fluids = level.getCapability(Capabilities.FluidHandler.BLOCK, at, null);
-                if (items != null || fluids != null) list.add(new External(horizon, items, fluids));
+                Gases.Tanks gases = Gases.tanks(level, at, side.getOpposite());
+                if (gases == null) gases = Gases.tanks(level, at, null);
+                if (items != null || fluids != null || gases != null) list.add(new External(horizon, items, fluids, gases));
             }
         }
         list.sort((a, b) -> Integer.compare(b.horizon().priority(), a.horizon().priority()));
@@ -453,6 +459,86 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             if (tanks == null || !externals.get(i).horizon().acceptsFluid(fluid)) continue;
             int want = (int) Math.min(amount - taken[0], Integer.MAX_VALUE);
             taken[0] += tanks.drain(new FluidStack(fluid, want), IFluidHandler.FluidAction.EXECUTE).getAmount();
+        }
+        return taken[0];
+    }
+
+    // ---------------------------------------------------------------- gases of Mekanism (Fluid Cells, see Gases)
+
+    /// Every gas of the network with its total amount (mB), most first.
+    public List<Gas> gases() {
+        Map<ResourceLocation, Long> totals = new LinkedHashMap<>();
+        forEachFluidCell((drive, cell, item) -> {
+            for (Gas gas : FluidCellItem.getContents(cell).gases()) totals.merge(gas.id(), gas.amount(), Long::sum);
+        });
+        for (External external : externals()) {
+            if (external.gases() == null) continue;
+            for (int tank = 0; tank < external.gases().count(); tank++) {
+                ResourceLocation gas = external.gases().gas(tank);
+                if (gas != null) totals.merge(gas, external.gases().amount(tank), Long::sum);
+            }
+        }
+        List<Gas> list = new ArrayList<>();
+        totals.forEach((gas, amount) -> list.add(new Gas(gas, amount)));
+        list.sort((a, b) -> Long.compare(b.amount(), a.amount()));
+        return list;
+    }
+
+    /// How many mB of this gas the network has.
+    public long gasAmount(ResourceLocation gas) {
+        long[] amount = {0};
+        forEachFluidCell((drive, cell, item) -> amount[0] += FluidCellItem.getContents(cell).amountOfGas(gas));
+        for (External external : externals()) {
+            if (external.gases() == null) continue;
+            for (int tank = 0; tank < external.gases().count(); tank++) {
+                if (gas.equals(external.gases().gas(tank))) amount[0] += external.gases().amount(tank);
+            }
+        }
+        return amount[0];
+    }
+
+    /// Puts up to "amount" mB of this gas in the network (like the liquids: the tanks of the Event Horizons with a
+    /// priority above 0, the cells that have it, any cell, the other tanks). Returns how many mB went in.
+    public long insertGas(ResourceLocation gas, long amount) {
+        List<External> externals = externals();
+        long[] left = {amount};
+        for (External external : externals) {
+            if (external.horizon().priority() > 0 && external.gases() != null) left[0] -= external.gases().fill(gas, left[0], false);
+        }
+        for (int pass = 0; pass < 2 && left[0] > 0; pass++) {
+            final boolean onlyWithGas = pass == 0;
+            forEachFluidCell((drive, cell, item) -> {
+                if (left[0] <= 0) return;
+                if (onlyWithGas && FluidCellItem.getContents(cell).amountOfGas(gas) <= 0) return;
+                long put = item.insertGas(cell, gas, left[0]);
+                if (put > 0) {
+                    left[0] -= put;
+                    drive.cellsChanged();
+                }
+            });
+        }
+        for (External external : externals) {
+            if (left[0] <= 0) break;
+            if (external.horizon().priority() <= 0 && external.gases() != null) left[0] -= external.gases().fill(gas, left[0], false);
+        }
+        return amount - left[0];
+    }
+
+    /// Takes up to "amount" mB of this gas out of the network. Returns how many mB were taken.
+    public long extractGas(ResourceLocation gas, long amount) {
+        long[] taken = {0};
+        forEachFluidCell((drive, cell, item) -> {
+            if (taken[0] >= amount) return;
+            long got = item.extractGas(cell, gas, amount - taken[0]);
+            if (got > 0) {
+                taken[0] += got;
+                drive.cellsChanged();
+            }
+        });
+        List<External> externals = externals();
+        for (int i = externals.size() - 1; i >= 0 && taken[0] < amount; i--) {
+            Gases.Tanks tanks = externals.get(i).gases();
+            if (tanks != null) taken[0] += tanks.drain(gas, amount - taken[0], false);
         }
         return taken[0];
     }

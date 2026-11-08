@@ -25,6 +25,11 @@ public class CoreDrawing {
     private static final int SPHERE_DETAIL = 32;
     /// How tilted (in degrees) the accretion disk is.
     private static final float DISK_TILT = 15;
+    /// Where the accretion disk starts (outside the glow, which goes up to 1.35), where its solid part ends and where
+    /// its see-through edge ends (parts of the radius of the star).
+    private static final float DISK_INNER = 1.5f;
+    private static final float DISK_SOLID = 2.0f;
+    private static final float DISK_OUTER = 2.5f;
 
     /// Tells how much a point of the sphere faces the viewer: 1 = facing it, 0 = at the edge.
     /// Used to make the edges of the sphere darker, which makes it look round (like real stars).
@@ -57,8 +62,13 @@ public class CoreDrawing {
             pose.pushPose();
             pose.mulPose(Axis.XP.rotationDegrees(DISK_TILT));
             pose.mulPose(Axis.YP.rotationDegrees(time * 2));
-            int outer = ARGB.color(0, glowColor); // fades out to transparent at the edge
-            collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * 1.15f, radius * 2.3f, diskColor, outer));
+            // The disk starts outside the glow (so the glow never covers a part of it) and is solid; only its outer
+            // edge is see-through, fading out to transparent
+            int middle = ARGB.color(255, ARGB.srgbLerp(0.5f, diskColor, glowColor));
+            int outer = ARGB.color(0, glowColor);
+            collector.submitCustomGeometry(pose, solidType, (p, v) -> ring(p, v, radius * DISK_INNER, radius * DISK_SOLID,
+                    ARGB.color(255, diskColor), middle));
+            collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * DISK_SOLID, radius * DISK_OUTER, middle, outer));
             pose.popPose();
         }
 

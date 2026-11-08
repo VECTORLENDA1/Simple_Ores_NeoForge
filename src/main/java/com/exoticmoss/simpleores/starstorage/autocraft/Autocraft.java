@@ -384,6 +384,9 @@ public final class Autocraft {
         }
 
         private final Map<SentKey, long[]> sentToMachines = new HashMap<>();
+        /// How many mB of each liquid and then each gas of a step were put in a machine (they catch up with the sets
+        /// of items the machine has: what its tanks didn't take before goes in later).
+        private final Map<SentKey, long[]> liquidSent = new HashMap<>();
         /// The machines used by this job that make liquids, and the liquids they make (taken out to the network).
         private final Map<BlockPos, java.util.Set<net.minecraft.world.level.material.Fluid>> fluidMachines = new HashMap<>();
         /// The same for the gases of Mekanism.
@@ -653,6 +656,8 @@ public final class Autocraft {
             List<SavedSent> savedSent = new ArrayList<>();
             sentToMachines.forEach((key, counts) -> savedSent.add(new SavedSent(Optional.of(key.pos()), key.step(), longs(counts))));
             stepSent.forEach((step, counts) -> savedSent.add(new SavedSent(Optional.empty(), step, longs(counts))));
+            // (the liquids and gases put in a machine: saved with the step as -1 - step)
+            liquidSent.forEach((key, counts) -> savedSent.add(new SavedSent(Optional.of(key.pos()), -1 - key.step(), longs(counts))));
             List<SavedTanks> savedTanks = new ArrayList<>();
             java.util.Set<BlockPos> tankBlocks = new java.util.HashSet<>(fluidMachines.keySet());
             tankBlocks.addAll(gasMachines.keySet());
@@ -685,7 +690,8 @@ public final class Autocraft {
             for (SavedSent sent : work.sent()) {
                 long[] counts = new long[sent.counts().size()];
                 for (int i = 0; i < counts.length; i++) counts[i] = sent.counts().get(i);
-                if (sent.pos().isPresent()) job.sentToMachines.put(new SentKey(sent.pos().get(), sent.step()), counts);
+                if (sent.pos().isPresent() && sent.step() < 0) job.liquidSent.put(new SentKey(sent.pos().get(), -1 - sent.step()), counts);
+                else if (sent.pos().isPresent()) job.sentToMachines.put(new SentKey(sent.pos().get(), sent.step()), counts);
                 else job.stepSent.put(sent.step(), counts);
             }
             for (SavedTanks tanks : work.tanks()) {
@@ -1295,26 +1301,40 @@ public final class Autocraft {
                         progress = true;
                     }
                 }
-                long given = sets(sent, amounts) - setsBefore;
-                if (given <= 0) continue;
-                // The liquids of the sets given (what the tanks don't take goes back)
-                for (var fluid : fluids) {
-                    long want = given * fluid.amount();
-                    int got = (int) network.extractFluid(fluid.fluid(), Math.min(want, Integer.MAX_VALUE));
+                // The liquids and gases of the sets the machine got (what the tanks don't take now goes in later)
+                long setsNow = sets(sent, amounts);
+                long[] liquid = liquidSent.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[fluids.size() + gases.size()]);
+                for (int f = 0; f < fluids.size() && f < liquid.length; f++) {
+                    var fluid = fluids.get(f);
+                    long owed = setsNow * fluid.amount() - liquid[f];
+                    if (owed <= 0) continue;
+                    int got = (int) network.extractFluid(fluid.fluid(), Math.min(owed, Integer.MAX_VALUE));
                     if (got <= 0) continue;
                     int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
                     if (put < got) network.insertFluid(fluid.fluid(), got - put);
+                    if (put > 0) {
+                        liquid[f] += put;
+                        progress = true;
+                    }
                 }
-                // The gases of the sets given (what the tanks don't take goes back)
-                for (var gas : gases) {
-                    long got = network.extractGas(gas.id(), given * gas.amount());
+                for (int g = 0; g < gases.size() && fluids.size() + g < liquid.length; g++) {
+                    var gas = gases.get(g);
+                    long owed = setsNow * gas.amount() - liquid[fluids.size() + g];
+                    if (owed <= 0) continue;
+                    long got = network.extractGas(gas.id(), owed);
                     long put = 0;
                     for (var tank : gasTanks) {
                         if (put >= got) break;
                         put += tank.fill(gas.id(), got - put, false);
                     }
                     if (put < got) network.insertGas(gas.id(), got - put);
+                    if (put > 0) {
+                        liquid[fluids.size() + g] += put;
+                        progress = true;
+                    }
                 }
+                long given = setsNow - setsBefore;
+                if (given <= 0) continue;
                 if (!step.pattern().gasOutputs().isEmpty()) {
                     var made = gasMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
                     for (var gas : step.pattern().gasOutputs()) made.add(gas.id());

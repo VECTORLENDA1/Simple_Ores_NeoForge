@@ -1311,6 +1311,18 @@ public final class Autocraft {
                 long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[Math.max(1, items.size())]);
                 long setsBefore = sets(sent, amounts);
                 long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
+                // One craft at a time in each machine: the next one only goes in when the machine gave out the result of
+                // the last one (so the items, liquids and gases of different crafts never mix up in the machine, and
+                // every result is counted). A recipe that makes a liquid or a gas is not limited (its result is taken
+                // out of the tanks, see collectFluids / collectGases)
+                if (!com.exoticmoss.simpleores.starstorage.network.Virtual.isVirtual(step.pattern().output().create())) {
+                    FurnaceWait waiting = machines.get(new MachineKey(machinePos, step.pattern().output()));
+                    if (waiting != null && waiting.expected() > 0) {
+                        status = "screen.simpleores.quasar.job.waiting_results";
+                        continue;
+                    }
+                    goal = Math.min(goal, setsBefore + 1);
+                }
                 // The liquids of the recipe and the tanks of the machine
                 var fluids = step.pattern().fluids();
                 var tanks = fluids.isEmpty() ? null : com.exoticmoss.simpleores.starstorage.network.FluidTanks.of(StarAccess.fluids(level, machinePos));

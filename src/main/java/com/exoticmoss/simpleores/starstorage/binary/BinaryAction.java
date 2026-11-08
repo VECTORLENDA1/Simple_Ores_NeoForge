@@ -27,13 +27,6 @@ import com.exoticmoss.simpleores.starstorage.network.StarFluids;
 public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot) implements CustomPacketPayload {
     /// Only asks for the view again (the screen does it every second).
     public static final int REFRESH = 0;
-    /// The gas of the tank as an item (EMPTY if the tank is empty).
-    private static ItemStack gasItem(@org.jetbrains.annotations.Nullable Gases.Tanks gases, int tank) {
-        if (gases == null) return ItemStack.EMPTY;
-        net.minecraft.resources.ResourceLocation gas = gases.gas(tank);
-        return gas == null ? ItemStack.EMPTY : com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas);
-    }
-
     /// Left-click on a slot: next mode (nothing -> take -> keep -> input and output -> nothing).
     /// With an item in the mouse cursor: that item becomes the item the slot keeps.
     public static final int CLICK = 1;

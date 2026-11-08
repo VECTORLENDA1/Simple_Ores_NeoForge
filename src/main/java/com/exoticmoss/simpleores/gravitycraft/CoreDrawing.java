@@ -25,9 +25,6 @@ public class CoreDrawing {
     private static final int SPHERE_DETAIL = 32;
     /// How tilted (in degrees) the accretion disk is.
     private static final float DISK_TILT = 15;
-    /// The disk is made of this many rings, and each beam of this many pieces (see ring and beam).
-    private static final int RING_BANDS = 4;
-    private static final int BEAM_PIECES = 8;
 
     /// Tells how much a point of the sphere faces the viewer: 1 = facing it, 0 = at the edge.
     /// Used to make the edges of the sphere darker, which makes it look round (like real stars).
@@ -43,9 +40,7 @@ public class CoreDrawing {
     public static void drawStar(PoseStack pose, SubmitNodeCollector collector, float radius, float time,
                                 int coreColor, int spotColor, int glowColor, int diskColor, int beamColor,
                                 float beamLength, Shading shading) {
-        // The light (glow, disk, beams): see-through and writing no depth, so the glow never hides the disk or the
-        // other stars behind it
-        RenderType type = glow();
+        RenderType type = RenderTypes.entityTranslucentEmissive(WHITE);
         // The sphere itself is opaque: with shaders a translucent/emissive sphere looks washed out,
         // and a black one (the Black Hole) becomes invisible, so only the glow and disk were showing
         RenderType solidType = RenderTypes.entityCutout(WHITE);
@@ -54,8 +49,8 @@ public class CoreDrawing {
         collector.submitCustomGeometry(pose, solidType, (p, v) -> sphere(p, v, radius, time, coreColor, spotColor, shading));
 
         // ---- Glow (corona): two transparent layers, the outer one fainter
-        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor), shading));
-        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.35f, ARGB.color(40, glowColor), shading));
+        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor)));
+        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.35f, ARGB.color(40, glowColor)));
 
         // ---- Accretion disk (only tiers with a disk color, like the Black Hole)
         if (ARGB.alpha(diskColor) > 0) {
@@ -80,13 +75,7 @@ public class CoreDrawing {
 
     /// A see-through sphere of one color around the current position (e.g. the light shell of a star the player is looking at).
     public static void drawShell(PoseStack pose, SubmitNodeCollector collector, float radius, int color) {
-        collector.submitCustomGeometry(pose, glow(), (p, v) -> glowSphere(p, v, radius, color));
-    }
-
-    /// The light of the stars (their glow, disk and beams): see-through like the beam of a beacon, which writes no
-    /// depth. Otherwise the glow of a star cuts holes in its disk and in the stars and glows next to it.
-    private static RenderType glow() {
-        return RenderTypes.beaconBeam(WHITE, true);
+        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> glowSphere(p, v, radius, color));
     }
 
     // ---------------------------------------------------------------- shapes
@@ -105,16 +94,6 @@ public class CoreDrawing {
     /// A sphere with a single color (used for the glow layers).
     private static void glowSphere(PoseStack.Pose pose, VertexConsumer v, float radius, int color) {
         forEachSphereQuad((x, y, z) -> vertex(pose, v, x * radius, y * radius, z * radius, x, y, z, color));
-    }
-
-    /// A glow layer that fades out toward its edge (and its back side is not seen): a soft light around the star,
-    /// without a hard ring where the layer ends.
-    private static void glowSphere(PoseStack.Pose pose, VertexConsumer v, float radius, int color, Shading shading) {
-        int alpha = ARGB.alpha(color);
-        forEachSphereQuad((x, y, z) -> {
-            float facing = Mth.clamp(shading.facing(pose, x, y, z), 0, 1);
-            vertex(pose, v, x * radius, y * radius, z * radius, x, y, z, ARGB.color((int) (alpha * facing), color));
-        });
     }
 
     /// A value from 0 to 1 that changes slowly over the surface and over time: the "spots" of the star.
@@ -151,35 +130,26 @@ public class CoreDrawing {
     }
 
     /// A flat ring (visible from both sides) that goes from the inner color to the outer color.
-    /// It is made of small pieces (around and from the inside out): the see-through parts of a star are drawn from
-    /// the farthest piece to the closest one, and with small pieces that order is right (a beam behind the disk
-    /// stays behind it).
     private static void ring(PoseStack.Pose pose, VertexConsumer v, float inner, float outer, int innerColor, int outerColor) {
         int pieces = SPHERE_DETAIL * 2;
-        for (int band = 0; band < RING_BANDS; band++) {
-            float t1 = (float) band / RING_BANDS, t2 = (float) (band + 1) / RING_BANDS;
-            float r1 = Mth.lerp(t1, inner, outer), r2 = Mth.lerp(t2, inner, outer);
-            int c1 = ARGB.srgbLerp(t1, innerColor, outerColor), c2 = ARGB.srgbLerp(t2, innerColor, outerColor);
-            for (int i = 0; i < pieces; i++) {
-                float a1 = Mth.TWO_PI * i / pieces;
-                float a2 = Mth.TWO_PI * (i + 1) / pieces;
-                // top side
-                vertex(pose, v, Mth.cos(a1) * r1, 0, Mth.sin(a1) * r1, 0, 1, 0, c1);
-                vertex(pose, v, Mth.cos(a1) * r2, 0, Mth.sin(a1) * r2, 0, 1, 0, c2);
-                vertex(pose, v, Mth.cos(a2) * r2, 0, Mth.sin(a2) * r2, 0, 1, 0, c2);
-                vertex(pose, v, Mth.cos(a2) * r1, 0, Mth.sin(a2) * r1, 0, 1, 0, c1);
-                // bottom side (same points in reverse order)
-                vertex(pose, v, Mth.cos(a2) * r1, 0, Mth.sin(a2) * r1, 0, -1, 0, c1);
-                vertex(pose, v, Mth.cos(a2) * r2, 0, Mth.sin(a2) * r2, 0, -1, 0, c2);
-                vertex(pose, v, Mth.cos(a1) * r2, 0, Mth.sin(a1) * r2, 0, -1, 0, c2);
-                vertex(pose, v, Mth.cos(a1) * r1, 0, Mth.sin(a1) * r1, 0, -1, 0, c1);
-            }
+        for (int i = 0; i < pieces; i++) {
+            float a1 = Mth.TWO_PI * i / pieces;
+            float a2 = Mth.TWO_PI * (i + 1) / pieces;
+            // top side
+            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, 1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, 1, 0, outerColor);
+            vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, 1, 0, outerColor);
+            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, 1, 0, innerColor);
+            // bottom side (same points in reverse order)
+            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, -1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, -1, 0, outerColor);
+            vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, -1, 0, outerColor);
+            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, -1, 0, innerColor);
         }
     }
 
     /// One light beam coming out of a pole: two crossed flat strips that fade out at the tip.
     /// direction = 1 for the top pole, -1 for the bottom pole.
-    /// Made of short pieces, like the ring (so it is drawn in the right order with the disk).
     private static void beam(PoseStack.Pose pose, VertexConsumer v, float radius, float length, int direction, int color) {
         float start = radius * 0.8f * direction;
         float end = (radius + length * 0.55f) * direction;
@@ -187,25 +157,19 @@ public class CoreDrawing {
         int base = ARGB.color(180, color);
         int tip = ARGB.color(0, color);
 
-        for (int piece = 0; piece < BEAM_PIECES; piece++) {
-            float t1 = (float) piece / BEAM_PIECES, t2 = (float) (piece + 1) / BEAM_PIECES;
-            float y1 = Mth.lerp(t1, start, end), y2 = Mth.lerp(t2, start, end);
-            float w1 = Mth.lerp(t1, 1, 0.2f), w2 = Mth.lerp(t2, 1, 0.2f);
-            int c1 = ARGB.srgbLerp(t1, base, tip), c2 = ARGB.srgbLerp(t2, base, tip);
-            // strip facing X, then strip facing Z; each one drawn on both sides
-            for (int side = 0; side < 2; side++) {
-                float dx = side == 0 ? width : 0;
-                float dz = side == 0 ? 0 : width;
-                vertex(pose, v, -dx * w1, y1, -dz * w1, 0, 0, 1, c1);
-                vertex(pose, v, dx * w1, y1, dz * w1, 0, 0, 1, c1);
-                vertex(pose, v, dx * w2, y2, dz * w2, 0, 0, 1, c2);
-                vertex(pose, v, -dx * w2, y2, -dz * w2, 0, 0, 1, c2);
+        // strip facing X, then strip facing Z; each one drawn on both sides
+        for (int side = 0; side < 2; side++) {
+            float dx = side == 0 ? width : 0;
+            float dz = side == 0 ? 0 : width;
+            vertex(pose, v, -dx, start, -dz, 0, 0, 1, base);
+            vertex(pose, v, dx, start, dz, 0, 0, 1, base);
+            vertex(pose, v, dx * 0.2f, end, dz * 0.2f, 0, 0, 1, tip);
+            vertex(pose, v, -dx * 0.2f, end, -dz * 0.2f, 0, 0, 1, tip);
 
-                vertex(pose, v, -dx * w2, y2, -dz * w2, 0, 0, -1, c2);
-                vertex(pose, v, dx * w2, y2, dz * w2, 0, 0, -1, c2);
-                vertex(pose, v, dx * w1, y1, dz * w1, 0, 0, -1, c1);
-                vertex(pose, v, -dx * w1, y1, -dz * w1, 0, 0, -1, c1);
-            }
+            vertex(pose, v, -dx * 0.2f, end, -dz * 0.2f, 0, 0, -1, tip);
+            vertex(pose, v, dx * 0.2f, end, dz * 0.2f, 0, 0, -1, tip);
+            vertex(pose, v, dx, start, dz, 0, 0, -1, base);
+            vertex(pose, v, -dx, start, -dz, 0, 0, -1, base);
         }
     }
 
@@ -213,7 +177,7 @@ public class CoreDrawing {
     /// A see-through box (seen from inside and outside), from "min" to "max" on every axis (block coordinates),
     /// with stronger edges: the area reached by a Magnetar or a Binary Star.
     public static void drawArea(PoseStack pose, SubmitNodeCollector collector, float min, float max, int faceColor, int edgeColor) {
-        collector.submitCustomGeometry(pose, glow(), (p, v) -> {
+        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> {
             box(p, v, min, min, min, max, max, max, faceColor);
             float e = 0.05f;
             for (float a : new float[]{min, max}) {

@@ -206,6 +206,42 @@ public final class StarAccess {
         return insertAny(handler, sides, item, item.getCount(), false);
     }
 
+    /// Puts as many of the items as fit in the machine, but in at most "maxSlots" of its slots (the slots that already
+    /// have the item count too): so one ingredient doesn't fill the slots the other ingredients of the recipe need (like
+    /// the 8 slots of the Dissolution Chamber of Industrial Foregoing). Through the sides when it takes nothing without
+    /// one. Returns how many went in.
+    public static int insertLimited(IItemHandler handler, List<IItemHandler> sides, ItemStack item, int maxSlots) {
+        List<IItemHandler> all = new ArrayList<>();
+        all.add(handler);
+        all.addAll(sides);
+        int amount = item.getCount(), put = 0;
+        for (IItemHandler to : all) {
+            if (put >= amount) break;
+            put += insertInSlots(to, item.copyWithCount(amount - put), maxSlots);
+        }
+        return put;
+    }
+
+    private static int insertInSlots(IItemHandler handler, ItemStack stack, int maxSlots) {
+        int amount = stack.getCount();
+        ItemStack left = stack;
+        int holding = 0;
+        // First the slots that already have it
+        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty(); slot++) {
+            if (!ItemStack.isSameItemSameComponents(handler.getStackInSlot(slot), left)) continue;
+            holding++;
+            left = handler.insertItem(slot, left, false);
+        }
+        // Then empty slots, while it has fewer slots than it may have
+        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty() && holding < maxSlots; slot++) {
+            if (!handler.getStackInSlot(slot).isEmpty()) continue;
+            int before = left.getCount();
+            left = handler.insertItem(slot, left, false);
+            if (left.getCount() < before) holding++;
+        }
+        return amount - left.getCount();
+    }
+
     /// Takes up to "max" of the item out of the machine to the network (what doesn't fit stays). Returns how many went.
     public static int takeOut(StarNetwork network, IItemHandler handler, List<IItemHandler> sides, ItemStack item, int max) {
         int canTake = extractAny(handler, sides, item, max, true);

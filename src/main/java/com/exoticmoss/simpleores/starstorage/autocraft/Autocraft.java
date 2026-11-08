@@ -1186,6 +1186,16 @@ public final class Autocraft {
             // A recipe with only liquids and gases: one pretend ingredient, that is always there (the sets are limited
             // by the liquids and the gases)
             boolean onlyLiquids = items.isEmpty();
+            // How many slots of the recipe each ingredient has (0 = no limit: the recipe has one kind of ingredient)
+            int[] slotsOf = new int[items.size()];
+            boolean different = false;
+            for (int k = 0; k < items.size(); k++) {
+                for (int j = 0; j < items.size(); j++) {
+                    if (ItemStack.isSameItemSameComponents(items.get(k), items.get(j))) slotsOf[k]++;
+                    else different = true;
+                }
+            }
+            if (!different) java.util.Arrays.fill(slotsOf, 0);
             if (onlyLiquids && step.pattern().fluids().isEmpty() && step.pattern().gases().isEmpty()) return false;
             if (onlyLiquids) amounts.add(1);
             int speed = magnetar.speed();
@@ -1264,7 +1274,11 @@ public final class Autocraft {
                         status = "screen.simpleores.quasar.job.waiting_items";
                         continue;
                     }
-                    int put = com.exoticmoss.simpleores.starstorage.network.StarAccess.insertSome(handler, sides, got);
+                    // A recipe with different ingredients: each one only in as many slots as it has in the recipe
+                    // (else, with many crafts, the first one fills every slot and the others don't fit)
+                    int put = slotsOf[k] > 0
+                            ? com.exoticmoss.simpleores.starstorage.network.StarAccess.insertLimited(handler, sides, got, slotsOf[k])
+                            : com.exoticmoss.simpleores.starstorage.network.StarAccess.insertSome(handler, sides, got);
                     if (put < got.getCount()) store(got.copyWithCount(got.getCount() - put));
                     if (put > 0) {
                         sent[k] += put;

@@ -1238,41 +1238,56 @@ public final class Autocraft {
                 long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[Math.max(1, items.size())]);
                 long setsBefore = sets(sent, amounts);
                 long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
-                // The liquids of the recipe: only as many sets as the network has liquid for and the tanks of the
-                // machine take
+                // The liquids of the recipe and the tanks of the machine
                 var fluids = step.pattern().fluids();
                 var tanks = fluids.isEmpty() ? null : com.exoticmoss.simpleores.starstorage.network.FluidTanks.of(StarAccess.fluids(level, machinePos));
                 var tankSides = fluids.isEmpty() ? List.<com.exoticmoss.simpleores.starstorage.network.FluidTanks>of() : com.exoticmoss.simpleores.starstorage.network.FluidTanks.all(StarAccess.fluidSides(level, machinePos));
-                if (!fluids.isEmpty()) {
-                    long fluidSets = Long.MAX_VALUE;
-                    for (var fluid : fluids) {
-                        long have = network.fluidAmount(fluid.fluid());
-                        int fits = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(),
-                                (int) Math.min(Integer.MAX_VALUE, Math.max(1, have))), true);
-                        fluidSets = Math.min(fluidSets, Math.min(have, fits) / Math.max(1, fluid.amount()));
-                    }
-                    if (fluidSets <= 0) {
-                        status = "screen.simpleores.quasar.job.waiting_items";
-                        continue;
-                    }
-                    goal = Math.min(goal, setsBefore + fluidSets);
-                }
-                // The gases of the recipe: the same
+                // The gases of the recipe and the tanks of gases of the machine
                 var gases = step.pattern().gases();
                 var gasTanks = gases.isEmpty() ? List.<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks>of() : gasTanks(level, machinePos);
-                if (!gases.isEmpty()) {
-                    long gasSets = Long.MAX_VALUE;
-                    for (var gas : gases) {
-                        long have = network.gasAmount(gas.id());
-                        long fits = 0;
-                        for (var tank : gasTanks) fits += tank.fill(gas.id(), Math.max(1, have) - fits, true);
-                        gasSets = Math.min(gasSets, Math.min(have, fits) / Math.max(1, gas.amount()));
+                // First the liquids and gases (of a recipe that has them), then the items: the items only go in for the
+                // sets whose liquids and gases are already in the tanks of the machine (with a small tank, a few sets at
+                // a time; what the tanks didn't take before goes in later)
+                if (!fluids.isEmpty() || !gases.isEmpty()) {
+                    long[] liquid = liquidSent.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[fluids.size() + gases.size()]);
+                    long covered = Long.MAX_VALUE;
+                    for (int f = 0; f < fluids.size() && f < liquid.length; f++) {
+                        var fluid = fluids.get(f);
+                        long owed = goal * fluid.amount() - liquid[f];
+                        if (owed > 0) {
+                            int got = (int) network.extractFluid(fluid.fluid(), Math.min(owed, Integer.MAX_VALUE));
+                            if (got > 0) {
+                                int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
+                                if (put < got) network.insertFluid(fluid.fluid(), got - put);
+                                if (put > 0) {
+                                    liquid[f] += put;
+                                    progress = true;
+                                }
+                            }
+                        }
+                        covered = Math.min(covered, liquid[f] / Math.max(1, fluid.amount()));
                     }
-                    if (gasSets <= 0) {
-                        status = "screen.simpleores.quasar.job.waiting_items";
-                        continue;
+                    for (int g = 0; g < gases.size() && fluids.size() + g < liquid.length; g++) {
+                        var gas = gases.get(g);
+                        long owed = goal * gas.amount() - liquid[fluids.size() + g];
+                        if (owed > 0) {
+                            long got = network.extractGas(gas.id(), owed);
+                            long put = 0;
+                            for (var tank : gasTanks) {
+                                if (put >= got) break;
+                                put += tank.fill(gas.id(), got - put, false);
+                            }
+                            if (put < got) network.insertGas(gas.id(), got - put);
+                            if (put > 0) {
+                                liquid[fluids.size() + g] += put;
+                                progress = true;
+                            }
+                        }
+                        covered = Math.min(covered, liquid[fluids.size() + g] / Math.max(1, gas.amount()));
                     }
-                    goal = Math.min(goal, setsBefore + gasSets);
+                    goal = Math.min(goal, covered);
+                    // (the network has no more of the liquid or gas, or the tanks are full: the items wait)
+                    if (goal <= setsBefore) status = "screen.simpleores.quasar.job.waiting_items";
                 }
                 if (onlyLiquids) {
                     long more = Math.max(0, goal - sent[0]);
@@ -1301,38 +1316,7 @@ public final class Autocraft {
                         progress = true;
                     }
                 }
-                // The liquids and gases of the sets the machine got (what the tanks don't take now goes in later)
                 long setsNow = sets(sent, amounts);
-                long[] liquid = liquidSent.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[fluids.size() + gases.size()]);
-                for (int f = 0; f < fluids.size() && f < liquid.length; f++) {
-                    var fluid = fluids.get(f);
-                    long owed = setsNow * fluid.amount() - liquid[f];
-                    if (owed <= 0) continue;
-                    int got = (int) network.extractFluid(fluid.fluid(), Math.min(owed, Integer.MAX_VALUE));
-                    if (got <= 0) continue;
-                    int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
-                    if (put < got) network.insertFluid(fluid.fluid(), got - put);
-                    if (put > 0) {
-                        liquid[f] += put;
-                        progress = true;
-                    }
-                }
-                for (int g = 0; g < gases.size() && fluids.size() + g < liquid.length; g++) {
-                    var gas = gases.get(g);
-                    long owed = setsNow * gas.amount() - liquid[fluids.size() + g];
-                    if (owed <= 0) continue;
-                    long got = network.extractGas(gas.id(), owed);
-                    long put = 0;
-                    for (var tank : gasTanks) {
-                        if (put >= got) break;
-                        put += tank.fill(gas.id(), got - put, false);
-                    }
-                    if (put < got) network.insertGas(gas.id(), got - put);
-                    if (put > 0) {
-                        liquid[fluids.size() + g] += put;
-                        progress = true;
-                    }
-                }
                 long given = setsNow - setsBefore;
                 if (given <= 0) continue;
                 if (!step.pattern().gasOutputs().isEmpty()) {

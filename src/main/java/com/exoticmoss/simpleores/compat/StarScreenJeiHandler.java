@@ -68,7 +68,21 @@ public class StarScreenJeiHandler implements IGuiContainerHandler<AbstractContai
     }
 
     private static <V> Optional<ITypedIngredient<?>> typedOf(V ingredient) {
-        return ingredients.getIngredientTypeChecked(ingredient).flatMap(type -> ingredients.createTypedIngredient(type, ingredient)).map(typed -> typed);
+        Optional<ITypedIngredient<?>> typed = ingredients.getIngredientTypeChecked(ingredient)
+                .flatMap(type -> ingredients.createTypedIngredient(type, ingredient)).map(found -> found);
+        if (typed.isPresent()) return typed;
+        // (the type of the gases of Mekanism, found by the class of its ingredients)
+        for (mezz.jei.api.ingredients.IIngredientType<?> type : ingredients.getRegisteredIngredientTypes()) {
+            if (type.getIngredientClass().isInstance(ingredient)) {
+                Optional<ITypedIngredient<?>> found = typedAs(type, ingredient);
+                if (found.isPresent()) return found;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static <T> Optional<ITypedIngredient<?>> typedAs(mezz.jei.api.ingredients.IIngredientType<T> type, Object ingredient) {
+        return ingredients.createTypedIngredient(type, type.getIngredientClass().cast(ingredient)).map(found -> found);
     }
 
     private static <V> Optional<IClickableIngredient<?>> clickable(ITypedIngredient<V> typed, Rect2i area) {

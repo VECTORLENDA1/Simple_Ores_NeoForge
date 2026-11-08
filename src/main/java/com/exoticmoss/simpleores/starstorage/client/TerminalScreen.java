@@ -678,10 +678,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         int index = cellAt(mouseX, mouseY);
         if (index < 0) return null;
         TerminalContents.Item item = shown.get(index);
-        if (item.gas() != null) return null;
         int visible = index - scroll * TerminalLayout.COLUMNS;
         int x = networkLeft() + (visible % TerminalLayout.COLUMNS) * TerminalLayout.CELL_W + (TerminalLayout.CELL_W - 16) / 2;
         int y = networkTop() + (visible / TerminalLayout.COLUMNS) * TerminalLayout.CELL_H + 3;
+        // (a gas: its item, which JEI sees as the gas, see StarScreenJeiHandler)
+        if (item.gas() != null) return JeiTarget.of(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(item.gas()), x, y);
         return new JeiTarget(item.item().create(), item.fluid(), x, y, 16);
     }
 
@@ -810,10 +811,8 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 TerminalContents.Item item = shown.get(index);
                 if (craftItem != null) continue;
                 if (item.gas() != null) {
-                    // A gas: a square of its color, and how many mB
-                    int gx = x + (TerminalLayout.CELL_W - 14) / 2, gy = y + 4;
-                    graphics.fill(gx, gy, gx + 14, gy + 14, 0xFF101018);
-                    graphics.fill(gx + 1, gy + 1, gx + 13, gy + 13, com.exoticmoss.simpleores.starstorage.gas.Gases.color(item.gas()));
+                    // A gas: its texture and color, and how many mB
+                    graphics.item(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(item.gas()), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
                     graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2,
                             y + TerminalLayout.CELL_H - 10, GAS_TEXT);
                     continue;

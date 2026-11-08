@@ -267,7 +267,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         if (slotId >= 0 && slotId < INVENTORY_START) {
             // The result of the recipe of a machine: shift + click changes how many it makes
             if (slotId == RESULT_SLOT && isMachine() && input == ClickType.QUICK_MOVE && tab == TAB_CRAFTING) {
-                machineOutput.setCount(Math.max(1, Math.min(MAX_AMOUNT, machineOutput.getCount() + (button == 0 ? 1 : -1))));
+                // (a liquid or a gas: its mB, with no limit of 99)
+                int most = Virtual.isVirtual(machineOutput) ? Integer.MAX_VALUE - 1 : MAX_AMOUNT;
+                machineOutput.setCount(Math.max(1, Math.min(most, machineOutput.getCount() + (button == 0 ? 1 : -1))));
                 updateResult();
                 return;
             }
@@ -304,9 +306,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         ItemStack current = pictures.getItem(slot);
         if (shift) {
             if (current.isEmpty()) return;
-            // (a liquid or a gas: 100 mB at a time)
-            int step = Virtual.isVirtual(current) ? 100 : 1;
-            int count = (int) Math.min(Integer.MAX_VALUE, (long) amounts[slot] + (button == 0 ? step : -step));
+            int count = (int) Math.min(Integer.MAX_VALUE, (long) amounts[slot] + (button == 0 ? 1 : -1));
             if (count <= 0) {
                 setPicture(slot, ItemStack.EMPTY);
                 return;

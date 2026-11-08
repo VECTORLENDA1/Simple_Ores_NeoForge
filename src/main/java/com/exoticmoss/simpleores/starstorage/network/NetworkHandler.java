@@ -92,10 +92,6 @@ public final class NetworkHandler {
             if (!simulate) {
                 StarNetwork network = network();
                 ItemStack in = stack.copyWithCount(inserted);
-                // (results of the machines of an auto-craft count for its job, see Autocraft.Job.arrived)
-                if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
-                    in = com.exoticmoss.simpleores.starstorage.autocraft.Autocraft.Job.arrived(serverLevel, network, in);
-                }
                 ItemStack left = in.isEmpty() ? ItemStack.EMPTY : network.insert(in);
                 // (should not happen) no room any more: the items drop next to the Binary Star
                 if (!left.isEmpty()) Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5, left);

@@ -805,42 +805,6 @@ public final class Autocraft {
             return false;
         }
 
-        /// Items that came into the network from outside (through a Binary Star, a pipe...): a machine of a job can
-        /// push its results out by itself (like the machines of Industrial Foregoing with their auto-output), so they
-        /// never stay in the machine for the job to take. They count for the jobs that wait for that item from their
-        /// machines, like when the job takes them: what was asked for counts and goes to the network, the results of
-        /// the sub-crafts go to the storage of the job. Returns what goes to the network.
-        public static ItemStack arrived(ServerLevel level, StarNetwork network, ItemStack stack) {
-            if (stack.isEmpty()) return stack;
-            long uncounted = stack.getCount();
-            long toNetwork = stack.getCount();
-            for (QuasarBlockEntity quasar : network.quasars()) {
-                for (Job job : quasar.getJobs()) {
-                    if (uncounted <= 0) break;
-                    if (job.dimension != level.dimension()) continue;
-                    for (Map.Entry<MachineKey, FurnaceWait> entry : new ArrayList<>(job.machines.entrySet())) {
-                        if (uncounted <= 0) break;
-                        if (!stack.is(entry.getKey().output().item())) continue;
-                        long count = Math.min(uncounted, entry.getValue().expected());
-                        if (count <= 0) continue;
-                        uncounted -= count;
-                        long expected = entry.getValue().expected() - count;
-                        if (expected <= 0) job.machines.remove(entry.getKey());
-                        else job.machines.put(entry.getKey(), new FurnaceWait(entry.getValue().output(), expected));
-                        ItemStack part = stack.copyWithCount((int) count);
-                        job.madeBySteps(entry.getKey().output().create().copyWithCount((int) count));
-                        if (ItemStack.isSameItem(part, job.output.create())) {
-                            job.countFinal(count);
-                        } else {
-                            job.store(part);
-                            toNetwork -= count;
-                        }
-                    }
-                }
-            }
-            return stack.copyWithCount((int) Math.max(0, toNetwork));
-        }
-
         /// How many of the item the Gravity Core steps of this job still have to make.
         private long coreRoom(ItemStack stack) {
             long room = 0;
@@ -866,8 +830,81 @@ public final class Autocraft {
             return idle < GIVE_UP_TICKS;
         }
 
+        /// How many of each item the job waits for from its machines the network had when the job last worked.
+        private final Map<ItemStackTemplate, Long> seen = new HashMap<>();
+
         /// Does as much as it can now. Returns true if something was done.
+        /// The results a machine of the job gives out by itself (like the machines of Industrial Foregoing pushing
+        /// their results into a pipe, a Binary Star or a chest of an Event Horizon) never stay in the machine for the
+        /// job to take: when the network has more of an item the job waits for than when the job last worked, and the
+        /// job didn't put it there, it counts as those results (see countArrivals).
         boolean work(ServerLevel level, StarNetwork network) {
+            boolean arrived = countArrivals(network);
+            boolean progress = workSteps(level, network);
+            remember(network);
+            return progress || arrived;
+        }
+
+        /// How many of each item the job waits for from its machines the network has now.
+        private Map<ItemStackTemplate, Long> waitedInNetwork(StarNetwork network) {
+            Map<ItemStackTemplate, Long> counts = new HashMap<>();
+            if (machines.isEmpty()) return counts;
+            java.util.Set<ItemStackTemplate> waited = new java.util.HashSet<>();
+            for (MachineKey key : machines.keySet()) waited.add(key.output());
+            for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) {
+                if (waited.contains(entry.getKey())) counts.merge(entry.getKey(), entry.getValue(), Long::sum);
+            }
+            for (ItemStackTemplate item : waited) counts.putIfAbsent(item, 0L);
+            return counts;
+        }
+
+        private void remember(StarNetwork network) {
+            seen.clear();
+            seen.putAll(waitedInNetwork(network));
+        }
+
+        /// The items the job waits for that came into the network since the job last worked, not put there by the
+        /// job: they count as results of its machines (what was asked for stays in the network; the results of the
+        /// sub-crafts go to the storage of the job). Returns true if some came.
+        private boolean countArrivals(StarNetwork network) {
+            if (machines.isEmpty() || seen.isEmpty()) return false;
+            boolean any = false;
+            for (Map.Entry<ItemStackTemplate, Long> entry : waitedInNetwork(network).entrySet()) {
+                ItemStackTemplate item = entry.getKey();
+                long before = seen.getOrDefault(item, -1L);
+                long came = entry.getValue() - before;
+                if (before < 0 || came <= 0) continue;
+                for (Map.Entry<MachineKey, FurnaceWait> wait : new ArrayList<>(machines.entrySet())) {
+                    if (came <= 0) break;
+                    if (!wait.getKey().output().equals(item)) continue;
+                    long count = Math.min(came, wait.getValue().expected());
+                    if (count <= 0) continue;
+                    came -= count;
+                    long expected = wait.getValue().expected() - count;
+                    if (expected <= 0) machines.remove(wait.getKey());
+                    else machines.put(wait.getKey(), new FurnaceWait(wait.getValue().output(), expected));
+                    ItemStack stack = item.create();
+                    madeBySteps(stack.copyWithCount((int) Math.min(count, Integer.MAX_VALUE)));
+                    if (ItemStack.isSameItemSameComponents(stack, output.create())) {
+                        countFinal(count);
+                    } else {
+                        // (a result of a sub-craft: to the storage of the job)
+                        long left = count;
+                        while (left > 0) {
+                            ItemStack got = network.extract(stack, (int) Math.min(left, Integer.MAX_VALUE));
+                            if (got.isEmpty()) break;
+                            store(got);
+                            left -= got.getCount();
+                        }
+                    }
+                    any = true;
+                }
+            }
+            return any;
+        }
+
+        /// The work itself (see work).
+        private boolean workSteps(ServerLevel level, StarNetwork network) {
             boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | collectFluids(level, network) | collectGases(level, network) | arrivedNow;
             arrivedNow = false;
             // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:

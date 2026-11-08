@@ -84,9 +84,16 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
         return new AABB(blockEntity.getBlockPos()).inflate(Math.max(4, AreaDisplay.radius(blockEntity.getBlockPos()) + 1));
     }
 
-    /// Far enough to see the whole area of a Magnetar with all its upgrades.
+    /// As far as the world is drawn (the render distance of the options), so the whole area of a Magnetar with all its
+    /// upgrades is seen.
     @Override
     public int getViewDistance() {
-        return 160;
+        return Math.max(160, net.minecraft.client.Minecraft.getInstance().options.getEffectiveRenderDistance() * 16);
+    }
+
+    /// Drawn even when the part of the world where the block is can't be seen (its area or its beams still can).
+    @Override
+    public boolean shouldRenderOffScreen(T blockEntity) {
+        return true;
     }
 }

@@ -17,6 +17,10 @@ public final class RenderTypes {
         return RenderType.entityCutout(texture);
     }
 
+    public static RenderType entityCutoutNoCull(ResourceLocation texture) {
+        return RenderType.entityCutoutNoCull(texture);
+    }
+
     public static RenderType entityTranslucentEmissive(ResourceLocation texture) {
         return RenderType.entityTranslucentEmissive(texture);
     }

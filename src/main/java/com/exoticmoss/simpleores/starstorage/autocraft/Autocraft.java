@@ -1186,14 +1186,23 @@ public final class Autocraft {
             // A recipe with only liquids and gases: one pretend ingredient, that is always there (the sets are limited
             // by the liquids and the gases)
             boolean onlyLiquids = items.isEmpty();
-            // How many slots of the recipe each ingredient has (0 = no limit: the recipe has one kind of ingredient)
+            // How many slots each ingredient may take in a machine (how many of it one craft uses), and the other kinds
+            // of ingredients (they need their own slots). 0 = no limit: the recipe has one kind of ingredient
             int[] slotsOf = new int[items.size()];
+            List<List<ItemStack>> othersOf = new ArrayList<>();
             boolean different = false;
             for (int k = 0; k < items.size(); k++) {
+                List<ItemStack> others = new ArrayList<>();
                 for (int j = 0; j < items.size(); j++) {
-                    if (ItemStack.isSameItemSameComponents(items.get(k), items.get(j))) slotsOf[k]++;
-                    else different = true;
+                    if (ItemStack.isSameItemSameComponents(items.get(k), items.get(j))) {
+                        slotsOf[k] += amounts.get(j);
+                    } else {
+                        different = true;
+                        ItemStack other = items.get(j);
+                        if (others.stream().noneMatch(seen -> ItemStack.isSameItemSameComponents(seen, other))) others.add(other);
+                    }
                 }
+                othersOf.add(others);
             }
             if (!different) java.util.Arrays.fill(slotsOf, 0);
             if (onlyLiquids && step.pattern().fluids().isEmpty() && step.pattern().gases().isEmpty()) return false;
@@ -1277,7 +1286,7 @@ public final class Autocraft {
                     // A recipe with different ingredients: each one only in as many slots as it has in the recipe
                     // (else, with many crafts, the first one fills every slot and the others don't fit)
                     int put = slotsOf[k] > 0
-                            ? com.exoticmoss.simpleores.starstorage.network.StarAccess.insertLimited(handler, sides, got, slotsOf[k])
+                            ? com.exoticmoss.simpleores.starstorage.network.StarAccess.insertLimited(handler, sides, got, slotsOf[k], othersOf.get(k))
                             : com.exoticmoss.simpleores.starstorage.network.StarAccess.insertSome(handler, sides, got);
                     if (put < got.getCount()) store(got.copyWithCount(got.getCount() - put));
                     if (put > 0) {

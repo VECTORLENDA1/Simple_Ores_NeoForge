@@ -206,40 +206,63 @@ public final class StarAccess {
         return insertAny(handler, sides, item, item.getCount(), false);
     }
 
-    /// Puts as many of the items as fit in the machine, but in at most "maxSlots" of its slots (the slots that already
-    /// have the item count too): so one ingredient doesn't fill the slots the other ingredients of the recipe need (like
-    /// the 8 slots of the Dissolution Chamber of Industrial Foregoing). Through the sides when it takes nothing without
-    /// one. Returns how many went in.
-    public static int insertLimited(IItemHandler handler, List<IItemHandler> sides, ItemStack item, int maxSlots) {
+    /// Puts as many of the items as fit in the machine, spread over up to "maxSlots" of its slots (the slots that
+    /// already have the item count too), and always leaving a free slot for each of the "others" (the other
+    /// ingredients of the recipe) that is not in the machine yet. For machines that need each ingredient in its own
+    /// slots, like the 8 slots of the Dissolution Chamber of Industrial Foregoing: an ingredient that the recipe uses
+    /// twice goes in two slots, and one ingredient never fills the slots the others need. Through the sides when it
+    /// takes nothing without one. Returns how many went in.
+    public static int insertLimited(IItemHandler handler, List<IItemHandler> sides, ItemStack item, int maxSlots, List<ItemStack> others) {
         List<IItemHandler> all = new ArrayList<>();
         all.add(handler);
         all.addAll(sides);
         int amount = item.getCount(), put = 0;
         for (IItemHandler to : all) {
             if (put >= amount) break;
-            put += insertInSlots(to, item.copyWithCount(amount - put), maxSlots);
+            put += insertInSlots(to, item.copyWithCount(amount - put), maxSlots, others);
         }
         return put;
     }
 
-    private static int insertInSlots(IItemHandler handler, ItemStack stack, int maxSlots) {
-        int amount = stack.getCount();
-        ItemStack left = stack;
-        int holding = 0;
-        // First the slots that already have it
-        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty(); slot++) {
-            if (!ItemStack.isSameItemSameComponents(handler.getStackInSlot(slot), left)) continue;
-            holding++;
-            left = handler.insertItem(slot, left, false);
+    private static int insertInSlots(IItemHandler handler, ItemStack stack, int maxSlots, List<ItemStack> others) {
+        // The slots that have it, and the free slots that take it
+        List<Integer> holding = new ArrayList<>(), free = new ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack inside = handler.getStackInSlot(slot);
+            if (inside.isEmpty()) {
+                if (handler.insertItem(slot, stack.copyWithCount(1), true).isEmpty()) free.add(slot);
+            } else if (ItemStack.isSameItemSameComponents(inside, stack)) {
+                holding.add(slot);
+            }
         }
-        // Then empty slots, while it has fewer slots than it may have
-        for (int slot = 0; slot < handler.getSlots() && !left.isEmpty() && holding < maxSlots; slot++) {
-            if (!handler.getStackInSlot(slot).isEmpty()) continue;
-            int before = left.getCount();
-            left = handler.insertItem(slot, left, false);
-            if (left.getCount() < before) holding++;
+        // A free slot is kept for each other ingredient that is not in the machine yet
+        int missing = 0;
+        for (ItemStack other : others) {
+            boolean there = false;
+            for (int slot = 0; slot < handler.getSlots() && !there; slot++) {
+                there = ItemStack.isSameItemSameComponents(handler.getStackInSlot(slot), other);
+            }
+            if (!there) missing++;
         }
-        return amount - left.getCount();
+        int slots = Math.max(1, Math.min(maxSlots, holding.size() + free.size() - missing));
+        List<Integer> targets = new ArrayList<>(holding);
+        for (int i = 0; i < free.size() && targets.size() < slots; i++) targets.add(free.get(i));
+        if (targets.isEmpty()) return 0;
+        // Spread evenly over those slots
+        int amount = stack.getCount(), left = amount;
+        boolean moved = true;
+        while (left > 0 && moved) {
+            moved = false;
+            int part = Math.max(1, left / targets.size());
+            for (int slot : targets) {
+                if (left <= 0) break;
+                int give = Math.min(part, left);
+                int rest = handler.insertItem(slot, stack.copyWithCount(give), false).getCount();
+                if (rest < give) moved = true;
+                left -= give - rest;
+            }
+        }
+        return amount - left;
     }
 
     /// Takes up to "max" of the item out of the machine to the network (what doesn't fit stays). Returns how many went.

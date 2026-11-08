@@ -47,7 +47,8 @@ public class CoreDrawing {
         RenderType type = RenderTypes.glow(WHITE);
         // The sphere itself is opaque: with shaders a translucent/emissive sphere looks washed out,
         // and a black one (the Black Hole) becomes invisible, so only the glow and disk were showing
-        RenderType solidType = RenderTypes.entityCutout(WHITE);
+        // (seen from both sides: from inside a big star it is solid too)
+        RenderType solidType = RenderTypes.entityCutoutNoCull(WHITE);
 
         // ---- Sphere with moving spots
         collector.submitCustomGeometry(pose, solidType, (p, v) -> sphere(p, v, radius, time, coreColor, spotColor, shading));

@@ -54,6 +54,16 @@ public final class Gases {
         return available() ? MekanismGases.color(gas) : 0xFFA0A0A0;
     }
 
+    /// The gas as Mekanism sees it (its ChemicalStack, e.g. for JEI; null = Mekanism is not installed).
+    public static @Nullable Object stack(ResourceLocation gas, long amount) {
+        return available() ? MekanismGases.stack(gas, amount) : null;
+    }
+
+    /// The texture of a gas (in the blocks atlas; null = none).
+    public static @Nullable ResourceLocation icon(ResourceLocation gas) {
+        return available() ? MekanismGases.icon(gas) : null;
+    }
+
     /// A gas shown by JEI in a recipe (null = it is not a gas).
     public static @Nullable Gas fromIngredient(Object ingredient) {
         return available() ? MekanismGases.fromIngredient(ingredient) : null;

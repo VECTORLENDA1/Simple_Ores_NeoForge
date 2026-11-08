@@ -15,6 +15,7 @@
   "block.simpleores.stellar_drive": "Drive Estelar",
   "block.simpleores.stellar_terminal": "Terminal Estelar",
   "item.simpleores.white_dwarf_cell": "Célula Anã Branca",
+  "item.simpleores.gas": "Gás",
   "item.simpleores.neutron_cell": "Célula de Neutrões",
   "item.simpleores.singularity_cell": "Célula de Singularidade",
   "item.simpleores.star_cell.items": "Items: %s / %s",

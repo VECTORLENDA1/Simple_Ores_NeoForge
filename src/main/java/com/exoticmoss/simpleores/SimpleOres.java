@@ -177,6 +177,16 @@ public class SimpleOres {
                     ModItems.RED_DWARF_FLUID_CELL.get(), ModItems.WHITE_DWARF_FLUID_CELL.get(), ModItems.BLUE_DWARF_FLUID_CELL.get(),
                     ModItems.PULSAR_FLUID_CELL.get(), ModItems.NEUTRON_FLUID_CELL.get(), ModItems.QUARK_FLUID_CELL.get(),
                     ModItems.PREON_FLUID_CELL.get(), ModItems.SINGULARITY_FLUID_CELL.get());
+            // The item of the gases: the texture and the color of the gas
+            event.registerItem(new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
+                private com.exoticmoss.simpleores.starstorage.render.GasItemRenderer renderer;
+
+                @Override
+                public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                    if (renderer == null) renderer = new com.exoticmoss.simpleores.starstorage.render.GasItemRenderer();
+                    return renderer;
+                }
+            }, ModItems.GAS.get());
         }
 
 

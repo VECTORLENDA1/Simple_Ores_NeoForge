@@ -477,9 +477,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     BinaryView.Tank tank = block.tanks().get(slot - block.slots().size());
                     graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : TANK_COLOR);
                     ResourceLocation gas = tank.gas() ? Virtual.gasOf(tank.bucket()) : null;
-                    // A tank of gas: a square of the color of the gas
-                    if (gas != null) graphics.fill(x + 4, y + 4, x + SLOT - 4, y + SLOT - 4, Gases.color(gas));
-                    else if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
+                    // (a tank of gas: the gas, drawn with its texture and color)
+                    if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
                     if (tank.amount() > 0) {
                         String amount = tank.amount() < StarFluids.BUCKET ? tank.amount() + "m" : StarNetwork.format(tank.amount() / StarFluids.BUCKET);
                         graphics.text(font, Component.literal(amount), x + SLOT - 1 - font.width(amount), y + SLOT - 9, TANK_TEXT);

@@ -379,7 +379,7 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 graphics.fill(barLeft, y + 5, fill, y + 11, 0xFF3FB86A);
                 graphics.fill(barLeft, y + 5, fill, y + 6, 0xFF7FE8A0);
             }
-            graphics.centeredText(font, Component.literal(Math.min(made, amount) + "/" + amount), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
+            graphics.centeredText(font, Component.literal(StarNetwork.format(Math.min(made, amount)) + "/" + StarNetwork.format(amount)), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
             if (sub != null) continue;
             // Cancel X
             int[] box = cancelBox(row);

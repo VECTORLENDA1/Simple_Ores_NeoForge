@@ -16,6 +16,8 @@ public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
 
     //Items//
+    /// A gas of Mekanism shown as an item (see Virtual): only in the screens of the star storage.
+    public static final DeferredItem<Item> GAS = ITEMS.registerSimpleItem("gas");
     public static final DeferredItem<Item> CELESTINE = ITEMS.registerSimpleItem("celestine");
     public static final DeferredItem<Item> ZENITHRA = ITEMS.registerSimpleItem("zenithra");
     public static final DeferredItem<Item> ASTRALITE = ITEMS.registerSimpleItem("astralite");

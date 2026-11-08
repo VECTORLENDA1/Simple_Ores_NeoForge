@@ -564,7 +564,12 @@ public final class Autocraft {
         /// Items that came back to the network: they count for the sub-crafts that make that item (their bar only
         /// grows with what is really made, not with what was sent to the machines).
         private void madeBySteps(ItemStack stack) {
-            long left = stack.getCount();
+            madeBySteps(stack, stack.getCount());
+        }
+
+        /// The same, with "count" of the item (a liquid or a gas: its mB, more than an item can count).
+        private void madeBySteps(ItemStack stack, long count) {
+            long left = count;
             for (int i = 0; i < steps.size() - 1 && left > 0; i++) {
                 Step step = steps.get(i);
                 if (!ItemStack.isSameItemSameComponents(stack, step.pattern().output().create())) continue;
@@ -1266,6 +1271,8 @@ public final class Autocraft {
                         if (put <= 0) continue;
                         // (the gas asked for)
                         if (gas.equals(com.exoticmoss.simpleores.starstorage.network.Virtual.gasOf(output.create()))) countFinal(put);
+                        // (the gas of a sub-craft: its bar)
+                        madeBySteps(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas), put);
                         tank.drain(gas, put, false);
                         progress = true;
                     }
@@ -1291,6 +1298,7 @@ public final class Autocraft {
                         if (put <= 0) continue;
                         // (the liquid asked for)
                         if (com.exoticmoss.simpleores.starstorage.network.Virtual.fluidOf(output.create()) == fluid) countFinal(put);
+                        madeBySteps(com.exoticmoss.simpleores.starstorage.network.Virtual.fluid(fluid), put);
                         from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, put), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
                         progress = true;
                     }

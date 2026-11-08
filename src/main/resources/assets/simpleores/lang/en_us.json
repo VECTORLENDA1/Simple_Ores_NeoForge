@@ -52,6 +52,7 @@
   "block.simpleores.stellar_drive": "Stellar Drive",
   "block.simpleores.stellar_terminal": "Stellar Terminal",
   "item.simpleores.white_dwarf_cell": "White Dwarf Cell",
+  "item.simpleores.gas": "Gas",
   "item.simpleores.neutron_cell": "Neutron Cell",
   "item.simpleores.singularity_cell": "Singularity Cell",
   "item.simpleores.star_cell.items": "Items: %s / %s",

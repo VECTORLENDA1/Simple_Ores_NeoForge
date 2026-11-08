@@ -27,6 +27,16 @@ final class MekanismGases {
         return chemical == null || chemical.isEmptyType() ? null : chemical;
     }
 
+    static @Nullable Object stack(ResourceLocation id, long amount) {
+        Chemical chemical = chemical(id);
+        return chemical == null ? null : chemical.getStack(Math.max(1, amount));
+    }
+
+    static @Nullable ResourceLocation icon(ResourceLocation id) {
+        Chemical chemical = chemical(id);
+        return chemical == null ? null : chemical.getIcon();
+    }
+
     static @Nullable Gases.Tanks tanks(Level level, BlockPos pos, @Nullable Direction side) {
         IChemicalHandler handler = level.getCapability(CHEMICAL, pos, side);
         return handler == null || handler.getChemicalTanks() <= 0 ? null : new Handler(handler);

@@ -21,16 +21,17 @@ public final class RenderTypes {
         return RenderType.entityTranslucentEmissive(texture);
     }
 
-    /// The light of the stars (their glow, disk and beams): see-through and bright like entityTranslucentEmissive, and
-    /// drawn in the order it was given (not piece by piece from the farthest to the closest, which mixes the glow and
-    /// the disk of a star in a different order in each place: a line and teeth on the disk). In the world it is
-    /// drawn star by star, the farthest star first (see SubmitNodeCollector), like the later versions of Minecraft do.
+    /// The light of the stars (their glow, disk and beams): see-through and bright like entityTranslucentEmissive. It
+    /// hides nothing behind it (it writes no depth), and it is drawn in the order it was given (not piece by piece
+    /// from the farthest to the closest, which mixes the glow and the disk of a star in a different order in each
+    /// place: a line and teeth on the disk), so CoreDrawing gives the parts of a star from the back to the front. In
+    /// the world it is drawn star by star, the farthest star first (see SubmitNodeCollector).
     public static RenderType glow(ResourceLocation texture) {
         return Glow.GLOW.apply(texture);
     }
 
-    /// The same light, but it doesn't hide what is drawn after it (it writes no depth): for the light shell of a star
-    /// that is looked at and the box of the area of a Magnetar or Binary Star, which are drawn over everything else.
+    /// The same light, for the light shell of a star that is looked at and the box of the area of a Magnetar or
+    /// Binary Star, which are drawn after the stars.
     public static RenderType overlay(ResourceLocation texture) {
         return Glow.OVERLAY_TYPE.apply(texture);
     }
@@ -70,7 +71,7 @@ public final class RenderTypes {
                         .setTextureState(new TextureStateShard(texture, false, false))
                         .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                         .setCullState(NO_CULL)
-                        .setWriteMaskState(COLOR_DEPTH_WRITE)
+                        .setWriteMaskState(COLOR_WRITE)
                         .setOverlayState(OVERLAY)
                         .createCompositeState(false))));
         private static final Function<ResourceLocation, RenderType> OVERLAY_TYPE = Util.memoize(texture -> rememberOverlay(create("simpleores_overlay",

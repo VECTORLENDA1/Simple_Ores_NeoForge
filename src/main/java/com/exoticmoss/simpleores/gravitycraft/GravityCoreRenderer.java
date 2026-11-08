@@ -157,7 +157,11 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         /// Direction from the sphere to the camera: the parts of the sphere facing the camera are brighter
         Vec3 center = new Vec3(state.blockPos.getX() + 0.5, state.blockPos.getY() + state.radius, state.blockPos.getZ() + 0.5);
         Vec3 toCamera = camera.pos().subtract(center).normalize();
-        CoreDrawing.Shading shading = (p, x, y, z) -> (float) (x * toCamera.x + y * toCamera.y + z * toCamera.z);
+        // (the direction of the point as it is turned by the pose, toward the camera)
+        CoreDrawing.Shading shading = (p, x, y, z) -> {
+            org.joml.Vector3f n = p.normal().transform(new org.joml.Vector3f(x, y, z));
+            return (float) (n.x() * toCamera.x + n.y() * toCamera.y + n.z() * toCamera.z);
+        };
 
         pose.pushPose();
         pose.translate(0.5, state.radius, 0.5); // center of the sphere: sitting on top of the block below

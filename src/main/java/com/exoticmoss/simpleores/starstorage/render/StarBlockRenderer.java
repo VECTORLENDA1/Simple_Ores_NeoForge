@@ -62,7 +62,11 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
 
         Vec3 center = Vec3.atCenterOf(state.blockPos);
         Vec3 toCamera = camera.pos().subtract(center).normalize();
-        CoreDrawing.Shading shading = (p, x, y, z) -> (float) (x * toCamera.x + y * toCamera.y + z * toCamera.z);
+        // (the direction of the point as it is turned by the pose, toward the camera)
+        CoreDrawing.Shading shading = (p, x, y, z) -> {
+            org.joml.Vector3f n = p.normal().transform(new org.joml.Vector3f(x, y, z));
+            return (float) (n.x() * toCamera.x + n.y() * toCamera.y + n.z() * toCamera.z);
+        };
 
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);

@@ -25,13 +25,12 @@ public class CoreDrawing {
     private static final int SPHERE_DETAIL = 32;
     /// How tilted (in degrees) the accretion disk is.
     private static final float DISK_TILT = 15;
-    /// Where the accretion disk starts (outside the glow, which goes up to 1.35), where its solid part ends and where
-    /// its see-through edge ends (parts of the radius of the star).
-    private static final float DISK_INNER = 1.5f;
-    private static final float DISK_SOLID = 2.0f;
-    private static final float DISK_OUTER = 2.5f;
+    /// Where the accretion disk starts (outside the glow, which goes up to 1.35) and ends (parts of the radius of
+    /// the star).
+    private static final float DISK_INNER = 1.45f;
+    private static final float DISK_OUTER = 2.6f;
 
-    /// Tells how much a point of the sphere faces the viewer: 1 = facing it, 0 = at the edge.
+    /// Tells how much a point of the sphere faces the viewer: 1 = facing it, 0 = at the edge (below 0: facing away).
     /// Used to make the edges of the sphere darker, which makes it look round (like real stars).
     /// nx, ny, nz is the direction the point faces (a vector of length 1).
     public interface Shading {
@@ -57,20 +56,12 @@ public class CoreDrawing {
         collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor)));
         collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.35f, ARGB.color(40, glowColor)));
 
-        // ---- Accretion disk (only tiers with a disk color, like the Black Hole)
-        if (ARGB.alpha(diskColor) > 0) {
-            pose.pushPose();
-            pose.mulPose(Axis.XP.rotationDegrees(DISK_TILT));
-            pose.mulPose(Axis.YP.rotationDegrees(time * 2));
-            // The disk starts outside the glow (so the glow never covers a part of it) and is solid; only its outer
-            // edge is see-through, fading out to transparent
-            int middle = ARGB.color(255, ARGB.srgbLerp(0.5f, diskColor, glowColor));
-            int outer = ARGB.color(0, glowColor);
-            collector.submitCustomGeometry(pose, solidType, (p, v) -> ring(p, v, radius * DISK_INNER, radius * DISK_SOLID,
-                    ARGB.color(255, diskColor), middle));
-            collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * DISK_SOLID, radius * DISK_OUTER, middle, outer));
-            pose.popPose();
-        }
+        // ---- Accretion disk (only tiers with a disk color, like the Black Hole), outside the glow. The light of a
+        // star hides nothing behind it, so what is in front must be drawn last: first the back half of the disk,
+        // then the beams, then the front half
+        boolean disk = ARGB.alpha(diskColor) > 0;
+        int outer = ARGB.color(0, glowColor); // fades out to transparent at the edge
+        if (disk) drawDisk(pose, collector, type, radius, time, diskColor, outer, shading, false);
 
         // ---- Light beams (only tiers with a beam color, like the Pulsar): spin around like a lighthouse
         if (ARGB.alpha(beamColor) > 0 && beamLength > 0) {
@@ -81,6 +72,18 @@ public class CoreDrawing {
             collector.submitCustomGeometry(pose, type, (p, v) -> beam(p, v, radius, beamLength, -1, beamColor));
             pose.popPose();
         }
+
+        if (disk) drawDisk(pose, collector, type, radius, time, diskColor, outer, shading, true);
+    }
+
+    /// One half of the accretion disk: the half facing the viewer ("front") or the other one.
+    private static void drawDisk(PoseStack pose, SubmitNodeCollector collector, RenderType type, float radius, float time,
+                                 int diskColor, int outer, Shading shading, boolean front) {
+        pose.pushPose();
+        pose.mulPose(Axis.XP.rotationDegrees(DISK_TILT));
+        pose.mulPose(Axis.YP.rotationDegrees(time * 2));
+        collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * DISK_INNER, radius * DISK_OUTER, diskColor, outer, shading, front));
+        pose.popPose();
     }
 
     /// A see-through sphere of one color around the current position (e.g. the light shell of a star the player is looking at).
@@ -140,11 +143,15 @@ public class CoreDrawing {
     }
 
     /// A flat ring (visible from both sides) that goes from the inner color to the outer color.
-    private static void ring(PoseStack.Pose pose, VertexConsumer v, float inner, float outer, int innerColor, int outerColor) {
+    /// Only the pieces of one half: the ones facing the viewer ("front") or the others.
+    private static void ring(PoseStack.Pose pose, VertexConsumer v, float inner, float outer, int innerColor, int outerColor,
+                             Shading shading, boolean front) {
         int pieces = SPHERE_DETAIL * 2;
         for (int i = 0; i < pieces; i++) {
             float a1 = Mth.TWO_PI * i / pieces;
             float a2 = Mth.TWO_PI * (i + 1) / pieces;
+            float middle = (a1 + a2) / 2;
+            if (shading.facing(pose, Mth.cos(middle), 0, Mth.sin(middle)) >= 0 != front) continue;
             // top side
             vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, 1, 0, innerColor);
             vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, 1, 0, outerColor);

@@ -81,6 +81,6 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
     /// Far enough to see the whole area of a Magnetar with all its upgrades.
     @Override
     public int getViewDistance() {
-        return 160;
+        return Math.max(160, net.minecraft.client.Minecraft.getInstance().options.getEffectiveRenderDistance() * 16);
     }
 }

@@ -805,6 +805,42 @@ public final class Autocraft {
             return false;
         }
 
+        /// Items that came into the network from outside (through a Binary Star, a pipe...): a machine of a job can
+        /// push its results out by itself (like the machines of Industrial Foregoing with their auto-output), so they
+        /// never stay in the machine for the job to take. They count for the jobs that wait for that item from their
+        /// machines, like when the job takes them: what was asked for counts and goes to the network, the results of
+        /// the sub-crafts go to the storage of the job. Returns what goes to the network.
+        public static ItemStack arrived(ServerLevel level, StarNetwork network, ItemStack stack) {
+            if (stack.isEmpty()) return stack;
+            long uncounted = stack.getCount();
+            long toNetwork = stack.getCount();
+            for (QuasarBlockEntity quasar : network.quasars()) {
+                for (Job job : quasar.getJobs()) {
+                    if (uncounted <= 0) break;
+                    if (job.dimension != level.dimension()) continue;
+                    for (Map.Entry<MachineKey, FurnaceWait> entry : new ArrayList<>(job.machines.entrySet())) {
+                        if (uncounted <= 0) break;
+                        if (!stack.is(entry.getKey().output().item())) continue;
+                        long count = Math.min(uncounted, entry.getValue().expected());
+                        if (count <= 0) continue;
+                        uncounted -= count;
+                        long expected = entry.getValue().expected() - count;
+                        if (expected <= 0) job.machines.remove(entry.getKey());
+                        else job.machines.put(entry.getKey(), new FurnaceWait(entry.getValue().output(), expected));
+                        ItemStack part = stack.copyWithCount((int) count);
+                        job.madeBySteps(entry.getKey().output().create().copyWithCount((int) count));
+                        if (ItemStack.isSameItem(part, job.output.create())) {
+                            job.countFinal(count);
+                        } else {
+                            job.store(part);
+                            toNetwork -= count;
+                        }
+                    }
+                }
+            }
+            return stack.copyWithCount((int) Math.max(0, toNetwork));
+        }
+
         /// How many of the item the Gravity Core steps of this job still have to make.
         private long coreRoom(ItemStack stack) {
             long room = 0;

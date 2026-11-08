@@ -169,6 +169,46 @@ public final class StarAccess {
         }
     }
 
+    /// Puts as many of the items as fit in the machine, but in at most "maxSlots" of its slots (the slots that already
+    /// have the item count too): so one ingredient doesn't fill the slots the other ingredients of the recipe need (like
+    /// the 8 slots of the Dissolution Chamber of Industrial Foregoing). Through the sides when it takes nothing without
+    /// one. Returns how many went in.
+    public static int insertLimited(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, ItemStack item, int maxSlots) {
+        List<ResourceHandler<ItemResource>> all = new ArrayList<>();
+        all.add(handler);
+        all.addAll(sides);
+        int amount = item.getCount(), put = 0;
+        for (ResourceHandler<ItemResource> to : all) {
+            if (put >= amount) break;
+            put += insertInSlots(to, ItemResource.of(item), amount - put, maxSlots);
+        }
+        return put;
+    }
+
+    private static int insertInSlots(ResourceHandler<ItemResource> handler, ItemResource resource, int amount, int maxSlots) {
+        int put = 0;
+        int holding = 0;
+        try (Transaction transaction = Transaction.openRoot()) {
+            // First the slots that already have it
+            for (int slot = 0; slot < handler.size() && put < amount; slot++) {
+                if (!handler.getResource(slot).equals(resource) || handler.getAmountAsInt(slot) <= 0) continue;
+                holding++;
+                put += handler.insert(slot, resource, amount - put, transaction);
+            }
+            // Then empty slots, while it has fewer slots than it may have
+            for (int slot = 0; slot < handler.size() && put < amount && holding < maxSlots; slot++) {
+                if (!handler.getResource(slot).isEmpty() && handler.getAmountAsInt(slot) > 0) continue;
+                int in = handler.insert(slot, resource, amount - put, transaction);
+                if (in > 0) {
+                    holding++;
+                    put += in;
+                }
+            }
+            transaction.commit();
+        }
+        return put;
+    }
+
     /// Takes up to "max" of the item out of the machine to the network (what doesn't fit stays). Returns how many went.
     public static int takeOut(StarNetwork network, ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides,
                               ItemStack item, int max) {

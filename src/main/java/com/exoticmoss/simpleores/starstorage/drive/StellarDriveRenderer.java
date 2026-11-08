@@ -64,7 +64,7 @@ public class StellarDriveRenderer implements BlockEntityRenderer<StellarDriveBlo
         state.blockPos = drive.getBlockPos();
         state.lightCoords = light;
         extractRenderState(drive, state, partialTick, cameraPos);
-        submit(state, pose, new SubmitNodeCollector(buffers), new CameraRenderState(cameraPos));
+        submit(state, pose, SubmitNodeCollector.world(buffers), new CameraRenderState(cameraPos));
     }
 
     private void extractRenderState(StellarDriveBlockEntity drive, State state, float partialTick, Vec3 cameraPos) {

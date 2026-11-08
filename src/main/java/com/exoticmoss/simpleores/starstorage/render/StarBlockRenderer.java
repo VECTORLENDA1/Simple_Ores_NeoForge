@@ -46,7 +46,7 @@ public class StarBlockRenderer<T extends BlockEntity> implements BlockEntityRend
         state.blockPos = blockEntity.getBlockPos();
         state.lightCoords = light;
         extractRenderState(blockEntity, state, partialTick, cameraPos);
-        submit(state, pose, new SubmitNodeCollector(buffers), new CameraRenderState(cameraPos));
+        submit(state, pose, SubmitNodeCollector.world(buffers), new CameraRenderState(cameraPos));
     }
 
     private void extractRenderState(T blockEntity, State state, float partialTick, Vec3 cameraPos) {

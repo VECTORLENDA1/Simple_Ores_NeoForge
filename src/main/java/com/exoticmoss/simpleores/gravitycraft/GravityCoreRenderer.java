@@ -96,7 +96,7 @@ public class GravityCoreRenderer implements BlockEntityRenderer<GravityCoreBlock
         state.blockPos = core.getBlockPos();
         state.lightCoords = light;
         extractRenderState(core, state, partialTick, cameraPos);
-        submit(state, pose, new SubmitNodeCollector(buffers), new CameraRenderState(cameraPos));
+        submit(state, pose, SubmitNodeCollector.world(buffers), new CameraRenderState(cameraPos));
     }
 
     private void extractRenderState(GravityCoreBlockEntity core, State state, float partialTick, Vec3 cameraPos) {

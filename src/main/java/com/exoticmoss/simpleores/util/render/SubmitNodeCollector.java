@@ -19,8 +19,8 @@ import java.util.function.BiConsumer;
 
 /// Where the renderers of this mod draw (the way later versions of Minecraft do it): shapes made of vertices
 /// with a render type, drawn right away in the buffers of this frame.
-/// In the world ("world"), the light of the stars (RenderTypes.glow) is drawn at the end of the frame, after the
-/// blocks, chests and other things: it writes no depth, so whatever is drawn after it would cover it.
+/// In the world ("world"), the light of the stars (RenderTypes.glow) is drawn after the blocks with a renderer
+/// (chests and other things): it writes no depth, so whatever is drawn after it would cover it.
 public record SubmitNodeCollector(MultiBufferSource buffers, boolean world) {
     public SubmitNodeCollector(MultiBufferSource buffers) {
         this(buffers, false);
@@ -45,13 +45,17 @@ public record SubmitNodeCollector(MultiBufferSource buffers, boolean world) {
 
     private static final List<Later> LATER = new ArrayList<>();
 
-    /// Draws the light of the stars kept in this frame (after everything else of the world).
+    /// Draws the light of the stars kept in this frame (after the blocks with a renderer).
     public static void drawLater() {
         if (LATER.isEmpty()) return;
         MultiBufferSource.BufferSource source = Minecraft.getInstance().renderBuffers().bufferSource();
-        for (Later later : LATER) later.drawing().accept(later.pose(), source.getBuffer(later.type()));
+        java.util.Set<RenderType> types = new java.util.LinkedHashSet<>();
+        for (Later later : LATER) {
+            later.drawing().accept(later.pose(), source.getBuffer(later.type()));
+            types.add(later.type());
+        }
         LATER.clear();
-        source.endBatch();
+        for (RenderType type : types) source.endBatch(type);
     }
 
     @EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)
@@ -61,7 +65,9 @@ public record SubmitNodeCollector(MultiBufferSource buffers, boolean world) {
 
         @SubscribeEvent
         public static void onRenderStage(RenderLevelStageEvent event) {
-            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) drawLater();
+            // After the blocks with a renderer (chests...), and before the see-through blocks (glass, water), so the
+            // stars inside a Stellar Drive still show through its glass
+            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) drawLater();
         }
     }
 }

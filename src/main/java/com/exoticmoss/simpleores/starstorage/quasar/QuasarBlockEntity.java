@@ -23,7 +23,8 @@ public class QuasarBlockEntity extends BlockEntity {
     private java.util.UUID recipesId;
     /// Placed with the item of a broken Quasar: its recipes come back on the next tick.
     private boolean restore;
-    /// Auto-craft jobs with Gravity Core steps (they take time). Not saved: they stop if the world is closed.
+    /// Auto-craft jobs with Gravity Core steps (they take time). Saved with the Quasar: they go on when the world is
+    /// loaded again.
     private final List<Autocraft.Job> jobs = new ArrayList<>();
     /// The items that were in the storage of the jobs when the world was saved (the jobs themselves are not saved):
     /// they go back to the network as soon as the Quasar works again.
@@ -204,15 +205,12 @@ public class QuasarBlockEntity extends BlockEntity {
     protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         ValueOutput output = new ValueOutput(tag, registries);
-        java.util.Map<com.exoticmoss.simpleores.util.ItemStackTemplate, Long> stored = new java.util.HashMap<>(toReturn);
-        for (Autocraft.Job job : jobs) job.stored().forEach((item, count) -> stored.merge(item, count, Long::sum));
         List<Stored> list = new ArrayList<>();
-        stored.forEach((item, count) -> list.add(new Stored(item, count)));
+        toReturn.forEach((item, count) -> list.add(new Stored(item, count)));
         output.store("job_items", Stored.CODEC.listOf(), list);
-        // (the jobs are not saved: what they still wait for in the machines is taken out when the world is loaded)
-        List<Autocraft.Job.Pickup> waiting = new ArrayList<>(pickups);
-        for (Autocraft.Job job : jobs) waiting.addAll(job.pickups());
-        output.store("pickups", Autocraft.Job.Pickup.CODEC.listOf(), waiting);
+        output.store("pickups", Autocraft.Job.Pickup.CODEC.listOf(), new ArrayList<>(pickups));
+        // The jobs too (with their storage and what they wait for): they go on when the world is loaded again
+        output.store("jobs", Autocraft.Job.CODEC.listOf(), new ArrayList<>(jobs));
         output.store("patterns", Pattern.CODEC.listOf(), patterns);
         if (recipesId != null) tag.putUUID("recipes_id", recipesId);
     }
@@ -225,6 +223,8 @@ public class QuasarBlockEntity extends BlockEntity {
         for (Stored stored : input.read("job_items", Stored.CODEC.listOf()).orElse(List.of())) toReturn.merge(stored.item(), stored.count(), Long::sum);
         pickups.clear();
         pickups.addAll(input.read("pickups", Autocraft.Job.Pickup.CODEC.listOf()).orElse(List.of()));
+        jobs.clear();
+        jobs.addAll(input.read("jobs", Autocraft.Job.CODEC.listOf()).orElse(List.of()));
         patterns.clear();
         patterns.addAll(input.read("patterns", Pattern.CODEC.listOf()).orElse(List.of()));
         if (tag.hasUUID("recipes_id")) recipesId = tag.getUUID("recipes_id");

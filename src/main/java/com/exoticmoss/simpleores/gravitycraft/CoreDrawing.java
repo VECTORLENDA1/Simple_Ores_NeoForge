@@ -25,6 +25,9 @@ public class CoreDrawing {
     private static final int SPHERE_DETAIL = 32;
     /// How tilted (in degrees) the accretion disk is.
     private static final float DISK_TILT = 15;
+    /// The disk is made of this many rings, and each beam of this many pieces (see ring and beam).
+    private static final int RING_BANDS = 4;
+    private static final int BEAM_PIECES = 8;
 
     /// Tells how much a point of the sphere faces the viewer: 1 = facing it, 0 = at the edge.
     /// Used to make the edges of the sphere darker, which makes it look round (like real stars).
@@ -56,7 +59,7 @@ public class CoreDrawing {
         if (ARGB.alpha(diskColor) > 0) {
             pose.pushPose();
             pose.mulPose(Axis.XP.rotationDegrees(DISK_TILT));
-            pose.mulPose(Axis.YP.rotationDegrees(time * 3));
+            pose.mulPose(Axis.YP.rotationDegrees(time * 2));
             int outer = ARGB.color(0, glowColor); // fades out to transparent at the edge
             collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * 1.15f, radius * 2.3f, diskColor, outer));
             pose.popPose();
@@ -140,34 +143,35 @@ public class CoreDrawing {
     }
 
     /// A flat ring (visible from both sides) that goes from the inner color to the outer color.
+    /// It is made of small pieces (around and from the inside out): the see-through parts of a star are drawn from
+    /// the farthest piece to the closest one, and with small pieces that order is right (a beam behind the disk
+    /// stays behind it).
     private static void ring(PoseStack.Pose pose, VertexConsumer v, float inner, float outer, int innerColor, int outerColor) {
         int pieces = SPHERE_DETAIL * 2;
-        for (int i = 0; i < pieces; i++) {
-            float a1 = Mth.TWO_PI * i / pieces;
-            float a2 = Mth.TWO_PI * (i + 1) / pieces;
-            // Brighter arms and darker gaps: they show the disk turning
-            int in1 = armColor(innerColor, a1), in2 = armColor(innerColor, a2);
-            // top side
-            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, 1, 0, in1);
-            vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, 1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, 1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, 1, 0, in2);
-            // bottom side (same points in reverse order)
-            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, -1, 0, in2);
-            vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, -1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, -1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, -1, 0, in1);
+        for (int band = 0; band < RING_BANDS; band++) {
+            float t1 = (float) band / RING_BANDS, t2 = (float) (band + 1) / RING_BANDS;
+            float r1 = Mth.lerp(t1, inner, outer), r2 = Mth.lerp(t2, inner, outer);
+            int c1 = ARGB.srgbLerp(t1, innerColor, outerColor), c2 = ARGB.srgbLerp(t2, innerColor, outerColor);
+            for (int i = 0; i < pieces; i++) {
+                float a1 = Mth.TWO_PI * i / pieces;
+                float a2 = Mth.TWO_PI * (i + 1) / pieces;
+                // top side
+                vertex(pose, v, Mth.cos(a1) * r1, 0, Mth.sin(a1) * r1, 0, 1, 0, c1);
+                vertex(pose, v, Mth.cos(a1) * r2, 0, Mth.sin(a1) * r2, 0, 1, 0, c2);
+                vertex(pose, v, Mth.cos(a2) * r2, 0, Mth.sin(a2) * r2, 0, 1, 0, c2);
+                vertex(pose, v, Mth.cos(a2) * r1, 0, Mth.sin(a2) * r1, 0, 1, 0, c1);
+                // bottom side (same points in reverse order)
+                vertex(pose, v, Mth.cos(a2) * r1, 0, Mth.sin(a2) * r1, 0, -1, 0, c1);
+                vertex(pose, v, Mth.cos(a2) * r2, 0, Mth.sin(a2) * r2, 0, -1, 0, c2);
+                vertex(pose, v, Mth.cos(a1) * r2, 0, Mth.sin(a1) * r2, 0, -1, 0, c2);
+                vertex(pose, v, Mth.cos(a1) * r1, 0, Mth.sin(a1) * r1, 0, -1, 0, c1);
+            }
         }
-    }
-
-    /// The color of the disk at an angle: 3 brighter arms with darker gaps between them.
-    private static int armColor(int color, float angle) {
-        float arm = 0.5f + 0.5f * Mth.sin(angle * 3);
-        return ARGB.color((int) (ARGB.alpha(color) * (0.45f + 0.55f * arm)), ARGB.scaleRGB(color, 0.7f + 0.3f * arm));
     }
 
     /// One light beam coming out of a pole: two crossed flat strips that fade out at the tip.
     /// direction = 1 for the top pole, -1 for the bottom pole.
+    /// Made of short pieces, like the ring (so it is drawn in the right order with the disk).
     private static void beam(PoseStack.Pose pose, VertexConsumer v, float radius, float length, int direction, int color) {
         float start = radius * 0.8f * direction;
         float end = (radius + length * 0.55f) * direction;
@@ -175,19 +179,25 @@ public class CoreDrawing {
         int base = ARGB.color(180, color);
         int tip = ARGB.color(0, color);
 
-        // strip facing X, then strip facing Z; each one drawn on both sides
-        for (int side = 0; side < 2; side++) {
-            float dx = side == 0 ? width : 0;
-            float dz = side == 0 ? 0 : width;
-            vertex(pose, v, -dx, start, -dz, 0, 0, 1, base);
-            vertex(pose, v, dx, start, dz, 0, 0, 1, base);
-            vertex(pose, v, dx * 0.2f, end, dz * 0.2f, 0, 0, 1, tip);
-            vertex(pose, v, -dx * 0.2f, end, -dz * 0.2f, 0, 0, 1, tip);
+        for (int piece = 0; piece < BEAM_PIECES; piece++) {
+            float t1 = (float) piece / BEAM_PIECES, t2 = (float) (piece + 1) / BEAM_PIECES;
+            float y1 = Mth.lerp(t1, start, end), y2 = Mth.lerp(t2, start, end);
+            float w1 = Mth.lerp(t1, 1, 0.2f), w2 = Mth.lerp(t2, 1, 0.2f);
+            int c1 = ARGB.srgbLerp(t1, base, tip), c2 = ARGB.srgbLerp(t2, base, tip);
+            // strip facing X, then strip facing Z; each one drawn on both sides
+            for (int side = 0; side < 2; side++) {
+                float dx = side == 0 ? width : 0;
+                float dz = side == 0 ? 0 : width;
+                vertex(pose, v, -dx * w1, y1, -dz * w1, 0, 0, 1, c1);
+                vertex(pose, v, dx * w1, y1, dz * w1, 0, 0, 1, c1);
+                vertex(pose, v, dx * w2, y2, dz * w2, 0, 0, 1, c2);
+                vertex(pose, v, -dx * w2, y2, -dz * w2, 0, 0, 1, c2);
 
-            vertex(pose, v, -dx * 0.2f, end, -dz * 0.2f, 0, 0, -1, tip);
-            vertex(pose, v, dx * 0.2f, end, dz * 0.2f, 0, 0, -1, tip);
-            vertex(pose, v, dx, start, dz, 0, 0, -1, base);
-            vertex(pose, v, -dx, start, -dz, 0, 0, -1, base);
+                vertex(pose, v, -dx * w2, y2, -dz * w2, 0, 0, -1, c2);
+                vertex(pose, v, dx * w2, y2, dz * w2, 0, 0, -1, c2);
+                vertex(pose, v, dx * w1, y1, dz * w1, 0, 0, -1, c1);
+                vertex(pose, v, -dx * w1, y1, -dz * w1, 0, 0, -1, c1);
+            }
         }
     }
 

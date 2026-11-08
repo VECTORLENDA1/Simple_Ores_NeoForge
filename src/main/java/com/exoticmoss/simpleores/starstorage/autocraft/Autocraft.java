@@ -16,6 +16,8 @@ import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -484,8 +486,7 @@ public final class Autocraft {
             arrivedNow = true;
         }
 
-        /// What the storage of the job has now (saved with the Quasar: the jobs are not saved, so when the world
-        /// is loaded again these items go back to the network).
+        /// What the storage of the job has now (saved with the job, see CODEC).
         public Map<ItemStackTemplate, Long> stored() {
             return storage;
         }
@@ -527,13 +528,171 @@ public final class Autocraft {
         }
 
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
+            this(steps, level.dimension(), pos, output, amount);
+        }
+
+        private Job(List<Step> steps, ResourceKey<Level> dimension, BlockPos pos, ItemStackTemplate output, long amount) {
             this.steps = steps;
             this.doneSteps = new long[steps.size()];
             this.madeSteps = new long[steps.size()];
             this.pos = pos.immutable();
-            this.dimension = level.dimension();
+            this.dimension = dimension;
             this.output = output;
             this.amount = amount;
+        }
+
+        // ---------------------------------------------------------------- saved with the Quasar
+
+        /// A job as it is saved with its Quasar: when the world is loaded again, it goes on where it stopped
+        /// (what it has in its storage, what it gave to the machines, altars, furnaces and Gravity Cores and still
+        /// waits for, and how far each step got).
+        private record SavedStep(Pattern pattern, List<List<ItemStackTemplate>> items, long times) {
+            static final Codec<SavedStep> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    Pattern.CODEC.fieldOf("pattern").forGetter(SavedStep::pattern),
+                    ItemStackTemplate.CODEC.listOf().listOf().fieldOf("items").forGetter(SavedStep::items),
+                    Codec.LONG.fieldOf("times").forGetter(SavedStep::times)
+            ).apply(inst, SavedStep::new));
+        }
+
+        /// A result waited for in a block (key = the item the block was used for, output = what is waited for).
+        private record SavedWait(BlockPos pos, ItemStackTemplate key, ItemStackTemplate output, long expected) {
+            static final Codec<SavedWait> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    BlockPos.CODEC.fieldOf("pos").forGetter(SavedWait::pos),
+                    ItemStackTemplate.CODEC.fieldOf("key").forGetter(SavedWait::key),
+                    ItemStackTemplate.CODEC.fieldOf("output").forGetter(SavedWait::output),
+                    Codec.LONG.fieldOf("expected").forGetter(SavedWait::expected)
+            ).apply(inst, SavedWait::new));
+        }
+
+        /// How many of each ingredient of a step went to a machine (pos = null: all the machines of the step).
+        private record SavedSent(Optional<BlockPos> pos, int step, List<Long> counts) {
+            static final Codec<SavedSent> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    BlockPos.CODEC.optionalFieldOf("pos").forGetter(SavedSent::pos),
+                    Codec.INT.fieldOf("step").forGetter(SavedSent::step),
+                    Codec.LONG.listOf().fieldOf("counts").forGetter(SavedSent::counts)
+            ).apply(inst, SavedSent::new));
+        }
+
+        /// The liquids and gases a machine makes for the job.
+        private record SavedTanks(BlockPos pos, List<net.minecraft.world.level.material.Fluid> fluids, List<net.minecraft.resources.Identifier> gases) {
+            static final Codec<SavedTanks> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    BlockPos.CODEC.fieldOf("pos").forGetter(SavedTanks::pos),
+                    net.minecraft.core.registries.BuiltInRegistries.FLUID.byNameCodec().listOf().optionalFieldOf("fluids", List.of()).forGetter(SavedTanks::fluids),
+                    net.minecraft.resources.Identifier.CODEC.listOf().optionalFieldOf("gases", List.of()).forGetter(SavedTanks::gases)
+            ).apply(inst, SavedTanks::new));
+        }
+
+        private record SavedCount(ItemStackTemplate item, long count) {
+            static final Codec<SavedCount> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    ItemStackTemplate.CODEC.fieldOf("item").forGetter(SavedCount::item),
+                    Codec.LONG.fieldOf("count").forGetter(SavedCount::count)
+            ).apply(inst, SavedCount::new));
+        }
+
+        /// What the job is and how far each step got.
+        private record SavedHead(ItemStackTemplate output, long amount, List<SavedStep> steps, BlockPos pos, ResourceKey<Level> dimension,
+                                 int index, int stepNow, long made, List<Long> doneSteps, List<Long> madeSteps) {
+            static final Codec<SavedHead> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    ItemStackTemplate.CODEC.fieldOf("output").forGetter(SavedHead::output),
+                    Codec.LONG.fieldOf("amount").forGetter(SavedHead::amount),
+                    SavedStep.CODEC.listOf().fieldOf("steps").forGetter(SavedHead::steps),
+                    BlockPos.CODEC.fieldOf("pos").forGetter(SavedHead::pos),
+                    ResourceKey.codec(net.minecraft.core.registries.Registries.DIMENSION).fieldOf("dimension").forGetter(SavedHead::dimension),
+                    Codec.INT.fieldOf("index").forGetter(SavedHead::index),
+                    Codec.INT.optionalFieldOf("step_now", 0).forGetter(SavedHead::stepNow),
+                    Codec.LONG.fieldOf("made").forGetter(SavedHead::made),
+                    Codec.LONG.listOf().fieldOf("done_steps").forGetter(SavedHead::doneSteps),
+                    Codec.LONG.listOf().fieldOf("made_steps").forGetter(SavedHead::madeSteps)
+            ).apply(inst, SavedHead::new));
+        }
+
+        /// What the job has and waits for.
+        private record SavedWork(List<SavedCount> storage, List<SavedWait> furnaces, List<SavedWait> machines, List<SavedWait> used,
+                                 List<SavedSent> sent, List<SavedTanks> tanks) {
+            static final Codec<SavedWork> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    SavedCount.CODEC.listOf().optionalFieldOf("storage", List.of()).forGetter(SavedWork::storage),
+                    SavedWait.CODEC.listOf().optionalFieldOf("furnaces", List.of()).forGetter(SavedWork::furnaces),
+                    SavedWait.CODEC.listOf().optionalFieldOf("machines", List.of()).forGetter(SavedWork::machines),
+                    SavedWait.CODEC.listOf().optionalFieldOf("used", List.of()).forGetter(SavedWork::used),
+                    SavedSent.CODEC.listOf().optionalFieldOf("sent", List.of()).forGetter(SavedWork::sent),
+                    SavedTanks.CODEC.listOf().optionalFieldOf("tanks", List.of()).forGetter(SavedWork::tanks)
+            ).apply(inst, SavedWork::new));
+        }
+
+        private record Saved(SavedHead head, SavedWork work) {
+            static final Codec<Saved> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                    SavedHead.CODEC.fieldOf("head").forGetter(Saved::head),
+                    SavedWork.CODEC.fieldOf("work").forGetter(Saved::work)
+            ).apply(inst, Saved::new));
+        }
+
+        public static final Codec<Job> CODEC = Saved.CODEC.xmap(Job::fromSaved, Job::toSaved);
+
+        private static List<Long> longs(long[] values) {
+            List<Long> list = new ArrayList<>(values.length);
+            for (long value : values) list.add(value);
+            return list;
+        }
+
+        private Saved toSaved() {
+            List<SavedStep> savedSteps = new ArrayList<>();
+            for (Step step : steps) {
+                List<List<ItemStackTemplate>> items = new ArrayList<>();
+                for (ItemStackTemplate item : step.items()) items.add(item == null ? List.of() : List.of(item));
+                savedSteps.add(new SavedStep(step.pattern(), items, step.times()));
+            }
+            SavedHead head = new SavedHead(output, amount, savedSteps, pos, dimension, index, stepNow, made, longs(doneSteps), longs(madeSteps));
+            List<SavedCount> savedStorage = new ArrayList<>();
+            storage.forEach((item, count) -> savedStorage.add(new SavedCount(item, count)));
+            List<SavedWait> savedFurnaces = new ArrayList<>();
+            furnaces.forEach((at, wait) -> savedFurnaces.add(new SavedWait(at, wait.output(), wait.output(), wait.expected())));
+            List<SavedWait> savedMachines = new ArrayList<>();
+            machines.forEach((key, wait) -> savedMachines.add(new SavedWait(key.pos(), key.output(), wait.output(), wait.expected())));
+            List<SavedWait> savedUsed = new ArrayList<>();
+            for (MachineKey key : usedMachines) savedUsed.add(new SavedWait(key.pos(), key.output(), key.output(), 0));
+            List<SavedSent> savedSent = new ArrayList<>();
+            sentToMachines.forEach((key, counts) -> savedSent.add(new SavedSent(Optional.of(key.pos()), key.step(), longs(counts))));
+            stepSent.forEach((step, counts) -> savedSent.add(new SavedSent(Optional.empty(), step, longs(counts))));
+            List<SavedTanks> savedTanks = new ArrayList<>();
+            java.util.Set<BlockPos> tankBlocks = new java.util.HashSet<>(fluidMachines.keySet());
+            tankBlocks.addAll(gasMachines.keySet());
+            for (BlockPos at : tankBlocks) {
+                savedTanks.add(new SavedTanks(at, new ArrayList<>(fluidMachines.getOrDefault(at, java.util.Set.of())),
+                        new ArrayList<>(gasMachines.getOrDefault(at, java.util.Set.of()))));
+            }
+            return new Saved(head, new SavedWork(savedStorage, savedFurnaces, savedMachines, savedUsed, savedSent, savedTanks));
+        }
+
+        private static Job fromSaved(Saved saved) {
+            SavedHead head = saved.head();
+            List<Step> steps = new ArrayList<>();
+            for (SavedStep step : head.steps()) {
+                List<ItemStackTemplate> items = new ArrayList<>();
+                for (List<ItemStackTemplate> item : step.items()) items.add(item.isEmpty() ? null : item.get(0));
+                steps.add(new Step(step.pattern(), items, step.times()));
+            }
+            Job job = new Job(steps, head.dimension(), head.pos(), head.output(), head.amount());
+            job.index = head.index();
+            job.stepNow = head.stepNow();
+            job.made = head.made();
+            for (int i = 0; i < job.doneSteps.length && i < head.doneSteps().size(); i++) job.doneSteps[i] = head.doneSteps().get(i);
+            for (int i = 0; i < job.madeSteps.length && i < head.madeSteps().size(); i++) job.madeSteps[i] = head.madeSteps().get(i);
+            SavedWork work = saved.work();
+            for (SavedCount count : work.storage()) job.storage.merge(count.item(), count.count(), Long::sum);
+            for (SavedWait wait : work.furnaces()) job.furnaces.put(wait.pos(), new FurnaceWait(wait.output(), wait.expected()));
+            for (SavedWait wait : work.machines()) job.machines.put(new MachineKey(wait.pos(), wait.key()), new FurnaceWait(wait.output(), wait.expected()));
+            for (SavedWait wait : work.used()) job.usedMachines.add(new MachineKey(wait.pos(), wait.key()));
+            for (SavedSent sent : work.sent()) {
+                long[] counts = new long[sent.counts().size()];
+                for (int i = 0; i < counts.length; i++) counts[i] = sent.counts().get(i);
+                if (sent.pos().isPresent()) job.sentToMachines.put(new SentKey(sent.pos().get(), sent.step()), counts);
+                else job.stepSent.put(sent.step(), counts);
+            }
+            for (SavedTanks tanks : work.tanks()) {
+                if (!tanks.fluids().isEmpty()) job.fluidMachines.put(tanks.pos(), new java.util.HashSet<>(tanks.fluids()));
+                if (!tanks.gases().isEmpty()) job.gasMachines.put(tanks.pos(), new java.util.HashSet<>(tanks.gases()));
+            }
+            return job;
         }
 
         /// Done when every step was given out and the results came back to the network

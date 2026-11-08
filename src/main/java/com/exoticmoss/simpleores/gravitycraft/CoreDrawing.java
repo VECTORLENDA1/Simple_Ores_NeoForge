@@ -40,7 +40,9 @@ public class CoreDrawing {
     public static void drawStar(PoseStack pose, SubmitNodeCollector collector, float radius, float time,
                                 int coreColor, int spotColor, int glowColor, int diskColor, int beamColor,
                                 float beamLength, Shading shading) {
-        RenderType type = RenderTypes.entityTranslucentEmissive(WHITE);
+        // The light (glow, disk, beams): see-through and writing no depth, so the glow never hides the disk or the
+        // other stars behind it
+        RenderType type = glow();
         // The sphere itself is opaque: with shaders a translucent/emissive sphere looks washed out,
         // and a black one (the Black Hole) becomes invisible, so only the glow and disk were showing
         RenderType solidType = RenderTypes.entityCutout(WHITE);
@@ -75,7 +77,13 @@ public class CoreDrawing {
 
     /// A see-through sphere of one color around the current position (e.g. the light shell of a star the player is looking at).
     public static void drawShell(PoseStack pose, SubmitNodeCollector collector, float radius, int color) {
-        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> glowSphere(p, v, radius, color));
+        collector.submitCustomGeometry(pose, glow(), (p, v) -> glowSphere(p, v, radius, color));
+    }
+
+    /// The light of the stars (their glow, disk and beams): see-through like the beam of a beacon, which writes no
+    /// depth. Otherwise the glow of a star cuts holes in its disk and in the stars and glows next to it.
+    private static RenderType glow() {
+        return RenderTypes.beaconBeam(WHITE, true);
     }
 
     // ---------------------------------------------------------------- shapes
@@ -187,7 +195,7 @@ public class CoreDrawing {
     /// A see-through box (seen from inside and outside), from "min" to "max" on every axis (block coordinates),
     /// with stronger edges: the area reached by a Magnetar or a Binary Star.
     public static void drawArea(PoseStack pose, SubmitNodeCollector collector, float min, float max, int faceColor, int edgeColor) {
-        collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(WHITE), (p, v) -> {
+        collector.submitCustomGeometry(pose, glow(), (p, v) -> {
             box(p, v, min, min, min, max, max, max, faceColor);
             float e = 0.05f;
             for (float a : new float[]{min, max}) {

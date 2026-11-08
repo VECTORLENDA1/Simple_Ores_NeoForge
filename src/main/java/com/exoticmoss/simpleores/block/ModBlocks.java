@@ -124,6 +124,11 @@ public class ModBlocks {
             () -> BlockBehaviour.Properties.of().strength(6f, 3600000f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
                     .noOcclusion().lightLevel(state -> 15));
 
+    public static final DeferredBlock<Block> EVENT_HORIZON = registerBlockItem("event_horizon",
+            com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlock::new,
+            () -> BlockBehaviour.Properties.of().strength(4f, 12f).requiresCorrectToolForDrops().sound(SoundType.AMETHYST)
+                    .noOcclusion().lightLevel(state -> 9));
+
     static {
         // The Magnetar item can't be destroyed by fire, lava or explosions (like the Gravity Cores)
         ModItems.ITEMS.registerSimpleBlockItem("magnetar_core", MAGNETAR_CORE, properties -> properties.delayedComponent(DataComponents.DAMAGE_RESISTANT,

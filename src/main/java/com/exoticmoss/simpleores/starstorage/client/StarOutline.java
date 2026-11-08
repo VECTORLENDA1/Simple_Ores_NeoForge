@@ -19,7 +19,8 @@ public class StarOutline {
     public static void onBlockOutline(ExtractBlockOutlineRenderStateEvent event) {
         var block = event.getBlockState().getBlock();
         if (block instanceof MagnetarBlock || block instanceof StellarTerminalBlock || block instanceof GravityCoreBlock
-                || block instanceof BinaryStarBlock || block instanceof QuasarBlock) {
+                || block instanceof BinaryStarBlock || block instanceof QuasarBlock
+                || block instanceof com.exoticmoss.simpleores.starstorage.horizon.EventHorizonBlock) {
             event.setCanceled(true);
         }
     }

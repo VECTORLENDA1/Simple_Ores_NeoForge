@@ -26,6 +26,7 @@ import java.util.Optional;
 import com.exoticmoss.simpleores.starstorage.ModMenus;
 import com.exoticmoss.simpleores.starstorage.network.NetworkMenu;
 import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
+import com.exoticmoss.simpleores.starstorage.network.Virtual;
 import com.exoticmoss.simpleores.starstorage.terminal.TerminalAction;
 import com.exoticmoss.simpleores.starstorage.terminal.TerminalContents;
 import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
@@ -46,7 +47,7 @@ import com.exoticmoss.simpleores.starstorage.terminal.TerminalLayout;
 /// With the recipe of a machine, the slots of the grid keep an amount too (clicks like the core slots; shift + click
 /// adds or takes away one), and shift + click on the result changes how many it makes.
 /// The mouse wheel on a slot of the grid that has many items (from JEI) picks one of them: then only that one is saved.
-/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, REMOVE + n, CANCEL_JOB + job id, PICK.
+/// The result is worked out by the server. Buttons: SAVE, CLEAR, TAB + n, CORE_SCROLL + n, COOKING + kind, REMOVE + n, CANCEL_JOB + job id, PICK.
 public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, com.exoticmoss.simpleores.starstorage.network.StarTabs.Anchored {
     /// The block the player is next to (this one, or the one whose screen opened this one with a tab).
     private BlockPos anchor;
@@ -87,6 +88,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     public static final int CLEAR = 1;
     public static final int TAB = 10;
     public static final int CORE_SCROLL = 20;
+    /// The kind of furnace of the furnace tab (+ Pattern.FURNACE, BLAST_FURNACE or SMOKER).
+    public static final int COOKING = 50;
     public static final int REMOVE = 100;
     public static final int CANCEL_JOB = 10_000;
     /// PICK + slot * 2 (+ 1 = the other way): the mouse wheel on a slot of the grid with many items.
@@ -107,6 +110,12 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     /// Server: the item picked with the mouse wheel in each slot of the grid (-1 = none: every item can be used).
     private final int[] picked = new int[GRID_SLOTS];
     private List<ItemStackTemplate> machines = List.of();
+    /// Server: the liquids the recipe of a machine uses and makes (mB for one craft).
+    private List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> machineFluids = List.of();
+    private List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> machineFluidOutputs = List.of();
+    /// Server: the gases of Mekanism the recipe of a machine uses and makes.
+    private List<com.exoticmoss.simpleores.starstorage.gas.Gas> machineGases = List.of();
+    private List<com.exoticmoss.simpleores.starstorage.gas.Gas> machineGasOutputs = List.of();
     /// Server: the Gravity Core recipe the core slots make (null = none).
     private RecipeHolder<GravityCoreRecipe> coreRecipe;
     /// Server: the items of all the core slots (the shown ones are copied to the pictures).
@@ -119,6 +128,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
     private int syncedCoreCount;
     /// The tab shown (the client tells the server with TAB + n).
     public int tab = TAB_CRAFTING;
+    /// The kind of furnace of the furnace tab (Pattern.FURNACE, BLAST_FURNACE, SMOKER).
+    public int cooking = Pattern.FURNACE;
 
     public QuasarMenu(int id, Inventory inventory, BlockPos pos, int rows) {
         super(ModMenus.QUASAR.get(), id);
@@ -158,6 +169,17 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             @Override
             public void set(int value) {
                 syncedMachine = value == 1;
+            }
+        });
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return cooking;
+            }
+
+            @Override
+            public void set(int value) {
+                cooking = value;
             }
         });
         addSlot(new PictureSlot(FURNACE_SLOT, left + 18 + 1, top + 18 + 1, TAB_FURNACE));
@@ -245,7 +267,9 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         if (slotId >= 0 && slotId < INVENTORY_START) {
             // The result of the recipe of a machine: shift + click changes how many it makes
             if (slotId == RESULT_SLOT && isMachine() && input == ContainerInput.QUICK_MOVE && tab == TAB_CRAFTING) {
-                machineOutput.setCount(Math.max(1, Math.min(MAX_AMOUNT, machineOutput.getCount() + (button == 0 ? 1 : -1))));
+                // (a liquid or a gas: its mB, with no limit of 99)
+                int most = Virtual.isVirtual(machineOutput) ? Integer.MAX_VALUE - 1 : MAX_AMOUNT;
+                machineOutput.setCount(Math.max(1, Math.min(most, machineOutput.getCount() + (button == 0 ? 1 : -1))));
                 updateResult();
                 return;
             }
@@ -282,13 +306,13 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         ItemStack current = pictures.getItem(slot);
         if (shift) {
             if (current.isEmpty()) return;
-            int count = amounts[slot] + (button == 0 ? 1 : -1);
+            int count = (int) Math.min(Integer.MAX_VALUE, (long) amounts[slot] + (button == 0 ? 1 : -1));
             if (count <= 0) {
                 setPicture(slot, ItemStack.EMPTY);
                 return;
             }
-            amounts[slot] = Math.min(count, MAX_AMOUNT);
-            pictures.setItem(slot, current.copyWithCount(Math.min(amounts[slot], 99)));
+            amounts[slot] = Virtual.isVirtual(current) ? count : Math.min(count, MAX_AMOUNT);
+            pictures.setItem(slot, shown(current, amounts[slot]));
             updateResult();
             return;
         }
@@ -303,8 +327,8 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             return;
         }
         if (!same && !carried.isEmpty()) setPicture(slot, carried);
-        amounts[slot] = Math.min(count, MAX_AMOUNT);
-        pictures.setItem(slot, pictures.getItem(slot).copyWithCount(Math.min(amounts[slot], 99)));
+        amounts[slot] = Virtual.isVirtual(pictures.getItem(slot)) ? count : Math.min(count, MAX_AMOUNT);
+        pictures.setItem(slot, shown(pictures.getItem(slot), amounts[slot]));
         updateResult();
     }
 
@@ -358,7 +382,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             }
             amounts[i] = Math.max(1, i < fill.amounts().size() ? fill.amounts().get(i) : 1);
             // The picture shows the amount (up to the most a stack can show)
-            pictures.setItem(i, items.isEmpty() || items.get(0).isEmpty() ? ItemStack.EMPTY : items.get(0).copyWithCount(Math.min(amounts[i], 99)));
+            pictures.setItem(i, items.isEmpty() || items.get(0).isEmpty() ? ItemStack.EMPTY : shown(items.get(0), amounts[i]));
             choices.set(i, slotChoices);
             picked[i] = -1;
         }
@@ -369,7 +393,44 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         }
         machines = machineOutput.isEmpty() ? List.of() : list;
         if (machines.isEmpty()) machineOutput = ItemStack.EMPTY;
+        machineFluids = List.of();
+        machineGases = List.of();
+        if (!machines.isEmpty()) {
+            // The liquids and gases it uses are shown in the free slots of the grid (as their items, see Virtual);
+            // the ones that don't fit are kept apart
+            List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> fluidsLeft = new ArrayList<>();
+            for (var fluid : fill.liquids().fluids()) {
+                if (!putLiquid(Virtual.fluid(fluid.fluid()), fluid.amount())) fluidsLeft.add(fluid);
+            }
+            List<com.exoticmoss.simpleores.starstorage.gas.Gas> gasesLeft = new ArrayList<>();
+            for (var gas : fill.liquids().gases()) {
+                if (!putLiquid(Virtual.gas(gas.id()), gas.amount())) gasesLeft.add(gas);
+            }
+            machineFluids = fluidsLeft;
+            machineGases = gasesLeft;
+        }
+        machineFluidOutputs = machines.isEmpty() ? List.of() : List.copyOf(fill.liquids().fluidOutputs());
+        machineGasOutputs = machines.isEmpty() ? List.of() : List.copyOf(fill.liquids().gasOutputs());
         updateResult();
+    }
+
+    /// Puts a liquid or a gas (as its item) in the first free slot of the grid (false = there is none).
+    private boolean putLiquid(ItemStack item, long amount) {
+        for (int i = 0; i < GRID_SLOTS; i++) {
+            if (!pictures.getItem(i).isEmpty()) continue;
+            amounts[i] = (int) Math.max(1, Math.min(Integer.MAX_VALUE, amount));
+            pictures.setItem(i, shown(item, amounts[i]));
+            choices.set(i, List.of(ItemStackTemplate.fromNonEmptyStack(item.copyWithCount(1))));
+            picked[i] = -1;
+            return true;
+        }
+        return false;
+    }
+
+    /// The picture of "amount" of an item: its count (up to 99); a liquid or a gas is one item that says its mB.
+    public static ItemStack shown(ItemStack item, long amount) {
+        if (!Virtual.isVirtual(item)) return item.copyWithCount((int) Math.max(1, Math.min(amount, 99)));
+        return Virtual.withAmount(item, amount);
     }
 
     /// The mouse wheel on a slot of the grid: shows the next (or the last) of its items, and only that one is saved.
@@ -378,7 +439,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         if (slotChoices.size() < 2 || pictures.getItem(slot).isEmpty()) return;
         int current = picked[slot] >= 0 ? picked[slot] : 0;
         picked[slot] = Math.floorMod(current + step, slotChoices.size());
-        pictures.setItem(slot, slotChoices.get(picked[slot]).create().copyWithCount(Math.min(amounts[slot], 99)));
+        pictures.setItem(slot, shown(slotChoices.get(picked[slot]).create(), amounts[slot]));
         updateResult();
     }
 
@@ -393,7 +454,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         ItemStack result = ItemStack.EMPTY;
         coreRecipe = null;
         if (tab == TAB_CRAFTING && isMachine()) {
-            result = machineOutput.copyWithCount(Math.min(machineOutput.getCount(), 99));
+            result = shown(machineOutput, machineOutput.getCount());
         } else if (tab == TAB_CRAFTING) {
             List<ItemStack> items = new ArrayList<>();
             for (int i = 0; i < GRID_SLOTS; i++) items.add(pictures.getItem(i).copy());
@@ -409,7 +470,7 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             ItemStack item = pictures.getItem(FURNACE_SLOT);
             if (!item.isEmpty()) {
                 SingleRecipeInput input = new SingleRecipeInput(item);
-                result = level.recipeAccess().getRecipeFor(RecipeType.SMELTING, input, level)
+                result = level.recipeAccess().getRecipeFor(Pattern.cookingType(cooking), input, level)
                         .map(holder -> holder.value().assemble(input)).orElse(ItemStack.EMPTY);
             }
         }
@@ -455,6 +516,11 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             updateResult();
             return true;
         }
+        if (id >= COOKING && id <= COOKING + Pattern.SMOKER) {
+            cooking = id - COOKING;
+            updateResult();
+            return true;
+        }
         if (id >= PICK && id < PICK + GRID_SLOTS * 2) {
             pick((id - PICK) / 2, (id - PICK) % 2 == 0 ? -1 : 1);
             return true;
@@ -472,25 +538,38 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
         if (id == SAVE) {
             ItemStack result = pictures.getItem(RESULT_SLOT);
             if (result.isEmpty()) return false;
-            ItemStackTemplate output = ItemStackTemplate.fromNonEmptyStack(result.copyWithCount(1));
+            ItemStackTemplate output = ItemStackTemplate.fromNonEmptyStack(Virtual.plain(result));
             if (tab == TAB_CRAFTING) {
                 List<List<ItemStackTemplate>> inputs = new ArrayList<>();
                 List<Integer> slotAmounts = new ArrayList<>();
+                List<com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry> fluids = new ArrayList<>(machineFluids);
+                List<com.exoticmoss.simpleores.starstorage.gas.Gas> gases = new ArrayList<>(machineGases);
                 for (int i = 0; i < GRID_SLOTS; i++) {
                     ItemStack stack = pictures.getItem(i);
+                    // A liquid or a gas in the grid: saved as a liquid or a gas of the recipe (not as an item)
+                    net.minecraft.world.level.material.Fluid fluid = isMachine() ? Virtual.fluidOf(stack) : null;
+                    net.minecraft.resources.Identifier gas = isMachine() ? Virtual.gasOf(stack) : null;
+                    if (fluid != null || gas != null) {
+                        if (fluid != null) fluids.add(new com.exoticmoss.simpleores.starstorage.cell.FluidContents.Entry(fluid, amounts[i]));
+                        else gases.add(new com.exoticmoss.simpleores.starstorage.gas.Gas(gas, amounts[i]));
+                        inputs.add(List.of());
+                        slotAmounts.add(1);
+                        continue;
+                    }
                     if (stack.isEmpty()) inputs.add(List.of());
                     else if (choices.get(i).isEmpty()) inputs.add(List.of(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1))));
                     else if (picked[i] >= 0) inputs.add(List.of(choices.get(i).get(picked[i])));
                     else inputs.add(choices.get(i));
                     slotAmounts.add(stack.isEmpty() ? 1 : amounts[i]);
                 }
-                if (isMachine()) quasar.addPattern(Pattern.machine(output, machineOutput.getCount(), inputs, slotAmounts, machines));
+                if (isMachine()) quasar.addPattern(Pattern.machine(output, machineOutput.getCount(), inputs, slotAmounts, machines,
+                        fluids, machineFluidOutputs, gases, machineGasOutputs));
                 else quasar.addPattern(Pattern.crafting(output, result.getCount(), inputs));
             } else if (tab == TAB_CORE && coreRecipe != null) {
                 quasar.addPattern(QuasarCore.pattern(coreRecipe, coreTier(coreRecipe.value())));
             } else if (tab == TAB_FURNACE) {
                 quasar.addPattern(Pattern.furnace(output, result.getCount(),
-                        ItemStackTemplate.fromNonEmptyStack(pictures.getItem(FURNACE_SLOT).copyWithCount(1))));
+                        ItemStackTemplate.fromNonEmptyStack(pictures.getItem(FURNACE_SLOT).copyWithCount(1)), cooking));
             }
         } else if (id == CLEAR) {
             for (int i = 0; i < INVENTORY_START; i++) {
@@ -503,6 +582,10 @@ public class QuasarMenu extends AbstractContainerMenu implements NetworkMenu, co
             }
             machineOutput = ItemStack.EMPTY;
             machines = List.of();
+            machineFluids = List.of();
+            machineFluidOutputs = List.of();
+            machineGases = List.of();
+            machineGasOutputs = List.of();
             for (int i = 0; i < CORE_SLOTS; i++) cores.set(i, ItemStack.EMPTY);
             coreScroll = 0;
             updateResult();

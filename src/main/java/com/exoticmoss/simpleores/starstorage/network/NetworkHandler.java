@@ -68,10 +68,10 @@ public abstract class NetworkHandler<T extends Resource> extends SnapshotJournal
         StarNetwork network = StarNetwork.at(level, pos);
         List<T> list = new ArrayList<>();
         Map<T, Long> map = new HashMap<>();
-        if (!network.drives().isEmpty()) read(network, list, map);
+        if (network.hasStorage()) read(network, list, map);
         resources = list;
         amounts = map;
-        space = network.drives().isEmpty() ? 0 : space(network);
+        space = !network.hasStorage() ? 0 : space(network);
     }
 
     private long stored(T resource) {

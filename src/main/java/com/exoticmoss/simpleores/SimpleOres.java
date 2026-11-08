@@ -146,6 +146,7 @@ public class SimpleOres {
             event.registerBlockEntityRenderer(ModBlockEntities.ADVANCED_TERMINAL_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.TERMINAL_2));
             event.registerBlockEntityRenderer(ModBlockEntities.BINARY_STAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.BINARY));
             event.registerBlockEntityRenderer(ModBlockEntities.QUASAR_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.QUASAR));
+            event.registerBlockEntityRenderer(ModBlockEntities.EVENT_HORIZON_BE.get(), context -> new StarBlockRenderer<>(context, StarLook.HORIZON));
         }
 
         // Screen of the Stellar Terminal
@@ -155,6 +156,7 @@ public class SimpleOres {
             event.register(ModMenus.QUASAR.get(), QuasarScreen::new);
             event.register(ModMenus.BINARY.get(), BinaryScreen::new);
             event.register(ModMenus.MAGNETAR.get(), com.exoticmoss.simpleores.starstorage.client.MagnetarScreen::new);
+            event.register(ModMenus.EVENT_HORIZON.get(), com.exoticmoss.simpleores.starstorage.client.EventHorizonScreen::new);
         }
 
         // 3D item model of the Gravity Cores ("type": "simpleores:gravity_core" in the item model files)

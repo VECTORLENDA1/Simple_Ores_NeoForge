@@ -35,6 +35,12 @@ public class ModDataComponents {
                     .persistent(GlobalPos.CODEC)
                     .networkSynchronized(GlobalPos.STREAM_CODEC));
 
+    /// The recipes of a broken Quasar (kept by the world, see QuasarRecipes): the Quasar placed with the item gets them back
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<com.exoticmoss.simpleores.starstorage.quasar.QuasarRecipes.Id>> QUASAR_RECIPES =
+            DATA_COMPONENTS.registerComponentType("quasar_recipes", builder -> builder
+                    .persistent(com.exoticmoss.simpleores.starstorage.quasar.QuasarRecipes.Id.CODEC)
+                    .networkSynchronized(com.exoticmoss.simpleores.starstorage.quasar.QuasarRecipes.Id.STREAM_CODEC));
+
     public static void register(IEventBus eventBus) {
         DATA_COMPONENTS.register(eventBus);
     }

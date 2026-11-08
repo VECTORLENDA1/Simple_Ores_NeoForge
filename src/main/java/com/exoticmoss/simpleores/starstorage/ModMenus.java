@@ -35,6 +35,11 @@ public class ModMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<MagnetarMenu>> MAGNETAR = MENUS.register("magnetar_core",
             () -> IMenuTypeExtension.create((id, inventory, buf) -> new MagnetarMenu(id, inventory, buf.readBlockPos())));
 
+    /// The Event Horizon (its filter and priority).
+    public static final DeferredHolder<MenuType<?>, MenuType<com.exoticmoss.simpleores.starstorage.horizon.EventHorizonMenu>> EVENT_HORIZON =
+            MENUS.register("event_horizon", () -> IMenuTypeExtension.create((id, inventory, buf) ->
+                    new com.exoticmoss.simpleores.starstorage.horizon.EventHorizonMenu(id, inventory, buf.readBlockPos())));
+
     public static void register(IEventBus eventBus) {
         MENUS.register(eventBus);
     }

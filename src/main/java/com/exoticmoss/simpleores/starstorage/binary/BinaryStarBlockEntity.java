@@ -1,9 +1,13 @@
 package com.exoticmoss.simpleores.starstorage.binary;
 
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
+import com.exoticmoss.simpleores.starstorage.network.Virtual;
+
 import com.exoticmoss.simpleores.block.entity.ModBlockEntities;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Containers;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
@@ -45,6 +49,8 @@ public class BinaryStarBlockEntity extends BlockEntity {
     public static final int WORK_TICKS = 10;
     /// The rules of the tanks (liquids) use the slot numbers TANKS + tank (their item is a bucket of the liquid).
     public static final int TANKS = 10_000;
+    /// The rules of the tanks of gases (Mekanism) use the slot numbers GASES + tank (their item is the gas, Virtual.gas).
+    public static final int GASES = 20_000;
     /// How far (blocks in every direction) the blocks it takes care of can be, without upgrades;
     /// each Magnetic Field Upgrade (up to MAX_UPGRADES, in the slot of its screen) adds RANGE_PER_UPGRADE.
     public static final int RADIUS = 8;
@@ -159,7 +165,7 @@ public class BinaryStarBlockEntity extends BlockEntity {
         if (level != null && ticks % SCAN_TICKS == 0) scanOutputs();
         if (++ticks % WORK_TICKS != 0 || rules.isEmpty() || level == null) return;
         StarNetwork network = StarNetwork.at(level, worldPosition);
-        if (network.drives().isEmpty()) return;
+        if (!network.hasStorage()) return;
         for (Map.Entry<BlockPos, Map<Integer, SlotRule>> entry : new ArrayList<>(rules.entrySet())) {
             BlockPos pos = entry.getKey();
             if (!inReach(pos) || !level.isLoaded(pos)) continue;
@@ -169,7 +175,9 @@ public class BinaryStarBlockEntity extends BlockEntity {
             List<ResourceHandler<ItemResource>> itemSides = items == null ? List.of() : StarAccess.itemSides(level, pos);
             List<ResourceHandler<FluidResource>> fluidSides = fluids == null ? List.of() : StarAccess.fluidSides(level, pos);
             for (SlotRule rule : entry.getValue().values()) {
-                if (rule.slot() >= TANKS) {
+                if (rule.slot() >= GASES) {
+                    workGas(network, pos, rule.slot() - GASES, rule);
+                } else if (rule.slot() >= TANKS) {
                     int tank = rule.slot() - TANKS;
                     if (fluids != null && tank < fluids.size()) workTank(network, fluids, fluidSides, tank, rule);
                 } else if (items != null && rule.slot() < items.size()) {
@@ -213,6 +221,66 @@ public class BinaryStarBlockEntity extends BlockEntity {
             for (Fluid fluid : kept) StarAccess.keepFluid(network, fluids, sides, tank, fluid);
         } else if (rule.takes()) {
             StarAccess.takeFluid(network, fluids, sides, tank);
+        }
+    }
+
+    /// A tank of gas: the same as a tank of liquid, with the gas of the rule (Virtual.gas).
+    private void workGas(StarNetwork network, BlockPos pos, int tank, SlotRule rule) {
+        if (level == null) return;
+        Gases.Tanks gases = Gases.tanks(level, pos, null);
+        if (gases == null || tank >= gases.count()) return;
+        List<Identifier> kept = new ArrayList<>();
+        if (rule.keeps()) {
+            for (net.minecraft.world.item.ItemStackTemplate item : rule.items()) {
+                Identifier gas = Virtual.gasOf(item.create());
+                if (gas != null) kept.add(gas);
+            }
+        }
+        Identifier current = gases.gas(tank);
+        if (rule.takes() && current != null && !kept.contains(current)) takeGas(network, pos, gases, current, gases.amount(tank));
+        for (Identifier gas : kept) {
+            current = gases.gas(tank);
+            if (current == null || current.equals(gas)) keepGas(network, pos, gases, gas);
+        }
+    }
+
+    /// The tanks of gases of the block seen from no side and then from each side (some machines of Mekanism only let
+    /// gases out or in through some sides).
+    private List<Gases.Tanks> gasSides(BlockPos pos, Gases.Tanks all) {
+        List<Gases.Tanks> list = new ArrayList<>();
+        list.add(all);
+        if (level == null) return list;
+        for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) {
+            Gases.Tanks tanks = Gases.tanks(level, pos, side);
+            if (tanks != null) list.add(tanks);
+        }
+        return list;
+    }
+
+    private void takeGas(StarNetwork network, BlockPos pos, Gases.Tanks all, Identifier gas, long amount) {
+        for (Gases.Tanks tanks : gasSides(pos, all)) {
+            if (amount <= 0) return;
+            long canTake = tanks.drain(gas, amount, true);
+            if (canTake <= 0) continue;
+            long moved = network.insertGas(gas, canTake);
+            if (moved <= 0) return;
+            long taken = tanks.drain(gas, moved, false);
+            if (taken < moved) network.extractGas(gas, moved - taken);
+            amount -= taken;
+        }
+    }
+
+    private void keepGas(StarNetwork network, BlockPos pos, Gases.Tanks all, Identifier gas) {
+        for (Gases.Tanks tanks : gasSides(pos, all)) {
+            long inNetwork = network.gasAmount(gas);
+            if (inNetwork <= 0) return;
+            long accepted = tanks.fill(gas, inNetwork, true);
+            if (accepted <= 0) continue;
+            long taken = network.extractGas(gas, accepted);
+            if (taken <= 0) return;
+            long put = tanks.fill(gas, taken, false);
+            if (put < taken) network.insertGas(gas, taken - put);
+            return;
         }
     }
 

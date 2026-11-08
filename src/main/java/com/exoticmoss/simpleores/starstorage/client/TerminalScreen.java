@@ -58,6 +58,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
     protected static final int SLOT_COLOR = 0xFF20202C;
     private static final int FLUID_COLOR = 0xFF3FA0FF;
     private static final int FLUID_TEXT = 0xFF8FD0FF;
+    private static final int GAS_TEXT = 0xFFB8F0A0;
     private static final int XP_COLOR = 0xFF80FF20;
     private static final int RESULT_COLOR = 0xFF34344A;
     private static final int BAR_BACK = 0xFF15151E;
@@ -189,10 +190,14 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             if (bucket.isEmpty()) bucket = new ItemStack(Items.BUCKET);
             all.add(new TerminalContents.Item(ItemStackTemplate.fromNonEmptyStack(bucket), fluid.amount(), fluid.fluid()));
         }
+        // The gases of Mekanism: shown as a square of their color (with the mB)
+        for (var gas : contents.gases()) {
+            all.add(new TerminalContents.Item(ItemStackTemplate.fromNonEmptyStack(new ItemStack(Items.GLASS_BOTTLE)), gas.amount(), null, gas.id()));
+        }
         // The items that can be crafted and that the network doesn't have: shown with "Craft"
         for (ItemStackTemplate craftable : crafting() ? contents.craftables() : List.<ItemStackTemplate>of()) {
             ItemStack stack = craftable.create();
-            if (all.stream().noneMatch(item -> item.fluid() == null && ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
+            if (all.stream().noneMatch(item -> item.fluid() == null && item.gas() == null && ItemStack.isSameItemSameComponents(item.item().create(), stack))) {
                 all.add(new TerminalContents.Item(craftable, 0));
             }
         }
@@ -213,6 +218,7 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
     private static String name(TerminalContents.Item item) {
         if (item.fluid() != null) return StarFluids.name(item.fluid()).getString();
+        if (item.gas() != null) return com.exoticmoss.simpleores.starstorage.gas.Gases.name(item.gas()).getString();
         return item.item().create().getHoverName().getString();
     }
 
@@ -445,19 +451,29 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 continue;
             }
             Pattern recipe = options.get(i);
-            graphics.item(mainInput(recipe), box[0] + 2, box[1] + 2);
+            // (a furnace recipe shows its kind of furnace: Furnace, Blast Furnace or Smoker)
+            graphics.item(recipe.furnace() ? Pattern.cookingBlock(recipe.cooking()) : mainInput(recipe), box[0] + 2, box[1] + 2);
             int dot = recipe.isCore() ? 0xFFFF9A2A : recipe.furnace() ? 0xFFA0A0A0 : 0xFFA0703A;
             graphics.fill(box[0] + box[2] - 5, box[1] + 2, box[0] + box[2] - 2, box[1] + 5, dot);
             if (over) {
                 List<Component> lines = new ArrayList<>();
-                String kind = recipe.isCore() ? "core" : recipe.furnace() ? "furnace" : "crafting";
-                lines.add(Component.translatable("screen.simpleores.quasar.tab." + kind).append(" -> " + recipe.count() + " x ")
-                        .append(recipe.output().create().getHoverName()));
+                // The kind of recipe: the Gravity Core, the block of a furnace or machine recipe, or the crafting table
+                Component kind = recipe.isCore() ? Component.translatable("screen.simpleores.quasar.tab.core")
+                        : recipe.furnace() ? Pattern.cookingBlock(recipe.cooking()).getHoverName()
+                        : recipe.isMachine() ? recipe.machines().get(0).create().getHoverName()
+                        : Component.translatable("screen.simpleores.quasar.tab.crafting");
+                lines.add(kind.copy().append(" -> " + recipe.count() + " x ").append(recipe.output().create().getHoverName()));
                 for (int input = 0; input < recipe.inputs().size(); input++) {
                     List<ItemStackTemplate> slot = recipe.inputs().get(input);
                     if (slot.isEmpty()) continue;
                     String amount = recipe.amount(input) > 1 ? recipe.amount(input) + " x " : "";
                     lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
+                }
+                for (var fluid : recipe.fluids()) {
+                    lines.add(Component.literal(" - " + StarFluids.buckets(fluid.amount()) + " ").append(StarFluids.name(fluid.fluid())));
+                }
+                for (var gas : recipe.gases()) {
+                    lines.add(Component.literal(" - " + StarFluids.buckets(gas.amount()) + " ").append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())));
                 }
                 graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
             }
@@ -545,6 +561,8 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         if (isOverNetwork(event.x(), event.y())) {
             boolean right = event.button() == 1;
             int fluidIndex = cellAt(event.x(), event.y());
+            // A gas can't be taken out by hand
+            if (fluidIndex >= 0 && shown.get(fluidIndex).gas() != null) return true;
             if (fluidIndex >= 0 && shown.get(fluidIndex).fluid() != null
                     && (menu.getCarried().isEmpty() || menu.getCarried().is(Items.BUCKET))) {
                 // A liquid: fills a bucket (from the cursor, the network or the inventory)
@@ -658,6 +676,8 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         int visible = index - scroll * TerminalLayout.COLUMNS;
         int x = networkLeft() + (visible % TerminalLayout.COLUMNS) * TerminalLayout.CELL_W + (TerminalLayout.CELL_W - 16) / 2;
         int y = networkTop() + (visible / TerminalLayout.COLUMNS) * TerminalLayout.CELL_H + 3;
+        // (a gas: its item, which JEI sees as the gas, see StarScreenJeiHandler)
+        if (item.gas() != null) return JeiTarget.of(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(item.gas()), x, y);
         return new JeiTarget(item.item().create(), item.fluid(), x, y, 16);
     }
 
@@ -746,6 +766,13 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         if (hovered >= 0 && menu.getCarried().isEmpty()) {
             TerminalContents.Item item = shown.get(hovered);
             List<Component> lines = new ArrayList<>();
+            if (item.gas() != null) {
+                lines.add(com.exoticmoss.simpleores.starstorage.gas.Gases.name(item.gas()));
+                lines.add(Component.literal(String.format(Locale.ROOT, "%,d mB", item.count())).withColor(GAS_TEXT));
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
+                drawMore(graphics, mouseX, mouseY);
+                return;
+            }
             if (item.fluid() != null) {
                 lines.add(StarFluids.name(item.fluid()));
                 lines.add(Component.literal(String.format(Locale.ROOT, "%,d mB", item.count())).withColor(FLUID_TEXT));
@@ -778,12 +805,20 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
                 if (index >= shown.size()) continue;
                 TerminalContents.Item item = shown.get(index);
                 if (craftItem != null) continue;
+                if (item.gas() != null) {
+                    // A gas: its texture and color, and how many mB
+                    graphics.item(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(item.gas()), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
+                    graphics.centeredText(font, Component.literal(StarNetwork.format(item.count())), x + TerminalLayout.CELL_W / 2,
+                            y + TerminalLayout.CELL_H - 10, GAS_TEXT);
+                    continue;
+                }
                 graphics.item(item.item().create(), x + (TerminalLayout.CELL_W - 16) / 2, y + 3);
                 if (item.fluid() != null) {
-                    // A liquid: a small drop in the corner, and the buckets
+                    // A liquid: a small drop in the corner, and how many mB (like the items: "950", "14.4k"; the unit
+                    // is in the tooltip)
                     graphics.fill(x + 3, y + 3, x + 5, y + 7, FLUID_COLOR);
                     graphics.fill(x + 2, y + 5, x + 6, y + 7, FLUID_COLOR);
-                    String amount = item.count() < StarFluids.BUCKET ? item.count() + "mB" : StarNetwork.format(item.count() / StarFluids.BUCKET) + "B";
+                    String amount = StarNetwork.format(item.count());
                     graphics.centeredText(font, Component.literal(amount), x + TerminalLayout.CELL_W / 2, y + TerminalLayout.CELL_H - 10, FLUID_TEXT);
                 } else if (item.count() == 0) {
                     TinyText.craft(graphics, x + (TerminalLayout.CELL_W - TinyText.CRAFT_WIDTH) / 2, y + TerminalLayout.CELL_H - 8, 0xFF7FE0C0);

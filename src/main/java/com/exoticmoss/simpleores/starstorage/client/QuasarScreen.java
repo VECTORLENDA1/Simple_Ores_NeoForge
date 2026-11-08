@@ -95,6 +95,30 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
         button(QuasarMenu.TAB + tab);
     }
 
+    /// The kind of furnace of the furnace tab (Pattern.FURNACE, BLAST_FURNACE, SMOKER).
+    public void setCooking(int kind) {
+        menu.cooking = kind;
+        button(QuasarMenu.COOKING + kind);
+    }
+
+    /// The left and top of the button of a kind of furnace (in the furnace tab, under its slot).
+    private int cookingX(int kind) {
+        return leftPos + TerminalLayout.craftLeft() + kind * TerminalLayout.SLOT;
+    }
+
+    private int cookingY() {
+        return topPos + menu.layout.inventoryTop() + 2 * TerminalLayout.SLOT + 2;
+    }
+
+    /// The kind of furnace under the mouse (-1 = none).
+    private int cookingAt(double x, double y) {
+        if (menu.tab != QuasarMenu.TAB_FURNACE) return -1;
+        for (int kind = Pattern.FURNACE; kind <= Pattern.SMOKER; kind++) {
+            if (x >= cookingX(kind) && x < cookingX(kind) + TerminalLayout.SLOT && y >= cookingY() && y < cookingY() + TerminalLayout.SLOT) return kind;
+        }
+        return -1;
+    }
+
     @Override
     protected void clearGrid() {
         button(QuasarMenu.CLEAR);
@@ -161,6 +185,11 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        int kind = cookingAt(event.x(), event.y());
+        if (kind >= 0) {
+            setCooking(kind);
+            return true;
+        }
         for (int which = 0; which < TABS; which++) {
             if (event.x() >= tabX(which) && event.x() < tabX(which) + TAB && event.y() >= tabY() && event.y() < tabY() + TAB) {
                 setTab(which);
@@ -320,7 +349,8 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 QuasarJobs.View job = line.job();
                 amount = job.amount();
                 made = job.made();
-                status = Component.translatable(job.status());
+                String[] parts = job.status().split("\\|");
+                status = Component.translatable(parts[0], (Object[]) java.util.Arrays.copyOfRange(parts, 1, parts.length));
                 // The small arrow (right = hidden, down = shown)
                 if (!job.subs().isEmpty()) drawArrow(graphics, left + 2, y + 9, expanded.contains(job.id()));
             } else {
@@ -349,7 +379,7 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                 graphics.fill(barLeft, y + 5, fill, y + 11, 0xFF3FB86A);
                 graphics.fill(barLeft, y + 5, fill, y + 6, 0xFF7FE8A0);
             }
-            graphics.centeredText(font, Component.literal(Math.min(made, amount) + "/" + amount), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
+            graphics.centeredText(font, Component.literal(StarNetwork.format(Math.min(made, amount)) + "/" + StarNetwork.format(amount)), (barLeft + barRight) / 2, y + 14, TEXT_DIM);
             if (sub != null) continue;
             // Cancel X
             int[] box = cancelBox(row);
@@ -419,6 +449,19 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
             graphics.fill(barX, barTop, barX + 3, barTop + barHeight, SLOT_COLOR);
             graphics.fill(barX, thumbY, barX + 3, thumbY + thumb, PANEL_BORDER);
         }
+        // Furnace tab: the kinds of furnace (the one chosen has a border)
+        if (menu.tab == QuasarMenu.TAB_FURNACE) {
+            for (int kind = Pattern.FURNACE; kind <= Pattern.SMOKER; kind++) {
+                int x = cookingX(kind), y = cookingY();
+                graphics.fill(x + 1, y + 1, x + TerminalLayout.SLOT - 1, y + TerminalLayout.SLOT - 1, SLOT_COLOR);
+                if (kind == menu.cooking) graphics.outline(x, y, TerminalLayout.SLOT, TerminalLayout.SLOT, PANEL_BORDER);
+                graphics.item(Pattern.cookingBlock(kind), x + 1, y + 1);
+            }
+            int over = cookingAt(mouseX, mouseY);
+            if (over >= 0) {
+                graphics.setTooltipForNextFrame(font, List.of(Pattern.cookingBlock(over).getHoverName()), Optional.empty(), mouseX, mouseY);
+            }
+        }
         int hovered = patternAt(mouseX, mouseY);
         if (hovered >= 0) {
             Pattern pattern = patterns().get(hovered);
@@ -431,7 +474,24 @@ public class QuasarScreen extends TerminalScreen<QuasarMenu> {
                     lines.add(Component.literal(" - " + amount).append(slot.get(0).create().getHoverName()));
                 }
             }
-            if (pattern.isMachine()) {
+            // The liquids it uses (-) and makes (+)
+            for (var fluid : pattern.fluids()) {
+                lines.add(Component.literal(" - " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(fluid.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.network.StarFluids.name(fluid.fluid())));
+            }
+            for (var fluid : pattern.fluidOutputs()) {
+                lines.add(Component.literal(" + " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(fluid.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.network.StarFluids.name(fluid.fluid())));
+            }
+            for (var gas : pattern.gases()) {
+                lines.add(Component.literal(" - " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(gas.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())));
+            }
+            for (var gas : pattern.gasOutputs()) {
+                lines.add(Component.literal(" + " + com.exoticmoss.simpleores.starstorage.network.StarFluids.buckets(gas.amount()) + " ")
+                        .append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())));
+            }
+            if (!pattern.machines().isEmpty()) {
                 lines.add(Component.translatable("screen.simpleores.quasar.machine", pattern.machines().get(0).create().getHoverName()));
             }
             graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);

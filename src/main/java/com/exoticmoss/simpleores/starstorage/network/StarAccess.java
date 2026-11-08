@@ -27,7 +27,13 @@ public final class StarAccess {
 
     /// The slots of the block (null = it has none).
     public static @Nullable ResourceHandler<ItemResource> items(Level level, BlockPos pos) {
-        return level.getCapability(Capabilities.Item.BLOCK, pos, null);
+        ResourceHandler<ItemResource> handler = level.getCapability(Capabilities.Item.BLOCK, pos, null);
+        if (handler != null) return handler;
+        // Only through the sides: the side that shows the most slots
+        for (ResourceHandler<ItemResource> side : itemSides(level, pos)) {
+            if (handler == null || side.size() > handler.size()) handler = side;
+        }
+        return handler;
     }
 
     /// The tanks of the block (null = it has none).
@@ -131,6 +137,27 @@ public final class StarAccess {
             transaction.commit();
             return taken;
         }
+    }
+
+    /// Takes out of the machine every stack of the same item as "item" but with other data (like a tool made with
+    /// its energy). Returns what came out.
+    public static List<ItemStack> extractVariants(ResourceHandler<ItemResource> handler, List<ResourceHandler<ItemResource>> sides, ItemStack item) {
+        List<ItemStack> out = new ArrayList<>();
+        List<ResourceHandler<ItemResource>> all = new ArrayList<>();
+        all.add(handler);
+        all.addAll(sides);
+        for (ResourceHandler<ItemResource> from : all) {
+            for (int slot = 0; slot < from.size(); slot++) {
+                ItemStack inside = stack(from, slot);
+                if (inside.isEmpty() || !inside.is(item.getItem()) || ItemStack.isSameItemSameComponents(inside, item)) continue;
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int got = from.extract(slot, from.getResource(slot), inside.getCount(), transaction);
+                    transaction.commit();
+                    if (got > 0) out.add(inside.copyWithCount(got));
+                }
+            }
+        }
+        return out;
     }
 
     /// Puts as many of the items as fit in the machine (the machine chooses the slots). Returns how many went in.

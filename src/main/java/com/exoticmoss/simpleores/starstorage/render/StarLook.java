@@ -5,7 +5,7 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/// How the stars of the star storage look (Magnetar Core, Stellar Terminal, Binary Star, Quasar).
+/// How the stars of the star storage look (Magnetar Core, Stellar Terminal, Binary Star, Quasar, Event Horizon).
 /// They are drawn like the Gravity Cores (see CoreDrawing and StarDrawing). To change how one looks, just change the numbers here.
 ///
 /// Colors use the format 0xAARRGGBB (0x00000000 = no beams / no disk).
@@ -21,7 +21,9 @@ public enum StarLook implements StringRepresentable {
     /// around each other, giving matter to each other: it moves the items in and out of the blocks around it.
     BINARY(    "binary",     0xFFFFE2B0,  0xFFFF9A3C,  0xFFFFB45A,  0x00000000,  0x00000000,  0.35f,  0f,          0.5f),
     /// The Quasar: the brightest thing of the universe, with its disk and two jets. The brain of the auto-craft.
-    QUASAR(    "quasar",     0xFFFFFFFF,  0xFFA8D0FF,  0xFF7FB2FF,  0xFFD8ECFF,  0xFFFFC070,  0.25f,  1.0f,        0.32f);
+    QUASAR(    "quasar",     0xFFFFFFFF,  0xFFA8D0FF,  0xFF7FB2FF,  0xFFD8ECFF,  0xFFFFC070,  0.25f,  1.0f,        0.32f),
+    /// The Event Horizon: a black star with a bright disk around it. It joins the inventories around it to the network.
+    HORIZON(   "horizon",    0xFF06040C,  0xFF2A1450,  0xFF9C6CFF,  0x00000000,  0xFFFFA040,  0.25f,  0f,          0.32f);
 
     public static final Codec<StarLook> CODEC = StringRepresentable.fromEnum(StarLook::values);
     /// Color of the light shell around the star while the player looks at it (instead of the box outline).

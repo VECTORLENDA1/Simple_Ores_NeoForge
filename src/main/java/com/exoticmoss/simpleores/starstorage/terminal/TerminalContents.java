@@ -28,12 +28,18 @@ import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 /// experience kept by the Magnetar.
 public record TerminalContents(BlockPos pos, List<Item> items, long used, long capacity, List<Cell> cells,
                                List<ItemStackTemplate> craftables, List<FluidContents.Entry> fluids,
-                               long fluidUsed, long fluidCapacity, long experience, List<Pattern> recipes) implements CustomPacketPayload {
+                               long fluidUsed, long fluidCapacity, long experience, List<Pattern> recipes,
+                               List<com.exoticmoss.simpleores.starstorage.gas.Gas> gases) implements CustomPacketPayload {
     /// One kind of item and how many of it the whole network has.
     /// On the screen, a liquid is shown as an Item too: its bucket, the mB, and the liquid ("fluid", else null).
-    public record Item(ItemStackTemplate item, long count, @Nullable Fluid fluid) {
+    /// A gas of Mekanism too: the mB and the gas ("gas", else null; drawn as a square of its color).
+    public record Item(ItemStackTemplate item, long count, @Nullable Fluid fluid, @Nullable Identifier gas) {
         public Item(ItemStackTemplate item, long count) {
-            this(item, count, null);
+            this(item, count, null, null);
+        }
+
+        public Item(ItemStackTemplate item, long count, @Nullable Fluid fluid) {
+            this(item, count, fluid, null);
         }
     }
 
@@ -68,6 +74,8 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
                 buf.writeVarLong(message.experience());
                 buf.writeVarInt(message.recipes().size());
                 for (Pattern recipe : message.recipes()) Pattern.STREAM_CODEC.encode(buf, recipe);
+                buf.writeVarInt(message.gases().size());
+                for (var gas : message.gases()) com.exoticmoss.simpleores.starstorage.gas.Gas.STREAM_CODEC.encode(buf, gas);
             },
             buf -> {
                 BlockPos pos = BlockPos.STREAM_CODEC.decode(buf);
@@ -93,8 +101,11 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
                 int recipeCount = buf.readVarInt();
                 List<Pattern> recipes = new ArrayList<>(recipeCount);
                 for (int i = 0; i < recipeCount; i++) recipes.add(Pattern.STREAM_CODEC.decode(buf));
+                int gasCount = buf.readVarInt();
+                List<com.exoticmoss.simpleores.starstorage.gas.Gas> gases = new ArrayList<>(gasCount);
+                for (int i = 0; i < gasCount; i++) gases.add(com.exoticmoss.simpleores.starstorage.gas.Gas.STREAM_CODEC.decode(buf));
                 return new TerminalContents(pos, items, used, capacity, cells, craftables, fluids,
-                        fluidUsed, fluidCapacity, experience, recipes);
+                        fluidUsed, fluidCapacity, experience, recipes, gases);
             });
 
     @Override
@@ -104,7 +115,7 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
 
     /// Nothing (before the server answers).
     public static TerminalContents empty(BlockPos pos) {
-        return new TerminalContents(pos, List.of(), 0, 0, List.of(), List.of(), List.of(), 0, 0, 0, List.of());
+        return new TerminalContents(pos, List.of(), 0, 0, List.of(), List.of(), List.of(), 0, 0, 0, List.of(), List.of());
     }
 
     /// Sends the network seen by the terminal at "pos" to the player.
@@ -126,7 +137,8 @@ public record TerminalContents(BlockPos pos, List<Item> items, long used, long c
         }
         MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(player.level(), pos);
         PacketDistributor.sendToPlayer(player, new TerminalContents(pos, items, network.usedItems(), network.capacity(), network.cells(), craftables,
-                network.fluids(), network.fluidUsed(), network.fluidCapacity(), magnetar == null ? 0 : magnetar.getExperience(), recipes));
+                network.fluids(), network.fluidUsed(), network.fluidCapacity(), magnetar == null ? 0 : magnetar.getExperience(), recipes,
+                network.gases()));
     }
 
     /// Runs on the client: updates the terminal screen.

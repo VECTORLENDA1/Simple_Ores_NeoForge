@@ -19,13 +19,18 @@ import java.util.Set;
 public class StarTooltips {
     private static final Set<String> STARS = Set.of("magnetar_core", "stellar_terminal", "advanced_stellar_terminal",
             "binary_star", "quasar", "stellar_drive", "gravity_core_sun", "gravity_core_red_giant", "gravity_core_pulsar",
-            "gravity_core_black_hole", "solar_wind_upgrade", "magnetic_field_upgrade", "wormhole_link");
+            "gravity_core_black_hole", "solar_wind_upgrade", "magnetic_field_upgrade", "wormhole_link", "event_horizon");
 
     @SubscribeEvent
     public static void onTooltip(ItemTooltipEvent event) {
         Identifier id = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem());
         if (!id.getNamespace().equals(SimpleOres.MODID) || !STARS.contains(id.getPath())) return;
         event.getToolTip().add(1, Component.translatable("tooltip.simpleores." + id.getPath()).withStyle(ChatFormatting.GRAY));
+        // Quasar: the recipes it keeps
+        var recipes = event.getItemStack().get(ModDataComponents.QUASAR_RECIPES.get());
+        if (recipes != null) {
+            event.getToolTip().add(2, Component.translatable("tooltip.simpleores.quasar.recipes", recipes.count()).withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
         // Wormhole Link: the Magnetar it points to
         GlobalPos link = event.getItemStack().get(ModDataComponents.LINK.get());
         if (link != null) {

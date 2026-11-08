@@ -37,8 +37,13 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                         List<Pattern> options, List<Boolean> linked) {
     }
 
-    /// One tank: a bucket of its liquid (EMPTY = empty tank or a liquid without bucket), the mB and how many fit.
-    public record Tank(ItemStack bucket, long amount, long capacity) {
+    /// One tank: a bucket of its liquid (EMPTY = empty tank or a liquid without bucket), the mB, how many fit and
+    /// the slot number of its rules (BinaryStarBlockEntity.TANKS + tank). A tank of gas (of Mekanism) has the slot
+    /// number BinaryStarBlockEntity.GASES + tank and, instead of the bucket, the gas as an item (Virtual.gas).
+    public record Tank(ItemStack bucket, long amount, long capacity, int slot) {
+        public boolean gas() {
+            return slot >= BinaryStarBlockEntity.GASES;
+        }
     }
 
     public static final Type<BinaryView> TYPE =
@@ -63,6 +68,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                         ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, tank.bucket());
                         buf.writeVarLong(tank.amount());
                         buf.writeVarLong(tank.capacity());
+                        buf.writeVarInt(tank.slot());
                     }
                     buf.writeVarInt(block.rules().size());
                     for (SlotRule rule : block.rules()) SlotRule.STREAM_CODEC.encode(buf, rule);
@@ -94,7 +100,7 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                     int tankCount = buf.readVarInt();
                     List<Tank> tanks = new ArrayList<>(tankCount);
                     for (int t = 0; t < tankCount; t++) {
-                        tanks.add(new Tank(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf), buf.readVarLong(), buf.readVarLong()));
+                        tanks.add(new Tank(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf), buf.readVarLong(), buf.readVarLong(), buf.readVarInt()));
                     }
                     int ruleCount = buf.readVarInt();
                     List<SlotRule> rules = new ArrayList<>(ruleCount);
@@ -133,7 +139,8 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
             // Any block that has slots or tanks (also of other mods)
             ResourceHandler<ItemResource> items = StarAccess.items(player.level(), blockPos);
             ResourceHandler<FluidResource> fluids = StarAccess.fluids(player.level(), blockPos);
-            if ((items == null || items.size() == 0) && (fluids == null || fluids.size() == 0)) return;
+            com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks gases = com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(player.level(), blockPos, null);
+            if ((items == null || items.size() == 0) && (fluids == null || fluids.size() == 0) && gases == null) return;
             ItemStack icon = new ItemStack(blockEntity.getBlockState().getBlock().asItem());
             if (icon.isEmpty()) return;
             List<ItemStack> slots = new ArrayList<>();
@@ -145,7 +152,15 @@ public record BinaryView(BlockPos pos, boolean open, int drives, int cells, long
                 for (int t = 0; t < Math.min(fluids.size(), MAX_SLOTS); t++) {
                     FluidResource fluid = fluids.getResource(t);
                     ItemStack bucket = fluid.isEmpty() ? ItemStack.EMPTY : StarFluids.bucket(fluid.getFluid());
-                    tanks.add(new Tank(bucket, fluids.getAmountAsLong(t), fluids.getCapacityAsLong(t, fluid)));
+                    tanks.add(new Tank(bucket, fluids.getAmountAsLong(t), fluids.getCapacityAsLong(t, fluid), BinaryStarBlockEntity.TANKS + t));
+                }
+            }
+            // The tanks of gases (Mekanism)
+            if (gases != null) {
+                for (int t = 0; t < Math.min(gases.count(), MAX_SLOTS); t++) {
+                    Identifier gas = gases.gas(t);
+                    ItemStack shown = gas == null ? ItemStack.EMPTY : com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas);
+                    tanks.add(new Tank(shown, gas == null ? 0 : gases.amount(t), gases.capacity(t), BinaryStarBlockEntity.GASES + t));
                 }
             }
             Map<Integer, SlotRule> rules = binary.rulesOf(blockPos);

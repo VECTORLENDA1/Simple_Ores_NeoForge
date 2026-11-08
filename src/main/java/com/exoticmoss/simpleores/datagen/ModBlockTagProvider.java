@@ -48,7 +48,8 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.STELLAR_TERMINAL.getKey())
                 .add(ModBlocks.ADVANCED_TERMINAL.getKey())
                 .add(ModBlocks.BINARY_STAR.getKey())
-                .add(ModBlocks.QUASAR.getKey());
+                .add(ModBlocks.QUASAR.getKey())
+                .add(ModBlocks.EVENT_HORIZON.getKey());
 
 
         tag(BlockTags.NEEDS_STONE_TOOL)
@@ -72,7 +73,8 @@ public class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.STELLAR_TERMINAL.getKey())
                 .add(ModBlocks.ADVANCED_TERMINAL.getKey())
                 .add(ModBlocks.BINARY_STAR.getKey())
-                .add(ModBlocks.QUASAR.getKey());
+                .add(ModBlocks.QUASAR.getKey())
+                .add(ModBlocks.EVENT_HORIZON.getKey());
 
         tag(BlockTags.NEEDS_DIAMOND_TOOL)
                 .add(ModBlocks.CELESTINE_BLOCK.getKey())

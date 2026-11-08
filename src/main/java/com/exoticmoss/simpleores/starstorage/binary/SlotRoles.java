@@ -19,6 +19,9 @@ import java.util.List;
 ///  - Mekanism: each slot of its machines has a kind (input, extra, output...) that its screen uses for the
 ///    colors of the slots. Its slots are found with the item handler of the block (the same order as the
 ///    Binary Star sees them). Read without needing Mekanism to be installed (by name);
+///  - Industrial Foregoing (and the other mods made with Titanium): the inventories of the machine (see titanium);
+///  - Thermal: its input slots, then its output slots (see thermal);
+///  - Ender IO: the layout of the machine (see enderIO);
 ///  - blocks like the furnace (WorldlyContainer): a slot that takes items through a side is an input, a slot
 ///    that only gives items is an output;
 ///  - anything else: not known (no color).
@@ -40,7 +43,18 @@ public final class SlotRoles {
         int size = handler.size();
         List<Integer> roles = mekanism(handler, size);
         if (roles != null) return roles;
+        roles = titanium(handler, size);
+        if (roles != null) return roles;
+        roles = thermal(handler, size);
+        if (roles != null) return roles;
+        roles = enderIO(handler, size);
+        if (roles != null) return roles;
         BlockEntity blockEntity = level.getBlockEntity(pos);
+        // The altars of Mystical Agriculture and Draconic Evolution: the middle item, then the result
+        if (blockEntity != null && size == 2 && (blockEntity.getClass().getName().equals("com.blakebr0.mysticalagriculture.tileentity.InfusionAltarTileEntity")
+                || blockEntity.getClass().getName().equals("com.brandon3055.draconicevolution.blocks.tileentity.TileFusionCraftingCore"))) {
+            return List.of(INPUT, OUTPUT);
+        }
         if (blockEntity instanceof WorldlyContainer container && container.getContainerSize() == size) return worldly(container, size);
         return unknown(size);
     }
@@ -88,6 +102,88 @@ public final class SlotRoles {
             }
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------- Titanium (Industrial Foregoing)
+
+    /// Titanium: the handler of the machine (MultiInvCapabilityHandler) has its inventories in the order of the
+    /// screen. An inventory named "output", or that can only push items out (not pull them in), is an output; the
+    /// others are inputs. null = not a Titanium machine.
+    private static List<Integer> titanium(Object handler, int size) {
+        if (!handler.getClass().getSimpleName().equals("MultiInvCapabilityHandler")) return null;
+        try {
+            java.lang.reflect.Field field = handler.getClass().getDeclaredField("inventoryHandlers");
+            field.setAccessible(true);
+            if (!(field.get(handler) instanceof List<?> inventories)) return null;
+            List<Integer> roles = new ArrayList<>(size);
+            for (Object inventory : inventories) {
+                if (!(inventory instanceof ResourceHandler<?> slots)) return null;
+                Method name = find(inventory.getClass(), "getName");
+                Method modes = find(inventory.getClass(), "getValidFacingModes");
+                String text = name == null ? "" : String.valueOf(name.invoke(inventory)).toLowerCase(java.util.Locale.ROOT);
+                boolean pull = true, push = false;
+                if (modes != null && modes.invoke(inventory) instanceof Object[] valid) {
+                    pull = false;
+                    for (Object mode : valid) {
+                        String mode2 = mode instanceof Enum<?> value ? value.name() : "";
+                        pull |= mode2.equals("PULL");
+                        push |= mode2.equals("PUSH");
+                    }
+                }
+                int role = text.contains("output") || push && !pull ? OUTPUT : INPUT;
+                for (int i = 0; i < slots.size(); i++) roles.add(role);
+            }
+            return roles.size() == size ? roles : null;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    // ---------------------------------------------------------------- Thermal
+
+    /// Thermal (CoFH): the handler of the machine (ManagedItemHandler) has its input slots first, then its output
+    /// slots. null = not a Thermal machine.
+    private static List<Integer> thermal(Object handler, int size) {
+        for (Class<?> c = handler.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            if (!c.getSimpleName().equals("ManagedItemHandler")) continue;
+            try {
+                java.lang.reflect.Field field = c.getDeclaredField("inputSlots");
+                field.setAccessible(true);
+                if (!(field.get(handler) instanceof List<?> inputs) || inputs.size() > size) return null;
+                List<Integer> roles = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) roles.add(i < inputs.size() ? INPUT : OUTPUT);
+                return roles;
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------- Ender IO
+
+    /// Ender IO: the handler of the machine keeps the inventory of the machine ("master"), and its layout says which
+    /// slots take items in and which give them out. null = not an Ender IO machine.
+    private static List<Integer> enderIO(Object handler, int size) {
+        if (!handler.getClass().getName().startsWith("com.enderio.")) return null;
+        try {
+            Method master = find(handler.getClass(), "master");
+            Object inventory = master == null ? null : master.invoke(handler);
+            Method getLayout = inventory == null ? null : find(inventory.getClass(), "getLayout");
+            Object layout = getLayout == null ? null : getLayout.invoke(inventory);
+            if (layout == null) return null;
+            Method canInsert = layout.getClass().getMethod("canInsert", int.class);
+            Method canExtract = layout.getClass().getMethod("canExtract", int.class);
+            List<Integer> roles = new ArrayList<>(size);
+            for (int slot = 0; slot < size; slot++) {
+                boolean in = Boolean.TRUE.equals(canInsert.invoke(layout, slot));
+                boolean out = Boolean.TRUE.equals(canExtract.invoke(layout, slot));
+                roles.add(in ? INPUT : out ? OUTPUT : UNKNOWN);
+            }
+            return roles;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     // ---------------------------------------------------------------- like the furnace

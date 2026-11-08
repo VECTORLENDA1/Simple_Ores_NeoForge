@@ -53,6 +53,21 @@ public class FluidCellItem extends Item {
         return Math.max(0, taken);
     }
 
+    /// Puts up to "amount" mB of this gas in the cell. Returns how many mB went in.
+    public long insertGas(ItemStack cell, net.minecraft.resources.Identifier gas, long amount) {
+        long put = Math.min(amount, space(cell));
+        if (put > 0) setContents(cell, getContents(cell).plusGas(gas, put));
+        return Math.max(0, put);
+    }
+
+    /// Takes up to "amount" mB of this gas out of the cell. Returns how many mB were taken.
+    public long extractGas(ItemStack cell, net.minecraft.resources.Identifier gas, long amount) {
+        FluidContents contents = getContents(cell);
+        long taken = Math.min(amount, contents.amountOfGas(gas));
+        if (taken > 0) setContents(cell, contents.plusGas(gas, -taken));
+        return Math.max(0, taken);
+    }
+
     /// A cell with liquids shines like an enchanted item.
     @Override
     public boolean isFoil(ItemStack stack) {
@@ -69,10 +84,18 @@ public class FluidCellItem extends Item {
             tooltip.accept(Component.literal(" " + StarFluids.buckets(entry.amount()) + " ")
                     .append(StarFluids.name(entry.fluid())).withStyle(ChatFormatting.DARK_AQUA));
         }
-        if (contents.entries().size() > TOOLTIP_LINES) {
-            tooltip.accept(Component.translatable("item.simpleores.star_cell.more", contents.entries().size() - TOOLTIP_LINES)
+        int gasLines = Math.max(0, Math.min(TOOLTIP_LINES - contents.entries().size(), contents.gases().size()));
+        for (int i = 0; i < gasLines; i++) {
+            var gas = contents.gases().get(i);
+            tooltip.accept(Component.literal(" " + StarFluids.buckets(gas.amount()) + " ")
+                    .append(com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id())).withStyle(ChatFormatting.DARK_GREEN));
+        }
+        int kinds = contents.entries().size() + contents.gases().size();
+        if (kinds > TOOLTIP_LINES) {
+            tooltip.accept(Component.translatable("item.simpleores.star_cell.more", kinds - TOOLTIP_LINES)
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
+        tooltip.accept(Component.translatable("item.simpleores.fluid_cell.info").withStyle(ChatFormatting.GRAY));
         tooltip.accept(Component.translatable("item.simpleores.star_cell.hint").withStyle(ChatFormatting.DARK_PURPLE));
         super.appendHoverText(stack, context, display, tooltip, flag);
     }

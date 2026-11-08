@@ -73,6 +73,7 @@ public class ModCreativeModTabs {
                     output.accept(ModBlocks.ADVANCED_TERMINAL.get());
                     output.accept(ModBlocks.BINARY_STAR.get());
                     output.accept(ModBlocks.QUASAR.get());
+                    output.accept(ModBlocks.EVENT_HORIZON.get());
                     output.accept(ModItems.RED_DWARF_CELL.get());
                     output.accept(ModItems.WHITE_DWARF_CELL.get());
                     output.accept(ModItems.BLUE_DWARF_CELL.get());

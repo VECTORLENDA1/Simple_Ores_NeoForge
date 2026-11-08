@@ -1,5 +1,9 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
+import com.exoticmoss.simpleores.starstorage.network.Virtual;
+import net.minecraft.resources.Identifier;
+
 import com.exoticmoss.simpleores.starstorage.binary.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
@@ -81,8 +85,36 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private int left, top, height2;
     private final BlockPos pos;
 
-    /// Where one card is on the screen (only the cards that fit are placed).
-    private record Card(int index, int x, int y, int height) {
+    /// Where one card is on the screen (only the cards that fit are placed). "group" = how many blocks of the same kind
+    /// are next to it in the list when it is the first of them (2 or more), else 0.
+    private record Card(int index, int x, int y, int height, int group) {
+    }
+
+    /// The kinds of blocks whose group is open (a closed group shows only its first block, with an arrow).
+    private static final java.util.Set<net.minecraft.world.item.Item> opened = new java.util.HashSet<>();
+
+    /// The blocks shown, in order: {index of the block, size of its group if it is the first of one (else 0)}.
+    /// The blocks of the same kind are next to each other in the list; of a closed group only the first is shown.
+    private List<int[]> shown() {
+        List<int[]> list = new ArrayList<>();
+        List<BinaryView.Block> blocks = view.blocks();
+        for (int i = 0; i < blocks.size(); ) {
+            net.minecraft.world.item.Item kind = blocks.get(i).icon().getItem();
+            int end = i + 1;
+            while (end < blocks.size() && blocks.get(end).icon().is(kind)) end++;
+            int size = end - i;
+            list.add(new int[]{i, size >= 2 ? size : 0});
+            if (size >= 2 && opened.contains(kind)) {
+                for (int j = i + 1; j < end; j++) list.add(new int[]{j, 0});
+            }
+            i = end;
+        }
+        return list;
+    }
+
+    /// The arrow of a group: on the left of the card. {x, y, width, height}
+    private static int[] arrow(Card card) {
+        return new int[]{card.x() - 9, card.y(), 9, CARD_HEADER};
     }
 
     public BinaryScreen(BinaryMenu menu, Inventory inventory, Component title) {
@@ -148,7 +180,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             BinaryView.Block block = view.blocks().get(card.index());
             for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
-                if (y < areaTop() || y + SLOT > areaBottom()) continue;
+                if (y < areaTop() || y + SLOT > areaBottom() || slotId(block, slot) >= BinaryStarBlockEntity.GASES) continue;
                 list.add(new DropSlot(block.pos(), slotId(block, slot), slot >= block.slots().size(), x + 1, y + 1));
             }
         }
@@ -172,7 +204,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     /// The slot number (for the rules) of square "cell": the tanks are BinaryStarBlockEntity.TANKS + tank.
     private static int slotId(BinaryView.Block block, int cell) {
-        return cell < block.slots().size() ? cell : BinaryStarBlockEntity.TANKS + cell - block.slots().size();
+        return cell < block.slots().size() ? cell : block.tanks().get(cell - block.slots().size()).slot();
     }
 
     private static int rows(BinaryView.Block block) {
@@ -203,7 +235,9 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 int x = slotX(card, slot), y = slotY(card, slot);
                 if (mouseX < x || mouseX >= x + SLOT || mouseY < y || mouseY >= y + SLOT) continue;
                 if (slot < block.slots().size()) return JeiTarget.of(block.slots().get(slot).copyWithCount(1), x + 1, y + 1);
-                ItemStack bucket = block.tanks().get(slot - block.slots().size()).bucket();
+                BinaryView.Tank shown = block.tanks().get(slot - block.slots().size());
+                if (shown.gas()) return null;
+                ItemStack bucket = shown.bucket();
                 Fluid fluid = StarFluids.fromBucket(bucket);
                 return fluid == null ? null : new JeiTarget(bucket, fluid, x + 1, y + 1, 16);
             }
@@ -214,10 +248,11 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     private List<Card> cards() {
         List<Card> cards = new ArrayList<>();
         int y = areaTop() - (int) Math.round(scroll);
-        for (int i = 0; i < view.blocks().size(); i++) {
+        for (int[] block : shown()) {
+            int i = block[0];
             int cardHeight = cardHeight(i);
             // Only the cards that can be seen (a card cut by the top or the bottom too)
-            if (y + cardHeight > areaTop() && y < areaBottom()) cards.add(new Card(i, left + 10, y, cardHeight));
+            if (y + cardHeight > areaTop() && y < areaBottom()) cards.add(new Card(i, left + 10, y, cardHeight, block[1]));
             y += cardHeight + CARD_GAP;
         }
         return cards;
@@ -268,7 +303,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
     /// The height of all the cards together.
     private int contentHeight() {
         int height = 0;
-        for (int i = 0; i < view.blocks().size(); i++) height += cardHeight(i) + CARD_GAP;
+        for (int[] block : shown()) height += cardHeight(block[0]) + CARD_GAP;
         return Math.max(0, height - CARD_GAP);
     }
 
@@ -340,6 +375,14 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
         boolean inArea = event.y() >= areaTop() && event.y() < areaBottom();
         for (Card card : inArea ? cards() : List.<Card>of()) {
             BinaryView.Block block = view.blocks().get(card.index());
+            // The arrow (or the name) of a group: opens or closes it
+            int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
+            boolean onName = event.x() >= card.x() && event.x() < nameRight && event.y() >= card.y() && event.y() < card.y() + CARD_HEADER;
+            if (card.group() > 0 && (inside(arrow(card), event.x(), event.y()) || onName)) {
+                net.minecraft.world.item.Item kind = block.icon().getItem();
+                if (!opened.remove(kind)) opened.add(kind);
+                return true;
+            }
             if (inside(button(card, 0), event.x(), event.y())) {
                 send(block.pos(), BinaryAction.TAKE_ALL, 0);
                 return true;
@@ -395,8 +438,19 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             graphics.fill(card.x(), card.y(), card.x() + WIDTH - 20, card.y() + card.height(), CARD);
             graphics.item(block.icon(), card.x() + 2, card.y() + 2);
             int nameRight = button(card, block.options().isEmpty() ? 0 : 2)[0] - 4;
-            graphics.text(font, Component.literal(fit(block.icon().getHoverName().getString(), nameRight - card.x() - 22)),
+            // A group: how many blocks, and its arrow on the left (down = open, right = closed)
+            String name = block.icon().getHoverName().getString();
+            String groupCount = card.group() > 0 ? " x" + card.group() : "";
+            graphics.text(font, Component.literal(fit(name, nameRight - card.x() - 22 - font.width(groupCount)) + groupCount),
                     card.x() + 22, card.y() + 6, TEXT);
+            if (card.group() > 0) {
+                int ax = card.x() - 7, ay = card.y() + 7;
+                boolean open = opened.contains(block.icon().getItem());
+                for (int i = 0; i < 4; i++) {
+                    if (open) graphics.fill(ax + i, ay + i, ax + 7 - i, ay + i + 1, TEXT);
+                    else graphics.fill(ax + i, ay + i, ax + i + 1, ay + 7 - i, TEXT);
+                }
+            }
             drawButton(graphics, button(card, 0), Component.translatable("screen.simpleores.binary.take_all"), mouseX, cardMouseY);
             drawButton(graphics, button(card, 1), Component.translatable("screen.simpleores.binary.clear"), mouseX, cardMouseY);
             if (!block.options().isEmpty()) {
@@ -413,6 +467,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     // A tank: blue square, the bucket of its liquid and the buckets inside
                     BinaryView.Tank tank = block.tanks().get(slot - block.slots().size());
                     graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : TANK_COLOR);
+                    Identifier gas = tank.gas() ? Virtual.gasOf(tank.bucket()) : null;
+                    // (a tank of gas: the gas, drawn with its texture and color)
                     if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
                     if (tank.amount() > 0) {
                         String amount = tank.amount() < StarFluids.BUCKET ? tank.amount() + "m" : StarNetwork.format(tank.amount() / StarFluids.BUCKET);
@@ -422,7 +478,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     if (hovered) {
                         tooltip = new ArrayList<>();
                         Fluid fluid = StarFluids.fromBucket(tank.bucket());
-                        tooltip.add(fluid != null ? StarFluids.name(fluid) : Component.translatable("screen.simpleores.binary.tank"));
+                        tooltip.add(gas != null ? Gases.name(gas) : fluid != null ? StarFluids.name(fluid)
+                                : Component.translatable(tank.gas() ? "screen.simpleores.binary.gas_tank" : "screen.simpleores.binary.tank"));
                         tooltip.add(Component.literal(String.format(Locale.ROOT, "%,d / %,d mB", tank.amount(), tank.capacity())).withColor(TANK_TEXT));
                         if (rule != null && rule.keeps()) {
                             tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", keptNames(rule))
@@ -524,7 +581,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             if (i > 0) names.append(", ");
             ItemStack item = rule.items().get(i).create();
             Fluid fluid = StarFluids.fromBucket(item);
-            names.append(fluid != null ? StarFluids.name(fluid) : item.getHoverName());
+            Identifier gas = Virtual.gasOf(item);
+            names.append(gas != null ? Gases.name(gas) : fluid != null ? StarFluids.name(fluid) : item.getHoverName());
         }
         return names;
     }

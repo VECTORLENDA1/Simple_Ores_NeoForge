@@ -67,8 +67,13 @@ public class JEISimpleOresPlugin implements IModPlugin {
         registration.addRecipeTransferHandler(new QuasarTransferHandler(), mezz.jei.api.constants.RecipeTypes.CRAFTING);
         // "+" on Gravity Core recipes with the Quasar screen open: saves the recipe in the Quasar
         registration.addRecipeTransferHandler(new QuasarCoreTransferHandler(), GravityCoreRecipeCategory.RECIPE_TYPE);
-        // "+" on furnace recipes with the Quasar screen open: puts the input in the furnace tab
-        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler(), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        // "+" on furnace, blast furnace and smoker recipes with the Quasar screen open: puts the input in the furnace tab
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.SMELTING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.FURNACE), mezz.jei.api.constants.RecipeTypes.SMELTING);
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.BLASTING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.BLAST_FURNACE), mezz.jei.api.constants.RecipeTypes.BLASTING);
+        registration.addRecipeTransferHandler(new QuasarFurnaceTransferHandler<>(mezz.jei.api.constants.RecipeTypes.SMOKING,
+                com.exoticmoss.simpleores.starstorage.quasar.Pattern.SMOKER), mezz.jei.api.constants.RecipeTypes.SMOKING);
         // "+" on the recipes of the machines of other mods with the Quasar screen open: puts the recipe in its grid
         registration.addUniversalRecipeTransferHandler(new QuasarMachineTransferHandler(helper));
     }
@@ -77,9 +82,14 @@ public class JEISimpleOresPlugin implements IModPlugin {
     @Override
     public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
         QuasarMachineTransferHandler.runtime = runtime;
+        StarScreenJeiHandler.ingredients = runtime.getIngredientManager();
+        // The item of the gases (see Virtual) is not shown in the list of JEI
+        runtime.getIngredientManager().removeIngredientsAtRuntime(mezz.jei.api.constants.VanillaTypes.ITEM_STACK,
+                java.util.List.of(new net.minecraft.world.item.ItemStack(com.exoticmoss.simpleores.item.ModItems.GAS.get())));
         com.exoticmoss.simpleores.starstorage.client.QuasarScreen.showRecipes = stack -> {
-            if (!stack.isEmpty()) runtime.getRecipesGui().show(runtime.getJeiHelpers().getFocusFactory()
-                    .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, mezz.jei.api.constants.VanillaTypes.ITEM_STACK, stack));
+            // (a liquid or a gas shown as an item: the recipes of that liquid or gas)
+            StarScreenJeiHandler.typed(stack).ifPresent(typed -> runtime.getRecipesGui().show(runtime.getJeiHelpers().getFocusFactory()
+                    .createFocus(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT, typed)));
         };
         com.exoticmoss.simpleores.starstorage.client.QuasarScreen.jeiTick = () -> QuasarGhostHandler.tick(runtime);
         com.exoticmoss.simpleores.starstorage.client.BinaryScreen.jeiTick = () -> BinaryGhostHandler.tick(runtime);

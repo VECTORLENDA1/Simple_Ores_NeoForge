@@ -25,6 +25,7 @@ import java.util.Optional;
 import com.exoticmoss.simpleores.starstorage.magnetar.MagnetarBlockEntity;
 import com.exoticmoss.simpleores.starstorage.quasar.Pattern;
 import com.exoticmoss.simpleores.starstorage.quasar.QuasarBlockEntity;
+import com.exoticmoss.simpleores.starstorage.network.StarAccess;
 import com.exoticmoss.simpleores.starstorage.network.StarNetwork;
 
 /// The auto-craft of the Quasar.
@@ -64,6 +65,10 @@ public final class Autocraft {
     }
 
     private final Map<ItemStackTemplate, Long> stock = new HashMap<>();
+    /// The liquids of the network (mB) the plan can still use.
+    private final Map<net.minecraft.world.level.material.Fluid, Long> fluidStock = new HashMap<>();
+    /// The gases of Mekanism of the network (mB) the plan can still use.
+    private final Map<net.minecraft.resources.Identifier, Long> gasStock = new HashMap<>();
     /// The extra items the planned crafts make (e.g. 9 when 8 are needed): used before the network.
     private final Map<ItemStackTemplate, Long> extras = new HashMap<>();
     /// The items of the network the plan uses (they go into the storage of the job when it starts).
@@ -77,6 +82,8 @@ public final class Autocraft {
 
     private Autocraft(StarNetwork network, boolean advanced) {
         for (Map.Entry<ItemStackTemplate, Long> entry : network.contents()) stock.put(entry.getKey(), entry.getValue());
+        for (var fluid : network.fluids()) fluidStock.merge(fluid.fluid(), fluid.amount(), Long::sum);
+        for (var gas : network.gases()) gasStock.merge(gas.id(), gas.amount(), Long::sum);
         this.patterns = network.patterns().stream().filter(pattern -> advanced || !pattern.advanced()).toList();
     }
 
@@ -127,6 +134,28 @@ public final class Autocraft {
 
     /// Uses "amount" of "item" from the network, crafting what is not there. false = something is missing.
     private boolean need(ItemStackTemplate item, long amount, int depth) {
+        // A liquid or a gas (see Virtual): from the liquids / gases of the network, else made by a recipe
+        ItemStack virtual = item.create();
+        var fluid = com.exoticmoss.simpleores.starstorage.network.Virtual.fluidOf(virtual);
+        var gas = fluid == null ? com.exoticmoss.simpleores.starstorage.network.Virtual.gasOf(virtual) : null;
+        if (fluid != null || gas != null) {
+            long extra = extras.getOrDefault(item, 0L);
+            long fromExtra = Math.min(extra, amount);
+            if (fromExtra > 0) extras.put(item, extra - fromExtra);
+            amount -= fromExtra;
+            if (amount <= 0) return true;
+            long have = fluid != null ? fluidStock.getOrDefault(fluid, 0L) : gasStock.getOrDefault(gas, 0L);
+            long used = Math.min(have, amount);
+            if (fluid != null) fluidStock.put(fluid, have - used);
+            else gasStock.put(gas, have - used);
+            amount -= used;
+            if (amount <= 0) return true;
+            if (patternsFor(item).isEmpty() || depth >= MAX_DEPTH || making.contains(item)) {
+                missing.merge(item, amount, Long::sum);
+                return false;
+            }
+            return craftAny(item, amount, depth);
+        }
         // First the extra items of the planned crafts, then the network
         long extra = extras.getOrDefault(item, 0L);
         long fromExtra = Math.min(extra, amount);
@@ -161,6 +190,8 @@ public final class Autocraft {
                 Map<ItemStackTemplate, Long> extrasBefore = new HashMap<>(extras);
                 Map<ItemStackTemplate, Long> fromNetworkBefore = new HashMap<>(fromNetwork);
                 Map<ItemStackTemplate, Long> missingBefore = new LinkedHashMap<>(missing);
+                Map<net.minecraft.world.level.material.Fluid, Long> fluidsBefore = new HashMap<>(fluidStock);
+                Map<net.minecraft.resources.Identifier, Long> gasesBefore = new HashMap<>(gasStock);
                 int stepsBefore = steps.size();
                 long craftsBefore = crafts;
                 if (craft(option, item, amount, depth) && crafts <= MAX_CRAFTS) return true;
@@ -172,6 +203,10 @@ public final class Autocraft {
                 fromNetwork.putAll(fromNetworkBefore);
                 missing.clear();
                 missing.putAll(missingBefore);
+                fluidStock.clear();
+                fluidStock.putAll(fluidsBefore);
+                gasStock.clear();
+                gasStock.putAll(gasesBefore);
                 while (steps.size() > stepsBefore) steps.remove(steps.size() - 1);
                 crafts = craftsBefore;
             }
@@ -206,6 +241,10 @@ public final class Autocraft {
             items.add(choice);
             ok &= need(choice, needed, depth + 1);
         }
+        // The liquids and the gases of a machine recipe: from the network, or made by other recipes (what is missing
+        // is shown as the bucket of the liquid / a bottle with the name of the gas, see Virtual)
+        for (var fluid : pattern.fluids()) ok &= need(com.exoticmoss.simpleores.starstorage.network.Virtual.fluidKey(fluid.fluid()), times * fluid.amount(), depth + 1);
+        for (var gas : pattern.gases()) ok &= need(com.exoticmoss.simpleores.starstorage.network.Virtual.gasKey(gas.id()), times * gas.amount(), depth + 1);
         steps.add(new Step(pattern, items, times));
         long extra = times * pattern.count() - amount;
         if (extra > 0) extras.merge(item, extra, Long::sum);
@@ -274,11 +313,79 @@ public final class Autocraft {
         private record MachineKey(BlockPos pos, ItemStackTemplate output) {
         }
 
+        /// A result still to be taken out of a machine, altar or furnace after its job is gone (cancelled, or the world
+        /// was closed): the Quasar takes it to the network when it is ready.
+        public record Pickup(ResourceKey<Level> dimension, BlockPos pos, ItemStackTemplate output, long expected, boolean furnace) {
+            public static final com.mojang.serialization.Codec<Pickup> CODEC = com.mojang.serialization.codecs.RecordCodecBuilder.create(inst -> inst.group(
+                    ResourceKey.codec(net.minecraft.core.registries.Registries.DIMENSION).fieldOf("dimension").forGetter(Pickup::dimension),
+                    BlockPos.CODEC.fieldOf("pos").forGetter(Pickup::pos),
+                    ItemStackTemplate.CODEC.fieldOf("output").forGetter(Pickup::output),
+                    com.mojang.serialization.Codec.LONG.fieldOf("expected").forGetter(Pickup::expected),
+                    com.mojang.serialization.Codec.BOOL.optionalFieldOf("furnace", false).forGetter(Pickup::furnace)
+            ).apply(inst, Pickup::new));
+
+            /// Takes what is ready out of the block to the network (what doesn't fit goes to "left"). Returns the
+            /// pickup with what is still to come, or null when nothing more is to come.
+            public @org.jspecify.annotations.Nullable Pickup collect(ServerLevel quasarLevel, StarNetwork network, Map<ItemStackTemplate, Long> left) {
+                ServerLevel level = quasarLevel.getServer().getLevel(dimension);
+                if (level == null) return null;
+                // (not loaded now: later)
+                if (!level.isLoaded(pos)) return this;
+                ItemStack item = output.create();
+                long taken = 0;
+                if (furnace) {
+                    if (!(level.getBlockEntity(pos) instanceof Container container) || container.getContainerSize() < 3) return null;
+                    ItemStack out = container.getItem(2);
+                    if (!out.isEmpty() && ItemStack.isSameItemSameComponents(out, item)) {
+                        int count = (int) Math.min(out.getCount(), expected);
+                        give(network, out.copyWithCount(count), left);
+                        ItemStack rest = out.copy();
+                        rest.shrink(count);
+                        container.setItem(2, rest);
+                        container.setChanged();
+                        taken = count;
+                    }
+                    if (expected - taken <= 0 || container.getItem(0).isEmpty() && container.getItem(2).isEmpty()) return null;
+                    return new Pickup(dimension, pos, output, expected - taken, true);
+                }
+                var handler = StarAccess.items(level, pos);
+                if (handler == null) return null;
+                var sides = StarAccess.itemSides(level, pos);
+                int exact = StarAccess.extractAll(handler, sides, item);
+                if (exact > 0) give(network, item.copyWithCount(exact), left);
+                taken += exact;
+                for (ItemStack other : StarAccess.extractVariants(handler, sides, item)) {
+                    give(network, other, left);
+                    taken += other.getCount();
+                }
+                // An altar that stopped: what is left on its pedestals goes back too
+                Altars.Altar altar = Altars.of(level, pos);
+                if (altar != null && !altar.busy()) {
+                    for (BlockPos at : altar.pedestals()) {
+                        var pedestal = Altars.pedestal(level, at);
+                        if (pedestal != null && pedestal.getSlots() > 0) give(network, pedestal.extractItem(0, 64, false), left);
+                    }
+                    if (expected - taken > 0 && taken == 0) return null;
+                }
+                return expected - taken <= 0 ? null : new Pickup(dimension, pos, output, expected - taken, false);
+            }
+
+            private static void give(StarNetwork network, ItemStack stack, Map<ItemStackTemplate, Long> left) {
+                if (stack.isEmpty()) return;
+                ItemStack rest = network.insert(stack.copy());
+                if (!rest.isEmpty()) left.merge(ItemStackTemplate.fromNonEmptyStack(rest.copyWithCount(1)), (long) rest.getCount(), Long::sum);
+            }
+        }
+
         /// How many of each ingredient of a step were put in a machine.
         private record SentKey(BlockPos pos, int step) {
         }
 
         private final Map<SentKey, long[]> sentToMachines = new HashMap<>();
+        /// The machines used by this job that make liquids, and the liquids they make (taken out to the network).
+        private final Map<BlockPos, java.util.Set<net.minecraft.world.level.material.Fluid>> fluidMachines = new HashMap<>();
+        /// The same for the gases of Mekanism.
+        private final Map<BlockPos, java.util.Set<net.minecraft.resources.Identifier>> gasMachines = new HashMap<>();
         /// At most this many of one ingredient are sent to one machine each time the job works.
         private static final int MAX_SEND = 1024;
         /// The index of the step being worked on now (inside work).
@@ -359,6 +466,18 @@ public final class Autocraft {
             }
         }
 
+        /// A result of a machine that is the item of "expected" but with other data: it counts as "expected", and
+        /// it keeps its own data.
+        private void receiveResult(StarNetwork network, ItemStack stack, ItemStackTemplate expected) {
+            madeBySteps(expected.create().copyWithCount(stack.getCount()));
+            if (ItemStack.isSameItemSameComponents(expected.create(), output.create())) {
+                countFinal(stack.getCount());
+                store(network.insert(stack.copy()));
+            } else {
+                store(stack);
+            }
+        }
+
         private void countFinal(long count) {
             if (made >= amount) return;
             made += Math.min(count, amount - made);
@@ -372,23 +491,39 @@ public final class Autocraft {
         }
 
         /// The job ended (done or cancelled): what is left in its storage goes back to the network.
-        public void finish(StarNetwork network) {
+        /// Returns what didn't fit in the network (it waits in the Quasar).
+        public Map<ItemStackTemplate, Long> finish(StarNetwork network) {
+            Map<ItemStackTemplate, Long> left = new HashMap<>();
             for (Map.Entry<ItemStackTemplate, Long> entry : storage.entrySet()) {
-                long left = entry.getValue();
-                while (left > 0) {
-                    int part = (int) Math.min(left, Integer.MAX_VALUE);
+                long count = entry.getValue();
+                while (count > 0) {
+                    int part = (int) Math.min(count, Integer.MAX_VALUE);
                     ItemStack rest = network.insert(entry.getKey().create().copyWithCount(part));
-                    left -= part;
+                    count -= part - rest.getCount();
                     if (!rest.isEmpty()) break;
                 }
+                if (count > 0) left.merge(entry.getKey(), count, Long::sum);
             }
             storage.clear();
+            return left;
         }
 
-        /// The same, from the Quasar (it finds the network of the job).
-        public void finish(ServerLevel quasarLevel) {
+        /// The same, from the Quasar (it finds the network of the job). Returns what didn't fit in the network.
+        public Map<ItemStackTemplate, Long> finish(ServerLevel quasarLevel) {
             ServerLevel level = quasarLevel.getServer().getLevel(dimension);
-            if (level != null) finish(StarNetwork.at(level, pos));
+            if (level != null) return finish(StarNetwork.at(level, pos));
+            Map<ItemStackTemplate, Long> all = new HashMap<>(storage);
+            storage.clear();
+            return all;
+        }
+
+        /// The results this job still waits for in the machines, altars and furnaces (when the job is cancelled or the
+        /// world is saved, the Quasar still takes them out, see Pickup).
+        public List<Pickup> pickups() {
+            List<Pickup> list = new ArrayList<>();
+            furnaces.forEach((at, wait) -> list.add(new Pickup(dimension, at, wait.output(), wait.expected(), true)));
+            machines.forEach((key, wait) -> list.add(new Pickup(dimension, key.pos(), wait.output(), wait.expected(), false)));
+            return list;
         }
 
         private Job(List<Step> steps, ServerLevel level, BlockPos pos, ItemStackTemplate output, long amount) {
@@ -429,7 +564,12 @@ public final class Autocraft {
         /// Items that came back to the network: they count for the sub-crafts that make that item (their bar only
         /// grows with what is really made, not with what was sent to the machines).
         private void madeBySteps(ItemStack stack) {
-            long left = stack.getCount();
+            madeBySteps(stack, stack.getCount());
+        }
+
+        /// The same, with "count" of the item (a liquid or a gas: its mB, more than an item can count).
+        private void madeBySteps(ItemStack stack, long count) {
+            long left = count;
             for (int i = 0; i < steps.size() - 1 && left > 0; i++) {
                 Step step = steps.get(i);
                 if (!ItemStack.isSameItemSameComponents(stack, step.pattern().output().create())) continue;
@@ -492,7 +632,8 @@ public final class Autocraft {
                 for (Job job : quasar.getJobs()) {
                     if (job.dimension != level.dimension()) continue;
                     for (MachineKey key : job.usedMachines) {
-                        if (key.pos().equals(machinePos) && ItemStack.isSameItemSameComponents(stack, key.output().create())) return true;
+                        // (the same item with other data too: the job takes it, see collectMachines)
+                        if (key.pos().equals(machinePos) && stack.is(key.output().item())) return true;
                     }
                 }
             }
@@ -526,7 +667,7 @@ public final class Autocraft {
 
         /// Does as much as it can now. Returns true if something was done.
         boolean work(ServerLevel level, StarNetwork network) {
-            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | arrivedNow;
+            boolean progress = collectFurnaces(level, network) | collectMachines(level, network) | collectFluids(level, network) | collectGases(level, network) | arrivedNow;
             arrivedNow = false;
             // Every step that is not done yet works as much as it can now (it doesn't wait for the steps before it:
             // what has its ingredients is made). The steps are in order (the sub-crafts first), so what one makes
@@ -541,7 +682,7 @@ public final class Autocraft {
                 // A sub-craft only makes what is still missing for the steps that use it (what the storage of the job
                 // has and what is still in the machines and furnaces count), so nothing more than needed is sent
                 target = step.times();
-                if (i < steps.size() - 1 && !step.pattern().isCore()) {
+                if (i < steps.size() - 1 && !step.pattern().isCore() && !com.exoticmoss.simpleores.starstorage.network.Virtual.isVirtual(step.pattern().output().create())) {
                     long demand = demand(i);
                     if (demand <= 0) {
                         // Nothing uses it any more: this step is done
@@ -729,20 +870,22 @@ public final class Autocraft {
             return progress;
         }
 
-        /// Furnace: puts the input in the furnaces of the field (their input slot), as many as fit.
+        /// Furnace: puts the input in the furnaces of the field of the kind of the recipe (Furnace, Blast Furnace,
+        /// Smoker; their input slot), as many as fit.
         /// The cooked items are collected from those furnaces by collectFurnaces.
         private boolean workFurnace(ServerLevel level, StarNetwork network, Step step) {
             MagnetarBlockEntity magnetar = StarNetwork.findMagnetar(level, pos);
             ItemStackTemplate input = step.items().isEmpty() ? null : step.items().get(0);
             if (magnetar == null || input == null) return false;
-            List<FurnaceBlockEntity> list = new ArrayList<>();
+            List<Container> list = new ArrayList<>();
+            int kind = step.pattern().cooking();
             StarNetwork.forEachBlockEntity(level, magnetar.getBlockPos(), magnetar.radius(), blockEntity -> {
-                if (blockEntity instanceof FurnaceBlockEntity furnace) list.add(furnace);
+                if (furnaceKind(blockEntity) == kind) list.add((Container) blockEntity);
             });
             status = list.isEmpty() ? "screen.simpleores.quasar.job.waiting_furnaces" : "screen.simpleores.quasar.job.working";
             boolean progress = false;
             ItemStack item = input.create();
-            for (FurnaceBlockEntity furnace : list) {
+            for (Container furnace : list) {
                 if (done >= target) break;
                 ItemStack current = furnace.getItem(0);
                 if (!current.isEmpty() && !ItemStack.isSameItemSameComponents(current, item)) continue;
@@ -763,11 +906,40 @@ public final class Autocraft {
                 furnace.setChanged();
                 done += got.getCount();
                 long expected = (long) got.getCount() * step.pattern().count();
-                furnaces.merge(furnace.getBlockPos(), new FurnaceWait(step.pattern().output(), expected),
+                furnaces.merge(((net.minecraft.world.level.block.entity.BlockEntity) furnace).getBlockPos(), new FurnaceWait(step.pattern().output(), expected),
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
                 progress = true;
             }
             return progress;
+        }
+
+        /// The kind of furnace a block is (Pattern.FURNACE, BLAST_FURNACE, SMOKER), or -1 if the auto-craft can't use
+        /// it as a furnace. The Furnace, Blast Furnace and Smoker of Minecraft, and the furnaces of Iron Furnaces (iron,
+        /// gold, diamond, rainbow, crystal...): their kind is the one of their augment (a Blast Furnace or Smoker
+        /// augment makes them that kind), and only while they work as a furnace (not as a generator or a factory).
+        /// All of them have the same slots: 0 = input, 1 = fuel, 2 = result.
+        private static int furnaceKind(net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
+            if (blockEntity instanceof net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity) return Pattern.BLAST_FURNACE;
+            if (blockEntity instanceof net.minecraft.world.level.block.entity.SmokerBlockEntity) return Pattern.SMOKER;
+            if (blockEntity instanceof FurnaceBlockEntity) return Pattern.FURNACE;
+            if (!(blockEntity instanceof Container container) || container.getContainerSize() < 3) return -1;
+            for (Class<?> type = blockEntity.getClass(); type != null; type = type.getSuperclass()) {
+                if (!type.getName().equals("ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase")) continue;
+                try {
+                    if (type.getMethod("isFurnace").invoke(blockEntity) instanceof Boolean furnace && !furnace) return -1;
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    // (no such method: it is a furnace)
+                }
+                try {
+                    Object recipeType = type.getField("recipeType").get(blockEntity);
+                    if (recipeType == RecipeType.BLASTING) return Pattern.BLAST_FURNACE;
+                    if (recipeType == RecipeType.SMOKING) return Pattern.SMOKER;
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    // (no augment known: a furnace)
+                }
+                return Pattern.FURNACE;
+            }
+            return -1;
         }
 
         /// Takes the cooked items of the furnaces used by this job to the network.
@@ -819,6 +991,26 @@ public final class Autocraft {
                     binary.links().forEach((machine, recipes) -> links.computeIfAbsent(machine, p -> new ArrayList<>()).addAll(recipes));
                 }
             });
+            // Only the blocks that take items (a recipe can show more blocks, like the Mechanical Mixer and the Basin of
+            // Create: only the Basin takes the items). A Mechanical Press or Mixer of Create works on the block below it
+            // (a Depot or a Basin).
+            List<BlockPos> usable = new ArrayList<>();
+            for (BlockPos machine : list) {
+                BlockPos at = machine;
+                if (Altars.of(level, at) == null && StarAccess.items(level, at) == null && worksBelow(level, at)) at = at.below();
+                if (!usable.contains(at) && (Altars.of(level, at) != null || StarAccess.items(level, at) != null
+                        || StarAccess.fluids(level, at) != null || com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, at, null) != null)) usable.add(at);
+            }
+            // The pedestals of an altar are not machines by themselves (JEI shows them with the altar, like the
+            // Infusion Pedestal of Mystical Agriculture): the altar puts the items on them
+            java.util.Set<BlockPos> pedestals = new java.util.HashSet<>();
+            for (BlockPos at : usable) {
+                Altars.Altar altar = Altars.of(level, at);
+                if (altar != null) pedestals.addAll(altar.pedestals());
+            }
+            usable.removeAll(pedestals);
+            list.clear();
+            list.addAll(usable);
             // A machine with linked recipes makes only those; a recipe linked to machines goes only to those
             boolean linkedRecipe = links.values().stream().anyMatch(recipes -> recipes.contains(step.pattern()));
             list.removeIf(machine -> links.containsKey(machine) ? !links.get(machine).contains(step.pattern()) : linkedRecipe);
@@ -832,7 +1024,11 @@ public final class Autocraft {
                 items.add(item.create());
                 amounts.add(Math.max(1, step.pattern().amount(i)));
             }
-            if (items.isEmpty()) return false;
+            // A recipe with only liquids and gases: one pretend ingredient, that is always there (the sets are limited
+            // by the liquids and the gases)
+            boolean onlyLiquids = items.isEmpty();
+            if (onlyLiquids && step.pattern().fluids().isEmpty() && step.pattern().gases().isEmpty()) return false;
+            if (onlyLiquids) amounts.add(1);
             int speed = magnetar.speed();
             boolean progress = false;
             // The crafts of the step are split between the machines: each one gets its part (the first ones one
@@ -843,15 +1039,62 @@ public final class Autocraft {
                 BlockPos machinePos = list.get(m);
                 if (done >= target) break;
                 long share = step.times() / machineCount + (m < step.times() % machineCount ? 1 : 0);
+                // An altar with pedestals (Mystical Agriculture, Draconic Evolution): one craft at a time, see Altars
+                Altars.Altar altar = Altars.of(level, machinePos);
+                if (altar != null) {
+                    if (workAltar(level, altar, machinePos, step, items, amounts, share)) progress = true;
+                    continue;
+                }
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
-                if (handler == null) continue;
+                if (handler == null && !onlyLiquids) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
                 // Each ingredient goes in by itself, as much as fits (one doesn't wait for room for the others):
                 // the crafts given to a machine are the whole sets it got
-                long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
-                long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
+                long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[Math.max(1, items.size())]);
+                long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[Math.max(1, items.size())]);
                 long setsBefore = sets(sent, amounts);
                 long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
+                // The liquids of the recipe: only as many sets as the network has liquid for and the tanks of the
+                // machine take
+                var fluids = step.pattern().fluids();
+                var tanks = fluids.isEmpty() ? null : com.exoticmoss.simpleores.starstorage.network.FluidTanks.of(StarAccess.fluids(level, machinePos));
+                var tankSides = fluids.isEmpty() ? List.<com.exoticmoss.simpleores.starstorage.network.FluidTanks>of() : com.exoticmoss.simpleores.starstorage.network.FluidTanks.all(StarAccess.fluidSides(level, machinePos));
+                if (!fluids.isEmpty()) {
+                    long fluidSets = Long.MAX_VALUE;
+                    for (var fluid : fluids) {
+                        long have = network.fluidAmount(fluid.fluid());
+                        int fits = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(),
+                                (int) Math.min(Integer.MAX_VALUE, Math.max(1, have))), true);
+                        fluidSets = Math.min(fluidSets, Math.min(have, fits) / Math.max(1, fluid.amount()));
+                    }
+                    if (fluidSets <= 0) {
+                        status = "screen.simpleores.quasar.job.waiting_items";
+                        continue;
+                    }
+                    goal = Math.min(goal, setsBefore + fluidSets);
+                }
+                // The gases of the recipe: the same
+                var gases = step.pattern().gases();
+                var gasTanks = gases.isEmpty() ? List.<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks>of() : gasTanks(level, machinePos);
+                if (!gases.isEmpty()) {
+                    long gasSets = Long.MAX_VALUE;
+                    for (var gas : gases) {
+                        long have = network.gasAmount(gas.id());
+                        long fits = 0;
+                        for (var tank : gasTanks) fits += tank.fill(gas.id(), Math.max(1, have) - fits, true);
+                        gasSets = Math.min(gasSets, Math.min(have, fits) / Math.max(1, gas.amount()));
+                    }
+                    if (gasSets <= 0) {
+                        status = "screen.simpleores.quasar.job.waiting_items";
+                        continue;
+                    }
+                    goal = Math.min(goal, setsBefore + gasSets);
+                }
+                if (onlyLiquids) {
+                    long more = Math.max(0, goal - sent[0]);
+                    sent[0] += more;
+                    total[0] += more;
+                }
                 for (int k = 0; k < items.size(); k++) {
                     // (all the machines together never get more of an ingredient than the step needs)
                     long want = Math.min(Math.min(goal * amounts.get(k) - sent[k], MAX_SEND),
@@ -872,11 +1115,194 @@ public final class Autocraft {
                 }
                 long given = sets(sent, amounts) - setsBefore;
                 if (given <= 0) continue;
+                // The liquids of the sets given (what the tanks don't take goes back)
+                for (var fluid : fluids) {
+                    long want = given * fluid.amount();
+                    int got = (int) network.extractFluid(fluid.fluid(), Math.min(want, Integer.MAX_VALUE));
+                    if (got <= 0) continue;
+                    int put = fillMachine(tanks, tankSides, new net.neoforged.neoforge.fluids.FluidStack(fluid.fluid(), got), false);
+                    if (put < got) network.insertFluid(fluid.fluid(), got - put);
+                }
+                // The gases of the sets given (what the tanks don't take goes back)
+                for (var gas : gases) {
+                    long got = network.extractGas(gas.id(), given * gas.amount());
+                    long put = 0;
+                    for (var tank : gasTanks) {
+                        if (put >= got) break;
+                        put += tank.fill(gas.id(), got - put, false);
+                    }
+                    if (put < got) network.insertGas(gas.id(), got - put);
+                }
+                if (!step.pattern().gasOutputs().isEmpty()) {
+                    var made = gasMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
+                    for (var gas : step.pattern().gasOutputs()) made.add(gas.id());
+                }
+                if (!step.pattern().fluidOutputs().isEmpty()) {
+                    var made = fluidMachines.computeIfAbsent(machinePos, at -> new java.util.HashSet<>());
+                    for (var fluid : step.pattern().fluidOutputs()) made.add(fluid.fluid());
+                }
                 done += given;
+                progress = true;
+                // (a liquid or a gas is taken out of the machine by collectFluids / collectGases)
+                if (com.exoticmoss.simpleores.starstorage.network.Virtual.isVirtual(step.pattern().output().create())) continue;
                 usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
                 machines.merge(new MachineKey(machinePos, step.pattern().output()),
                         new FurnaceWait(step.pattern().output(), given * step.pattern().count()),
                         (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
+            }
+            return progress;
+        }
+
+        /// A block of Create that works on the block below it (Mechanical Press, Mechanical Mixer).
+        private static boolean worksBelow(ServerLevel level, BlockPos pos) {
+            var blockEntity = level.getBlockEntity(pos);
+            if (blockEntity == null) return false;
+            String name = blockEntity.getClass().getName();
+            return name.equals("com.simibubi.create.content.kinetics.press.MechanicalPressBlockEntity")
+                    || name.equals("com.simibubi.create.content.kinetics.mixer.MechanicalMixerBlockEntity");
+        }
+
+        /// Altar: when it is free, the ingredients go one on each pedestal and the first one (all of its amount) in its
+        /// middle, then it is started. What a craft leaves on the pedestals (like empty buckets) goes back to the job.
+        /// The result is taken out of the altar by collectMachines.
+        private boolean workAltar(ServerLevel level, Altars.Altar altar, BlockPos machinePos, Step step,
+                                  List<ItemStack> items, List<Integer> amounts, long share) {
+            long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
+            long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
+            if (altar.busy()) return false;
+            List<com.exoticmoss.simpleores.starstorage.network.ItemSlots> free = new ArrayList<>();
+            for (BlockPos at : altar.pedestals()) {
+                var pedestal = Altars.pedestal(level, at);
+                if (pedestal == null || pedestal.getSlots() < 1) continue;
+                store(pedestal.extractItem(0, 64, false));
+                if (pedestal.getStackInSlot(0).isEmpty()) free.add(pedestal);
+            }
+            if (done >= target || sets(sent, amounts) >= share) return false;
+            // The first ingredient all goes in the middle (its amount: e.g. 4 crystals in the Fusion Crafting Core of
+            // Draconic Evolution); every other item goes on a pedestal of its own
+            int onPedestals = -amounts.get(0);
+            for (int amount : amounts) onPedestals += amount;
+            if (free.size() < onPedestals) {
+                // (the free pedestals the altar has / the pedestals the recipe needs)
+                status = "screen.simpleores.quasar.job.waiting_pedestals|" + free.size() + "|" + onPedestals;
+                return false;
+            }
+            // The items of one craft (all of them, or nothing)
+            List<ItemStack> got = new ArrayList<>();
+            for (int k = 0; k < items.size(); k++) {
+                ItemStack part = take(items.get(k), amounts.get(k));
+                if (part.getCount() < amounts.get(k)) {
+                    store(part);
+                    giveBack(got);
+                    status = "screen.simpleores.quasar.job.waiting_items";
+                    return false;
+                }
+                got.add(part);
+            }
+            // The middle must take all of its items (checked first, so nothing goes on the pedestals for nothing; not
+            // by trying it: some altars only take the middle item when the pedestals are full)
+            ItemStack middle = got.get(0).split(got.get(0).getCount());
+            if (Math.min(altar.center().getSlotLimit(0), middle.getMaxStackSize()) < middle.getCount()) {
+                store(middle);
+                giveBack(got);
+                status = "screen.simpleores.quasar.job.waiting_machines";
+                return false;
+            }
+            // The pedestals first (some altars start by themselves when the middle item goes in)
+            int next = 0;
+            for (ItemStack stack : got) {
+                while (!stack.isEmpty() && next < free.size()) store(free.get(next++).insertItem(0, stack.split(1), false));
+                store(stack);
+            }
+            ItemStack left = altar.center().insertItem(0, middle, false);
+            if (!left.isEmpty()) {
+                // (the middle didn't go in: the items of the pedestals come back next time the altar is free)
+                store(left);
+                return false;
+            }
+            altar.start().run();
+            for (int k = 0; k < items.size(); k++) {
+                sent[k] += amounts.get(k);
+                total[k] += amounts.get(k);
+            }
+            done++;
+            usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
+            machines.merge(new MachineKey(machinePos, step.pattern().output()),
+                    new FurnaceWait(step.pattern().output(), step.pattern().count()),
+                    (a, b) -> new FurnaceWait(a.output(), a.expected() + b.expected()));
+            return true;
+        }
+
+        /// Puts a liquid in the tanks of a machine (through the sides when it takes nothing without one). Returns how many mB.
+        private static int fillMachine(@org.jspecify.annotations.Nullable com.exoticmoss.simpleores.starstorage.network.FluidTanks tanks,
+                                       List<com.exoticmoss.simpleores.starstorage.network.FluidTanks> sides,
+                                       net.neoforged.neoforge.fluids.FluidStack fluid, boolean simulate) {
+            var action = simulate ? com.exoticmoss.simpleores.starstorage.network.FluidTanks.FluidAction.SIMULATE
+                    : com.exoticmoss.simpleores.starstorage.network.FluidTanks.FluidAction.EXECUTE;
+            int put = tanks == null ? 0 : tanks.fill(fluid.copy(), action);
+            for (var side : sides) {
+                if (put >= fluid.getAmount()) break;
+                put += side.fill(fluid.copyWithAmount(fluid.getAmount() - put), action);
+            }
+            return put;
+        }
+
+        /// The tanks of gases of a machine: without a side, then its sides (only the different ones).
+        private static List<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks> gasTanks(ServerLevel level, BlockPos pos) {
+            List<com.exoticmoss.simpleores.starstorage.gas.Gases.Tanks> list = new ArrayList<>();
+            var tanks = com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, pos, null);
+            if (tanks != null) list.add(tanks);
+            for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) {
+                var sided = com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, pos, side);
+                if (sided != null && !list.contains(sided)) list.add(sided);
+            }
+            return list;
+        }
+
+        /// The gases the machines of this job made go to the network (as much as it takes).
+        private boolean collectGases(ServerLevel level, StarNetwork network) {
+            boolean progress = false;
+            for (var entry : gasMachines.entrySet()) {
+                for (var tank : gasTanks(level, entry.getKey())) {
+                    for (var gas : entry.getValue()) {
+                        long there = tank.drain(gas, Long.MAX_VALUE / 2, true);
+                        if (there <= 0) continue;
+                        long put = network.insertGas(gas, there);
+                        if (put <= 0) continue;
+                        // (the gas asked for)
+                        if (gas.equals(com.exoticmoss.simpleores.starstorage.network.Virtual.gasOf(output.create()))) countFinal(put);
+                        // (the gas of a sub-craft: its bar)
+                        madeBySteps(com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas), put);
+                        tank.drain(gas, put, false);
+                        progress = true;
+                    }
+                }
+            }
+            return progress;
+        }
+
+        /// The liquids the machines of this job made go to the network (as much as it takes).
+        private boolean collectFluids(ServerLevel level, StarNetwork network) {
+            boolean progress = false;
+            for (var entry : fluidMachines.entrySet()) {
+                var tanks = com.exoticmoss.simpleores.starstorage.network.FluidTanks.of(StarAccess.fluids(level, entry.getKey()));
+                List<com.exoticmoss.simpleores.starstorage.network.FluidTanks> all = new ArrayList<>();
+                if (tanks != null) all.add(tanks);
+                all.addAll(com.exoticmoss.simpleores.starstorage.network.FluidTanks.all(StarAccess.fluidSides(level, entry.getKey())));
+                for (var fluid : entry.getValue()) {
+                    for (var from : all) {
+                        int there = from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, Integer.MAX_VALUE),
+                                com.exoticmoss.simpleores.starstorage.network.FluidTanks.FluidAction.SIMULATE).getAmount();
+                        if (there <= 0) continue;
+                        int put = (int) network.insertFluid(fluid, there);
+                        if (put <= 0) continue;
+                        // (the liquid asked for)
+                        if (com.exoticmoss.simpleores.starstorage.network.Virtual.fluidOf(output.create()) == fluid) countFinal(put);
+                        madeBySteps(com.exoticmoss.simpleores.starstorage.network.Virtual.fluid(fluid), put);
+                        from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, put), com.exoticmoss.simpleores.starstorage.network.FluidTanks.FluidAction.EXECUTE);
+                        progress = true;
+                    }
+                }
             }
             return progress;
         }
@@ -902,8 +1328,14 @@ public final class Autocraft {
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, key.pos());
                 ItemStack output = key.output().create();
                 int taken = com.exoticmoss.simpleores.starstorage.network.StarAccess.extractAll(handler, sides, output);
+                if (taken > 0) receive(network, output.copyWithCount(taken));
+                // The result can have more data than the recipe shows (like a tool of Draconic Evolution with its
+                // energy): the same item with other data is the result too
+                for (ItemStack other : StarAccess.extractVariants(handler, sides, output)) {
+                    receiveResult(network, other, key.output());
+                    taken += other.getCount();
+                }
                 if (taken <= 0) continue;
-                receive(network, output.copyWithCount(taken));
                 FurnaceWait wait = machines.get(key);
                 if (wait != null) {
                     long expected = wait.expected() - taken;

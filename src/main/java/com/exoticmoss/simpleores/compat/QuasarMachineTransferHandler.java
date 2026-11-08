@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import com.exoticmoss.simpleores.starstorage.cell.FluidContents;
 import com.exoticmoss.simpleores.starstorage.gas.Gas;
 import com.exoticmoss.simpleores.starstorage.gas.Gases;
+import com.exoticmoss.simpleores.starstorage.network.Virtual;
 import mezz.jei.api.neoforge.NeoForgeTypes;
 import net.neoforged.neoforge.fluids.FluidStack;
 
@@ -107,7 +108,14 @@ public class QuasarMachineTransferHandler implements IUniversalRecipeTransferHan
                 break;
             }
         }
-        if (slots.isEmpty() || output.isEmpty()) {
+        // A recipe that only makes a liquid or a gas: that is its result (as a Virtual item, the amount in mB)
+        if (output.isEmpty() && !fluidOutputs.isEmpty()) {
+            output = Virtual.fluid(fluidOutputs.get(0).fluid()).copyWithCount((int) Math.min(Integer.MAX_VALUE, fluidOutputs.get(0).amount()));
+        } else if (output.isEmpty() && !gasOutputs.isEmpty()) {
+            output = Virtual.gas(gasOutputs.get(0).id()).copyWithCount((int) Math.min(Integer.MAX_VALUE, gasOutputs.get(0).amount()));
+        }
+        boolean anyInput = !slots.isEmpty() || !fluids.isEmpty() || !gases.isEmpty();
+        if (!anyInput || output.isEmpty()) {
             return helper.createUserErrorWithTooltip(Component.translatable("screen.simpleores.quasar.machine.no_items"));
         }
         if (!doTransfer) return null;

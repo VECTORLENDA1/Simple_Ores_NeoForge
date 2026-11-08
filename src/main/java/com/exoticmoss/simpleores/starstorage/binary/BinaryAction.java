@@ -1,5 +1,7 @@
 package com.exoticmoss.simpleores.starstorage.binary;
 
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
+
 import com.exoticmoss.simpleores.SimpleOres;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -25,6 +27,13 @@ import com.exoticmoss.simpleores.starstorage.network.StarFluids;
 public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot) implements CustomPacketPayload {
     /// Only asks for the view again (the screen does it every second).
     public static final int REFRESH = 0;
+    /// The gas of the tank as an item (EMPTY if the tank is empty).
+    private static ItemStack gasItem(@org.jetbrains.annotations.Nullable Gases.Tanks gases, int tank) {
+        if (gases == null) return ItemStack.EMPTY;
+        net.minecraft.resources.ResourceLocation gas = gases.gas(tank);
+        return gas == null ? ItemStack.EMPTY : com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas);
+    }
+
     /// Left-click on a slot: next mode (nothing -> take -> keep -> input and output -> nothing).
     /// With an item in the mouse cursor: that item becomes the item the slot keeps.
     public static final int CLICK = 1;
@@ -65,16 +74,23 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
         IFluidHandler fluids = StarAccess.fluids(player.level(), block);
         int slotCount = items == null ? 0 : items.getSlots();
         int tankCount = fluids == null ? 0 : fluids.getTanks();
-        if (message.action() != REFRESH && binary.inReach(block) && (slotCount > 0 || tankCount > 0)) {
+        Gases.Tanks gases = Gases.tanks(player.level(), block, null);
+        int gasCount = gases == null ? 0 : gases.count();
+        if (message.action() != REFRESH && binary.inReach(block) && (slotCount > 0 || tankCount > 0 || gasCount > 0)) {
             int slot = message.slot();
+            boolean gas = slot >= BinaryStarBlockEntity.GASES;
             boolean tank = slot >= BinaryStarBlockEntity.TANKS;
-            boolean valid = tank ? slot - BinaryStarBlockEntity.TANKS < tankCount : slot >= 0 && slot < slotCount;
+            boolean valid = gas ? slot - BinaryStarBlockEntity.GASES < gasCount
+                    : tank ? slot - BinaryStarBlockEntity.TANKS < tankCount : slot >= 0 && slot < slotCount;
             switch (message.action()) {
                 case CLICK -> {
                     if (!valid) break;
                     // The item that is there now: for a tank, a bucket of its liquid
-                    ItemStack inside = tank ? tankBucket(fluids, slot - BinaryStarBlockEntity.TANKS) : StarAccess.stack(items, slot);
+                    ItemStack inside = gas ? gasItem(gases, slot - BinaryStarBlockEntity.GASES)
+                            : tank ? tankBucket(fluids, slot - BinaryStarBlockEntity.TANKS) : StarAccess.stack(items, slot);
                     ItemStack carried = player.containerMenu.getCarried();
+                    // A tank of gas: only the gas in it can be kept (there is no item of a gas to choose)
+                    if (gas && !carried.isEmpty()) break;
                     // A tank keeps a liquid: only a full bucket can be chosen with the mouse cursor
                     if (tank && !carried.isEmpty() && StarFluids.fromBucket(carried) == null) break;
                     click(binary, block, inside, slot, carried);
@@ -83,6 +99,7 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
                 case TAKE_ALL -> {
                     for (int i = 0; i < slotCount; i++) takeAll(binary, block, i);
                     for (int t = 0; t < tankCount; t++) takeAll(binary, block, BinaryStarBlockEntity.TANKS + t);
+                    for (int t = 0; t < gasCount; t++) takeAll(binary, block, BinaryStarBlockEntity.GASES + t);
                 }
                 case CLEAR -> binary.clearRules(block);
                 case LINK -> {
@@ -121,6 +138,8 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
             if (!binary.inReach(block)) return;
             int slot = message.slot();
             ItemStack item = message.item();
+            // (nothing can be dragged onto a tank of gas)
+            if (slot >= BinaryStarBlockEntity.GASES) return;
             if (slot >= BinaryStarBlockEntity.TANKS) {
                 IFluidHandler fluids = StarAccess.fluids(player.level(), block);
                 int tank = slot - BinaryStarBlockEntity.TANKS;
@@ -146,6 +165,13 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
     private static ItemStack tankBucket(IFluidHandler fluids, int tank) {
         FluidStack fluid = fluids.getFluidInTank(tank);
         return fluid.isEmpty() ? ItemStack.EMPTY : StarFluids.bucket(fluid.getFluid());
+    }
+
+    /// The gas of the tank as an item (EMPTY if the tank is empty).
+    private static ItemStack gasItem(@org.jetbrains.annotations.Nullable Gases.Tanks gases, int tank) {
+        if (gases == null) return ItemStack.EMPTY;
+        net.minecraft.resources.ResourceLocation gas = gases.gas(tank);
+        return gas == null ? ItemStack.EMPTY : com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas);
     }
 
     /// Left-click on a slot: with an item in the mouse cursor, the slot keeps that item too (or, if it was kept

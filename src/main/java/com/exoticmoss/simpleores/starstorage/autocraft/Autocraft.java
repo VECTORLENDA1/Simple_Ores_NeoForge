@@ -134,6 +134,28 @@ public final class Autocraft {
 
     /// Uses "amount" of "item" from the network, crafting what is not there. false = something is missing.
     private boolean need(ItemStackTemplate item, long amount, int depth) {
+        // A liquid or a gas (see Virtual): from the liquids / gases of the network, else made by a recipe
+        ItemStack virtual = item.create();
+        var fluid = com.exoticmoss.simpleores.starstorage.network.Virtual.fluidOf(virtual);
+        var gas = fluid == null ? com.exoticmoss.simpleores.starstorage.network.Virtual.gasOf(virtual) : null;
+        if (fluid != null || gas != null) {
+            long extra = extras.getOrDefault(item, 0L);
+            long fromExtra = Math.min(extra, amount);
+            if (fromExtra > 0) extras.put(item, extra - fromExtra);
+            amount -= fromExtra;
+            if (amount <= 0) return true;
+            long have = fluid != null ? fluidStock.getOrDefault(fluid, 0L) : gasStock.getOrDefault(gas, 0L);
+            long used = Math.min(have, amount);
+            if (fluid != null) fluidStock.put(fluid, have - used);
+            else gasStock.put(gas, have - used);
+            amount -= used;
+            if (amount <= 0) return true;
+            if (patternsFor(item).isEmpty() || depth >= MAX_DEPTH || making.contains(item)) {
+                missing.merge(item, amount, Long::sum);
+                return false;
+            }
+            return craftAny(item, amount, depth);
+        }
         // First the extra items of the planned crafts, then the network
         long extra = extras.getOrDefault(item, 0L);
         long fromExtra = Math.min(extra, amount);
@@ -219,33 +241,10 @@ public final class Autocraft {
             items.add(choice);
             ok &= need(choice, needed, depth + 1);
         }
-        // The liquids of a machine recipe come from the network (what it doesn't have is missing: shown as its bucket)
-        for (var fluid : pattern.fluids()) {
-            long needed = times * fluid.amount();
-            long have = fluidStock.getOrDefault(fluid.fluid(), 0L);
-            long used = Math.min(have, needed);
-            fluidStock.put(fluid.fluid(), have - used);
-            if (used < needed) {
-                ItemStack bucket = com.exoticmoss.simpleores.starstorage.network.StarFluids.bucket(fluid.fluid());
-                missing.merge(ItemStackTemplate.fromNonEmptyStack(bucket.isEmpty() ? new ItemStack(net.minecraft.world.item.Items.BUCKET) : bucket),
-                        needed - used, Long::sum);
-                ok = false;
-            }
-        }
-        // The gases of Mekanism too (what the network doesn't have is missing: shown as a bottle with its name)
-        for (var gas : pattern.gases()) {
-            long needed = times * gas.amount();
-            long have = gasStock.getOrDefault(gas.id(), 0L);
-            long used = Math.min(have, needed);
-            gasStock.put(gas.id(), have - used);
-            if (used < needed) {
-                ItemStack bottle = new ItemStack(net.minecraft.world.item.Items.GLASS_BOTTLE);
-                bottle.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                        com.exoticmoss.simpleores.starstorage.gas.Gases.name(gas.id()).copy().withStyle(style -> style.withItalic(false)));
-                missing.merge(ItemStackTemplate.fromNonEmptyStack(bottle), needed - used, Long::sum);
-                ok = false;
-            }
-        }
+        // The liquids and the gases of a machine recipe: from the network, or made by other recipes (what is missing
+        // is shown as the bucket of the liquid / a bottle with the name of the gas, see Virtual)
+        for (var fluid : pattern.fluids()) ok &= need(com.exoticmoss.simpleores.starstorage.network.Virtual.fluidKey(fluid.fluid()), times * fluid.amount(), depth + 1);
+        for (var gas : pattern.gases()) ok &= need(com.exoticmoss.simpleores.starstorage.network.Virtual.gasKey(gas.id()), times * gas.amount(), depth + 1);
         steps.add(new Step(pattern, items, times));
         long extra = times * pattern.count() - amount;
         if (extra > 0) extras.merge(item, extra, Long::sum);
@@ -678,7 +677,7 @@ public final class Autocraft {
                 // A sub-craft only makes what is still missing for the steps that use it (what the storage of the job
                 // has and what is still in the machines and furnaces count), so nothing more than needed is sent
                 target = step.times();
-                if (i < steps.size() - 1 && !step.pattern().isCore()) {
+                if (i < steps.size() - 1 && !step.pattern().isCore() && !com.exoticmoss.simpleores.starstorage.network.Virtual.isVirtual(step.pattern().output().create())) {
                     long demand = demand(i);
                     if (demand <= 0) {
                         // Nothing uses it any more: this step is done
@@ -994,7 +993,8 @@ public final class Autocraft {
             for (BlockPos machine : list) {
                 BlockPos at = machine;
                 if (Altars.of(level, at) == null && StarAccess.items(level, at) == null && worksBelow(level, at)) at = at.below();
-                if (!usable.contains(at) && (Altars.of(level, at) != null || StarAccess.items(level, at) != null)) usable.add(at);
+                if (!usable.contains(at) && (Altars.of(level, at) != null || StarAccess.items(level, at) != null
+                        || StarAccess.fluids(level, at) != null || com.exoticmoss.simpleores.starstorage.gas.Gases.tanks(level, at, null) != null)) usable.add(at);
             }
             // The pedestals of an altar are not machines by themselves (JEI shows them with the altar, like the
             // Infusion Pedestal of Mystical Agriculture): the altar puts the items on them
@@ -1019,7 +1019,11 @@ public final class Autocraft {
                 items.add(item.create());
                 amounts.add(Math.max(1, step.pattern().amount(i)));
             }
-            if (items.isEmpty()) return false;
+            // A recipe with only liquids and gases: one pretend ingredient, that is always there (the sets are limited
+            // by the liquids and the gases)
+            boolean onlyLiquids = items.isEmpty();
+            if (onlyLiquids && step.pattern().fluids().isEmpty() && step.pattern().gases().isEmpty()) return false;
+            if (onlyLiquids) amounts.add(1);
             int speed = magnetar.speed();
             boolean progress = false;
             // The crafts of the step are split between the machines: each one gets its part (the first ones one
@@ -1037,12 +1041,12 @@ public final class Autocraft {
                     continue;
                 }
                 var handler = com.exoticmoss.simpleores.starstorage.network.StarAccess.items(level, machinePos);
-                if (handler == null) continue;
+                if (handler == null && !onlyLiquids) continue;
                 var sides = com.exoticmoss.simpleores.starstorage.network.StarAccess.itemSides(level, machinePos);
                 // Each ingredient goes in by itself, as much as fits (one doesn't wait for room for the others):
                 // the crafts given to a machine are the whole sets it got
-                long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[items.size()]);
-                long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[items.size()]);
+                long[] sent = sentToMachines.computeIfAbsent(new SentKey(machinePos, stepNow), key -> new long[Math.max(1, items.size())]);
+                long[] total = stepSent.computeIfAbsent(stepNow, key -> new long[Math.max(1, items.size())]);
                 long setsBefore = sets(sent, amounts);
                 long goal = Math.min(share, setsBefore + Math.min(SETS[speed], target - done));
                 // The liquids of the recipe: only as many sets as the network has liquid for and the tanks of the
@@ -1080,6 +1084,11 @@ public final class Autocraft {
                         continue;
                     }
                     goal = Math.min(goal, setsBefore + gasSets);
+                }
+                if (onlyLiquids) {
+                    long more = Math.max(0, goal - sent[0]);
+                    sent[0] += more;
+                    total[0] += more;
                 }
                 for (int k = 0; k < items.size(); k++) {
                     // (all the machines together never get more of an ingredient than the step needs)
@@ -1128,6 +1137,9 @@ public final class Autocraft {
                     for (var fluid : step.pattern().fluidOutputs()) made.add(fluid.fluid());
                 }
                 done += given;
+                progress = true;
+                // (a liquid or a gas is taken out of the machine by collectFluids / collectGases)
+                if (com.exoticmoss.simpleores.starstorage.network.Virtual.isVirtual(step.pattern().output().create())) continue;
                 usedMachines.add(new MachineKey(machinePos, step.pattern().output()));
                 machines.merge(new MachineKey(machinePos, step.pattern().output()),
                         new FurnaceWait(step.pattern().output(), given * step.pattern().count()),
@@ -1252,6 +1264,8 @@ public final class Autocraft {
                         if (there <= 0) continue;
                         long put = network.insertGas(gas, there);
                         if (put <= 0) continue;
+                        // (the gas asked for)
+                        if (gas.equals(com.exoticmoss.simpleores.starstorage.network.Virtual.gasOf(output.create()))) countFinal(put);
                         tank.drain(gas, put, false);
                         progress = true;
                     }
@@ -1275,6 +1289,8 @@ public final class Autocraft {
                         if (there <= 0) continue;
                         int put = (int) network.insertFluid(fluid, there);
                         if (put <= 0) continue;
+                        // (the liquid asked for)
+                        if (com.exoticmoss.simpleores.starstorage.network.Virtual.fluidOf(output.create()) == fluid) countFinal(put);
                         from.drain(new net.neoforged.neoforge.fluids.FluidStack(fluid, put), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
                         progress = true;
                     }

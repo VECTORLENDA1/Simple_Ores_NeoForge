@@ -207,7 +207,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
         Map<ItemStackTemplate, Long> totals = new LinkedHashMap<>();
         forEachCell((drive, cell, item) -> {
             for (CellContents.Entry entry : StarCellItem.getContents(cell).entries()) {
-                totals.merge(entry.item(), (long) entry.count(), Long::sum);
+                totals.merge(entry.item(), (long) entry.count(), StarNetwork::add);
             }
         });
         for (External external : externals()) {
@@ -215,7 +215,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
             for (int slot = 0; slot < external.items().getSlots(); slot++) {
                 ItemStack stack = external.items().getStackInSlot(slot);
                 if (stack.isEmpty() || !external.horizon().accepts(stack)) continue;
-                totals.merge(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1)), (long) stack.getCount(), Long::sum);
+                totals.merge(ItemStackTemplate.fromNonEmptyStack(stack.copyWithCount(1)), (long) stack.getCount(), StarNetwork::add);
             }
         }
         List<Map.Entry<ItemStackTemplate, Long>> list = new ArrayList<>(totals.entrySet());
@@ -232,10 +232,10 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// Items kept in all the cells (and in the inventories of the Event Horizons).
     public long usedItems() {
         long[] used = {0};
-        forEachCell((drive, cell, item) -> used[0] += StarCellItem.getContents(cell).totalCount());
+        forEachCell((drive, cell, item) -> used[0] = add(used[0], StarCellItem.getContents(cell).totalCount()));
         for (External external : externals()) {
             if (external.items() == null) continue;
-            for (int slot = 0; slot < external.items().getSlots(); slot++) used[0] += external.items().getStackInSlot(slot).getCount();
+            for (int slot = 0; slot < external.items().getSlots(); slot++) used[0] = add(used[0], external.items().getStackInSlot(slot).getCount());
         }
         return used[0];
     }
@@ -243,10 +243,10 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// How many items fit in all the cells (and in the inventories of the Event Horizons).
     public long capacity() {
         long[] capacity = {0};
-        forEachCell((drive, cell, item) -> capacity[0] += item.tier.capacity);
+        forEachCell((drive, cell, item) -> capacity[0] = add(capacity[0], item.tier.capacity));
         for (External external : externals()) {
             if (external.items() == null) continue;
-            for (int slot = 0; slot < external.items().getSlots(); slot++) capacity[0] += external.items().getSlotLimit(slot);
+            for (int slot = 0; slot < external.items().getSlots(); slot++) capacity[0] = add(capacity[0], external.items().getSlotLimit(slot));
         }
         return capacity[0];
     }
@@ -358,13 +358,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public List<FluidContents.Entry> fluids() {
         Map<Fluid, Long> totals = new LinkedHashMap<>();
         forEachFluidCell((drive, cell, item) -> {
-            for (FluidContents.Entry entry : FluidCellItem.getContents(cell).entries()) totals.merge(entry.fluid(), entry.amount(), Long::sum);
+            for (FluidContents.Entry entry : FluidCellItem.getContents(cell).entries()) totals.merge(entry.fluid(), entry.amount(), StarNetwork::add);
         });
         for (External external : externals()) {
             if (external.fluids() == null) continue;
             for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
                 FluidStack fluid = external.fluids().getFluidInTank(tank);
-                if (!fluid.isEmpty() && external.horizon().acceptsFluid(fluid.getFluid())) totals.merge(fluid.getFluid(), (long) fluid.getAmount(), Long::sum);
+                if (!fluid.isEmpty() && external.horizon().acceptsFluid(fluid.getFluid())) totals.merge(fluid.getFluid(), (long) fluid.getAmount(), StarNetwork::add);
             }
         }
         List<FluidContents.Entry> list = new ArrayList<>();
@@ -376,10 +376,10 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// mB of liquids kept / that fit in all the Fluid Cells.
     public long fluidUsed() {
         long[] used = {0};
-        forEachFluidCell((drive, cell, item) -> used[0] += FluidCellItem.getContents(cell).total());
+        forEachFluidCell((drive, cell, item) -> used[0] = add(used[0], FluidCellItem.getContents(cell).total()));
         for (External external : externals()) {
             if (external.fluids() == null) continue;
-            for (int tank = 0; tank < external.fluids().getTanks(); tank++) used[0] += external.fluids().getFluidInTank(tank).getAmount();
+            for (int tank = 0; tank < external.fluids().getTanks(); tank++) used[0] = add(used[0], external.fluids().getFluidInTank(tank).getAmount());
         }
         return used[0];
     }
@@ -399,12 +399,12 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// How many mB of this liquid the network has.
     public long fluidAmount(Fluid fluid) {
         long[] amount = {0};
-        forEachFluidCell((drive, cell, item) -> amount[0] += FluidCellItem.getContents(cell).amountOf(fluid));
+        forEachFluidCell((drive, cell, item) -> amount[0] = add(amount[0], FluidCellItem.getContents(cell).amountOf(fluid)));
         for (External external : externals()) {
             if (external.fluids() == null) continue;
             for (int tank = 0; tank < external.fluids().getTanks(); tank++) {
                 FluidStack inside = external.fluids().getFluidInTank(tank);
-                if (inside.getFluid() == fluid && external.horizon().acceptsFluid(fluid)) amount[0] += inside.getAmount();
+                if (inside.getFluid() == fluid && external.horizon().acceptsFluid(fluid)) amount[0] = add(amount[0], inside.getAmount());
             }
         }
         return amount[0];
@@ -469,13 +469,13 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     public List<Gas> gases() {
         Map<ResourceLocation, Long> totals = new LinkedHashMap<>();
         forEachFluidCell((drive, cell, item) -> {
-            for (Gas gas : FluidCellItem.getContents(cell).gases()) totals.merge(gas.id(), gas.amount(), Long::sum);
+            for (Gas gas : FluidCellItem.getContents(cell).gases()) totals.merge(gas.id(), gas.amount(), StarNetwork::add);
         });
         for (External external : externals()) {
             if (external.gases() == null) continue;
             for (int tank = 0; tank < external.gases().count(); tank++) {
                 ResourceLocation gas = external.gases().gas(tank);
-                if (gas != null) totals.merge(gas, external.gases().amount(tank), Long::sum);
+                if (gas != null) totals.merge(gas, external.gases().amount(tank), StarNetwork::add);
             }
         }
         List<Gas> list = new ArrayList<>();
@@ -487,11 +487,11 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
     /// How many mB of this gas the network has.
     public long gasAmount(ResourceLocation gas) {
         long[] amount = {0};
-        forEachFluidCell((drive, cell, item) -> amount[0] += FluidCellItem.getContents(cell).amountOfGas(gas));
+        forEachFluidCell((drive, cell, item) -> amount[0] = add(amount[0], FluidCellItem.getContents(cell).amountOfGas(gas)));
         for (External external : externals()) {
             if (external.gases() == null) continue;
             for (int tank = 0; tank < external.gases().count(); tank++) {
-                if (gas.equals(external.gases().gas(tank))) amount[0] += external.gases().amount(tank);
+                if (gas.equals(external.gases().gas(tank))) amount[0] = add(amount[0], external.gases().amount(tank));
             }
         }
         return amount[0];
@@ -545,11 +545,25 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
 
     // ---------------------------------------------------------------- text
 
-    /// "950", "14.4k", "2.1M", "3.2B".
+    /// Thousand (k), million (M), billion (B), trillion (T), quadrillion (Q), quintillion (E).
+    private static final String[] UNITS = {"k", "M", "B", "T", "Q", "E"};
+
+    /// A short amount that always fits in a slot: "950", "14.4k", "144k", "2.1M", "3.2B", "9.2E".
     public static String format(long count) {
-        if (count < 1000) return String.valueOf(count);
-        if (count < 1_000_000) return String.format(Locale.ROOT, "%.1fk", count / 1000.0);
-        if (count < 1_000_000_000) return String.format(Locale.ROOT, "%.1fM", count / 1_000_000.0);
-        return String.format(Locale.ROOT, "%.1fB", count / 1_000_000_000.0);
+        if (count < 1000) return String.valueOf(Math.max(0, count));
+        double value = count;
+        int unit = -1;
+        while (value >= 999.95 && unit < UNITS.length - 1) {
+            value /= 1000;
+            unit++;
+        }
+        return String.format(Locale.ROOT, value < 99.95 ? "%.1f%s" : "%.0f%s", value, UNITS[unit]);
+    }
+
+    /// a + b, but never more than the biggest number (a creative tank has "infinite" amounts: added to other amounts
+    /// they would go round to negative numbers).
+    public static long add(long a, long b) {
+        long sum = a + b;
+        return ((a ^ sum) & (b ^ sum)) < 0 ? (a < 0 ? Long.MIN_VALUE : Long.MAX_VALUE) : sum;
     }
 }

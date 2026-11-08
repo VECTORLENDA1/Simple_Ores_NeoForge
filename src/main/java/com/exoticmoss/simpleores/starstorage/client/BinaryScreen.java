@@ -1,5 +1,9 @@
 package com.exoticmoss.simpleores.starstorage.client;
 
+import com.exoticmoss.simpleores.starstorage.gas.Gases;
+import com.exoticmoss.simpleores.starstorage.network.Virtual;
+import net.minecraft.resources.ResourceLocation;
+
 import com.exoticmoss.simpleores.starstorage.binary.BinaryAction;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryMenu;
 import com.exoticmoss.simpleores.starstorage.binary.BinaryView;
@@ -178,7 +182,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             BinaryView.Block block = view.blocks().get(card.index());
             for (int slot = 0; slot < cells(block); slot++) {
                 int x = slotX(card, slot), y = slotY(card, slot);
-                if (y < areaTop() || y + SLOT > areaBottom()) continue;
+                if (y < areaTop() || y + SLOT > areaBottom() || slotId(block, slot) >= BinaryStarBlockEntity.GASES) continue;
                 list.add(new DropSlot(block.pos(), slotId(block, slot), slot >= block.slots().size(), x + 1, y + 1));
             }
         }
@@ -202,7 +206,7 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
 
     /// The slot number (for the rules) of square "cell": the tanks are BinaryStarBlockEntity.TANKS + tank.
     private static int slotId(BinaryView.Block block, int cell) {
-        return cell < block.slots().size() ? cell : BinaryStarBlockEntity.TANKS + cell - block.slots().size();
+        return cell < block.slots().size() ? cell : block.tanks().get(cell - block.slots().size()).slot();
     }
 
     private static int rows(BinaryView.Block block) {
@@ -233,7 +237,9 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                 int x = slotX(card, slot), y = slotY(card, slot);
                 if (mouseX < x || mouseX >= x + SLOT || mouseY < y || mouseY >= y + SLOT) continue;
                 if (slot < block.slots().size()) return JeiTarget.of(block.slots().get(slot).copyWithCount(1), x + 1, y + 1);
-                ItemStack bucket = block.tanks().get(slot - block.slots().size()).bucket();
+                BinaryView.Tank shown = block.tanks().get(slot - block.slots().size());
+                if (shown.gas()) return null;
+                ItemStack bucket = shown.bucket();
                 Fluid fluid = StarFluids.fromBucket(bucket);
                 return fluid == null ? null : new JeiTarget(bucket, fluid, x + 1, y + 1, 16);
             }
@@ -470,7 +476,10 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     // A tank: blue square, the bucket of its liquid and the buckets inside
                     BinaryView.Tank tank = block.tanks().get(slot - block.slots().size());
                     graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, hovered ? SLOT_HOVER : TANK_COLOR);
-                    if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
+                    ResourceLocation gas = tank.gas() ? Virtual.gasOf(tank.bucket()) : null;
+                    // A tank of gas: a square of the color of the gas
+                    if (gas != null) graphics.fill(x + 4, y + 4, x + SLOT - 4, y + SLOT - 4, Gases.color(gas));
+                    else if (!tank.bucket().isEmpty()) graphics.item(tank.bucket(), x + 1, y + 1);
                     if (tank.amount() > 0) {
                         String amount = tank.amount() < StarFluids.BUCKET ? tank.amount() + "m" : StarNetwork.format(tank.amount() / StarFluids.BUCKET);
                         graphics.text(font, Component.literal(amount), x + SLOT - 1 - font.width(amount), y + SLOT - 9, TANK_TEXT);
@@ -479,7 +488,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
                     if (hovered) {
                         tooltip = new ArrayList<>();
                         Fluid fluid = StarFluids.fromBucket(tank.bucket());
-                        tooltip.add(fluid != null ? StarFluids.name(fluid) : Component.translatable("screen.simpleores.binary.tank"));
+                        tooltip.add(gas != null ? Gases.name(gas) : fluid != null ? StarFluids.name(fluid)
+                                : Component.translatable(tank.gas() ? "screen.simpleores.binary.gas_tank" : "screen.simpleores.binary.tank"));
                         tooltip.add(Component.literal(String.format(Locale.ROOT, "%,d / %,d mB", tank.amount(), tank.capacity())).withColor(TANK_TEXT));
                         if (rule != null && rule.keeps()) {
                             tooltip.add(Component.translatable(rule.takes() ? "screen.simpleores.binary.both" : "screen.simpleores.binary.keeping", keptNames(rule))
@@ -582,7 +592,8 @@ public class BinaryScreen extends AbstractContainerScreen<BinaryMenu> implements
             if (i > 0) names.append(", ");
             ItemStack item = rule.items().get(i).create();
             Fluid fluid = StarFluids.fromBucket(item);
-            names.append(fluid != null ? StarFluids.name(fluid) : item.getHoverName());
+            ResourceLocation gas = Virtual.gasOf(item);
+            names.append(gas != null ? Gases.name(gas) : fluid != null ? StarFluids.name(fluid) : item.getHoverName());
         }
         return names;
     }

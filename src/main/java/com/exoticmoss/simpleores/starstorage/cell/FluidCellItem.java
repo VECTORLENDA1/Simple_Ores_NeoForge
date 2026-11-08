@@ -94,6 +94,7 @@ public class FluidCellItem extends Item {
             tooltip.add(Component.translatable("item.simpleores.star_cell.more", kinds - TOOLTIP_LINES)
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
+        tooltip.add(Component.translatable("item.simpleores.fluid_cell.info").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.simpleores.star_cell.hint").withStyle(ChatFormatting.DARK_PURPLE));
         super.appendHoverText(stack, context, tooltip, flag);
     }

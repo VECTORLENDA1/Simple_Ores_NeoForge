@@ -49,8 +49,8 @@ public class CoreDrawing {
         collector.submitCustomGeometry(pose, solidType, (p, v) -> sphere(p, v, radius, time, coreColor, spotColor, shading));
 
         // ---- Glow (corona): two transparent layers, the outer one fainter
-        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor)));
-        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.35f, ARGB.color(40, glowColor)));
+        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.12f, ARGB.color(100, glowColor), shading));
+        collector.submitCustomGeometry(pose, type, (p, v) -> glowSphere(p, v, radius * 1.35f, ARGB.color(40, glowColor), shading));
 
         // ---- Accretion disk (only tiers with a disk color, like the Black Hole)
         if (ARGB.alpha(diskColor) > 0) {
@@ -94,6 +94,16 @@ public class CoreDrawing {
     /// A sphere with a single color (used for the glow layers).
     private static void glowSphere(PoseStack.Pose pose, VertexConsumer v, float radius, int color) {
         forEachSphereQuad((x, y, z) -> vertex(pose, v, x * radius, y * radius, z * radius, x, y, z, color));
+    }
+
+    /// A glow layer that fades out toward its edge (and its back side is not seen): a soft light around the star,
+    /// without a hard ring where the layer ends.
+    private static void glowSphere(PoseStack.Pose pose, VertexConsumer v, float radius, int color, Shading shading) {
+        int alpha = ARGB.alpha(color);
+        forEachSphereQuad((x, y, z) -> {
+            float facing = Mth.clamp(shading.facing(pose, x, y, z), 0, 1);
+            vertex(pose, v, x * radius, y * radius, z * radius, x, y, z, ARGB.color((int) (alpha * facing), color));
+        });
     }
 
     /// A value from 0 to 1 that changes slowly over the surface and over time: the "spots" of the star.

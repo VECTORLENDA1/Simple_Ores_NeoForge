@@ -182,6 +182,18 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
         filter();
     }
 
+    /// True while the order is kept (shift held, see filter).
+    private boolean frozen;
+
+    private boolean shiftDown() {
+        return net.minecraft.client.gui.screens.Screen.hasShiftDown();
+    }
+
+    /// What tells an item of the list from the others (the item, or its liquid, or its gas).
+    private static java.util.List<Object> itemKey(TerminalContents.Item item) {
+        return java.util.Arrays.asList(item.item(), item.fluid(), item.gas());
+    }
+
     /// Search and sort.
     private void filter() {
         String text = search.trim().toLowerCase(Locale.ROOT);
@@ -213,6 +225,21 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
             case 2 -> list.sort(byName);
             case 3 -> list.sort(byName.reversed());
             default -> list.sort(Comparator.comparingLong(TerminalContents.Item::count).reversed().thenComparing(byName));
+        }
+        // While shift is held (taking a lot out with shift + click), nothing moves: the items keep their places (only
+        // their amounts change; the ones that ran out go away, the new ones go at the end). Sorted again when shift
+        // is let go
+        if (shiftDown() && !shown.isEmpty()) {
+            java.util.Map<java.util.List<Object>, TerminalContents.Item> fresh = new java.util.LinkedHashMap<>();
+            for (TerminalContents.Item item : list) fresh.put(itemKey(item), item);
+            List<TerminalContents.Item> kept = new ArrayList<>();
+            for (TerminalContents.Item old : shown) {
+                TerminalContents.Item now = fresh.remove(itemKey(old));
+                if (now != null) kept.add(now);
+            }
+            kept.addAll(fresh.values());
+            list = kept;
+            frozen = true;
         }
         shown = list;
         scroll = Mth.clamp(scroll, 0, maxScroll());
@@ -502,6 +529,11 @@ public class TerminalScreen<M extends AbstractContainerMenu & NetworkMenu> exten
 
     @Override
     protected void containerTick() {
+        // Shift let go: the items are sorted again
+        if (frozen && !shiftDown()) {
+            frozen = false;
+            filter();
+        }
         // Every second: ask for the contents again (other players or machines may have changed them)
         if (++ticks % REFRESH_TICKS == 1) send(TerminalAction.REFRESH, Optional.empty());
     }

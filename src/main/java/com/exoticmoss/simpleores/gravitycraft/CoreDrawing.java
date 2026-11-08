@@ -58,7 +58,7 @@ public class CoreDrawing {
         if (ARGB.alpha(diskColor) > 0) {
             pose.pushPose();
             pose.mulPose(Axis.XP.rotationDegrees(DISK_TILT));
-            pose.mulPose(Axis.YP.rotationDegrees(time * 2));
+            pose.mulPose(Axis.YP.rotationDegrees(time * 3));
             int outer = ARGB.color(0, glowColor); // fades out to transparent at the edge
             collector.submitCustomGeometry(pose, type, (p, v) -> ring(p, v, radius * 1.15f, radius * 2.3f, diskColor, outer));
             pose.popPose();
@@ -153,25 +153,33 @@ public class CoreDrawing {
         for (int i = 0; i < pieces; i++) {
             float a1 = Mth.TWO_PI * i / pieces;
             float a2 = Mth.TWO_PI * (i + 1) / pieces;
+            // Brighter arms and darker gaps: they show the disk turning
+            int in1 = armColor(innerColor, a1), in2 = armColor(innerColor, a2);
             // top side
-            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, 1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, 1, 0, in1);
             vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, 1, 0, outerColor);
             vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, 1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, 1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, 1, 0, in2);
             // bottom side (same points in reverse order)
-            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, -1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a2) * inner, 0, Mth.sin(a2) * inner, 0, -1, 0, in2);
             vertex(pose, v, Mth.cos(a2) * outer, 0, Mth.sin(a2) * outer, 0, -1, 0, outerColor);
             vertex(pose, v, Mth.cos(a1) * outer, 0, Mth.sin(a1) * outer, 0, -1, 0, outerColor);
-            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, -1, 0, innerColor);
+            vertex(pose, v, Mth.cos(a1) * inner, 0, Mth.sin(a1) * inner, 0, -1, 0, in1);
         }
+    }
+
+    /// The color of the disk at an angle: 3 brighter arms with darker gaps between them.
+    private static int armColor(int color, float angle) {
+        float arm = 0.5f + 0.5f * Mth.sin(angle * 3);
+        return ARGB.color((int) (ARGB.alpha(color) * (0.45f + 0.55f * arm)), ARGB.scaleRGB(color, 0.7f + 0.3f * arm));
     }
 
     /// One light beam coming out of a pole: two crossed flat strips that fade out at the tip.
     /// direction = 1 for the top pole, -1 for the bottom pole.
     private static void beam(PoseStack.Pose pose, VertexConsumer v, float radius, float length, int direction, int color) {
         float start = radius * 0.8f * direction;
-        float end = (radius + length) * direction;
-        float width = radius * 0.25f;
+        float end = (radius + length * 0.55f) * direction;
+        float width = radius * 0.16f;
         int base = ARGB.color(180, color);
         int tip = ARGB.color(0, color);
 

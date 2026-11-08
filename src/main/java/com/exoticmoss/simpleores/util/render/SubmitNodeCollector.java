@@ -49,13 +49,23 @@ public record SubmitNodeCollector(MultiBufferSource buffers, boolean world) {
     public static void drawLater() {
         if (LATER.isEmpty()) return;
         MultiBufferSource.BufferSource source = Minecraft.getInstance().renderBuffers().bufferSource();
-        java.util.Set<RenderType> types = new java.util.LinkedHashSet<>();
-        for (Later later : LATER) {
-            later.drawing().accept(later.pose(), source.getBuffer(later.type()));
-            types.add(later.type());
-        }
+        // Star by star, the farthest first (each star in the order its parts were given: glow, disk, beams), then
+        // the light shells and areas, over everything
+        List<Later> stars = new ArrayList<>(), overlays = new ArrayList<>();
+        for (Later later : LATER) (RenderTypes.isOverlay(later.type()) ? overlays : stars).add(later);
         LATER.clear();
-        for (RenderType type : types) source.endBatch(type);
+        stars.sort(java.util.Comparator.comparingDouble((Later later) -> {
+            org.joml.Matrix4f matrix = later.pose().pose();
+            return matrix.m30() * matrix.m30() + matrix.m31() * matrix.m31() + matrix.m32() * matrix.m32();
+        }).reversed());
+        for (List<Later> list : List.of(stars, overlays)) {
+            java.util.Set<RenderType> types = new java.util.LinkedHashSet<>();
+            for (Later later : list) {
+                later.drawing().accept(later.pose(), source.getBuffer(later.type()));
+                types.add(later.type());
+            }
+            for (RenderType type : types) source.endBatch(type);
+        }
     }
 
     @EventBusSubscriber(modid = SimpleOres.MODID, value = Dist.CLIENT)

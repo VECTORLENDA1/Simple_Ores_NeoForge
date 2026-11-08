@@ -1234,7 +1234,7 @@ public final class Autocraft {
         }
 
         /// Puts a liquid in the tanks of a machine (through the sides when it takes nothing without one). Returns how many mB.
-        private static int fillMachine(@org.jspecify.annotations.Nullable com.exoticmoss.simpleores.starstorage.network.FluidTanks tanks,
+        private static int fillMachine(com.exoticmoss.simpleores.starstorage.network.@org.jspecify.annotations.Nullable FluidTanks tanks,
                                        List<com.exoticmoss.simpleores.starstorage.network.FluidTanks> sides,
                                        net.neoforged.neoforge.fluids.FluidStack fluid, boolean simulate) {
             var action = simulate ? com.exoticmoss.simpleores.starstorage.network.FluidTanks.FluidAction.SIMULATE

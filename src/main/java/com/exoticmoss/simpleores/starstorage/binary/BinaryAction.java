@@ -161,7 +161,7 @@ public record BinaryAction(BlockPos binary, BlockPos block, int action, int slot
     }
 
     /// The gas of the tank as an item (EMPTY if the tank is empty).
-    private static ItemStack gasItem(@org.jspecify.annotations.Nullable Gases.Tanks gases, int tank) {
+    private static ItemStack gasItem(Gases.@org.jspecify.annotations.Nullable Tanks gases, int tank) {
         if (gases == null) return ItemStack.EMPTY;
         net.minecraft.resources.Identifier gas = gases.gas(tank);
         return gas == null ? ItemStack.EMPTY : com.exoticmoss.simpleores.starstorage.network.Virtual.gas(gas);

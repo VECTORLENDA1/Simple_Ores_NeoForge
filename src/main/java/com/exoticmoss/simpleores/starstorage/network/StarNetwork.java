@@ -121,7 +121,7 @@ public record StarNetwork(List<StellarDriveBlockEntity> drives, List<QuasarBlock
 
     /// An inventory and its tanks touched by an Event Horizon of the network (null = it has none of them).
     private record External(EventHorizonBlockEntity horizon, @Nullable ItemSlots items, @Nullable FluidTanks fluids,
-                            @Nullable Gases.Tanks gases) {
+                            Gases.@Nullable Tanks gases) {
     }
 
     /// The inventories and tanks the Event Horizons touch (each one once; never a block of the star storage), the
